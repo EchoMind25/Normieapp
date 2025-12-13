@@ -1,0 +1,216 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Terminal, Menu, X, Sun, Moon, Users, Flame, ExternalLink } from "lucide-react";
+import { SiTelegram, SiX } from "react-icons/si";
+import { NORMIE_TOKEN } from "@shared/schema";
+import type { TokenMetrics } from "@shared/schema";
+
+interface HeaderProps {
+  metrics: TokenMetrics | null;
+  isDark: boolean;
+  onToggleTheme: () => void;
+}
+
+export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+    setIsMenuOpen(false);
+  };
+
+  const formatPrice = (price: number) => {
+    if (price < 0.001) {
+      return `$${price.toFixed(8)}`;
+    }
+    return `$${price.toFixed(6)}`;
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(1)}M`;
+    }
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}K`;
+    }
+    return num.toFixed(0);
+  };
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-14 items-center justify-between gap-4 px-4 lg:px-8">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Terminal className="h-6 w-6 text-primary" />
+            <span className="font-mono text-lg font-bold tracking-tight text-foreground">
+              {NORMIE_TOKEN.symbol}
+            </span>
+          </div>
+          {metrics && (
+            <Badge variant="outline" className="hidden sm:flex font-mono text-xs">
+              {formatPrice(metrics.price)}
+              <span className={`ml-1 ${metrics.priceChange24h >= 0 ? "text-chart-1" : "text-destructive"}`}>
+                {metrics.priceChange24h >= 0 ? "+" : ""}{metrics.priceChange24h.toFixed(2)}%
+              </span>
+            </Badge>
+          )}
+        </div>
+
+        <nav className="hidden md:flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => scrollToSection("dashboard")}
+            data-testid="nav-dashboard"
+          >
+            Dashboard
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => scrollToSection("meme-generator")}
+            data-testid="nav-memes"
+          >
+            Memes
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => scrollToSection("shop")}
+            data-testid="nav-shop"
+          >
+            Shop
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => scrollToSection("community")}
+            data-testid="nav-community"
+          >
+            Community
+          </Button>
+        </nav>
+
+        <div className="flex items-center gap-2">
+          {metrics && (
+            <div className="hidden lg:flex items-center gap-3 mr-2">
+              <div className="flex items-center gap-1 text-xs font-mono text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                <span data-testid="text-holders">{formatNumber(metrics.holders)}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs font-mono text-destructive">
+                <Flame className="h-3.5 w-3.5" />
+                <span data-testid="text-burned">{formatNumber(metrics.burnedTokens)}</span>
+              </div>
+            </div>
+          )}
+
+          <a
+            href={`https://t.me/${NORMIE_TOKEN.telegram.replace("@", "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="link-telegram"
+          >
+            <Button variant="ghost" size="icon">
+              <SiTelegram className="h-4 w-4" />
+            </Button>
+          </a>
+          <a
+            href={`https://x.com/${NORMIE_TOKEN.twitter.replace("@", "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="link-twitter"
+          >
+            <Button variant="ghost" size="icon">
+              <SiX className="h-4 w-4" />
+            </Button>
+          </a>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleTheme}
+            data-testid="button-theme-toggle"
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            data-testid="button-mobile-menu"
+          >
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden border-t border-border">
+        <div className="animate-ticker whitespace-nowrap py-1 px-4">
+          <span className="inline-flex items-center gap-8 font-mono text-xs text-muted-foreground">
+            {metrics && (
+              <>
+                <span>PRICE: {formatPrice(metrics.price)}</span>
+                <span>MCAP: ${formatNumber(metrics.marketCap)}</span>
+                <span>VOL 24H: ${formatNumber(metrics.volume24h)}</span>
+                <span className="text-destructive">BURNED: {formatNumber(metrics.burnedTokens)}</span>
+                <span className="text-chart-2">LOCKED: {formatNumber(metrics.lockedTokens)}</span>
+                <span>HOLDERS: {formatNumber(metrics.holders)}</span>
+                <span>PRICE: {formatPrice(metrics.price)}</span>
+                <span>MCAP: ${formatNumber(metrics.marketCap)}</span>
+                <span>VOL 24H: ${formatNumber(metrics.volume24h)}</span>
+                <span className="text-destructive">BURNED: {formatNumber(metrics.burnedTokens)}</span>
+                <span className="text-chart-2">LOCKED: {formatNumber(metrics.lockedTokens)}</span>
+                <span>HOLDERS: {formatNumber(metrics.holders)}</span>
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+
+      {isMenuOpen && (
+        <div className="md:hidden border-t border-border bg-background p-4">
+          <nav className="flex flex-col gap-2">
+            <Button
+              variant="ghost"
+              className="justify-start"
+              onClick={() => scrollToSection("dashboard")}
+              data-testid="nav-mobile-dashboard"
+            >
+              Dashboard
+            </Button>
+            <Button
+              variant="ghost"
+              className="justify-start"
+              onClick={() => scrollToSection("meme-generator")}
+              data-testid="nav-mobile-memes"
+            >
+              Memes
+            </Button>
+            <Button
+              variant="ghost"
+              className="justify-start"
+              onClick={() => scrollToSection("shop")}
+              data-testid="nav-mobile-shop"
+            >
+              Shop
+            </Button>
+            <Button
+              variant="ghost"
+              className="justify-start"
+              onClick={() => scrollToSection("community")}
+              data-testid="nav-mobile-community"
+            >
+              Community
+            </Button>
+          </nav>
+        </div>
+      )}
+    </header>
+  );
+}
