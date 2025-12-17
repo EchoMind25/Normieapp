@@ -718,13 +718,13 @@ export async function registerRoutes(
 
   const STICKER_MANIFEST = [
     { id: "pepe-classic", name: "Classic Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/017/618/pepefroggie.jpg" },
-    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/001/074/167/3f1.gif" },
-    { id: "pepe-sad", name: "Sad Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/001/354/099/bba.png" },
-    { id: "pepe-cry", name: "Crying Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/000/948/077/dce.jpg" },
-    { id: "wojak-sad", name: "Sad Wojak", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/001/883/586/14f.jpg" },
-    { id: "wojak-chad", name: "Chad", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/026/152/gigachad.jpg" },
+    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/028/180/cover6.jpg" },
+    { id: "wojak-sad", name: "Sad Wojak", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/031/671/cover1.jpg" },
+    { id: "wojak-chad", name: "GigaChad", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/001/562/308/87f.jpg" },
     { id: "doge", name: "Doge", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg" },
     { id: "troll", name: "Troll Face", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/000/091/TrollFace.jpg" },
+    { id: "stonks", name: "Stonks", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/029/959/Screen_Shot_2019-06-05_at_1.26.32_PM.jpg" },
+    { id: "doomer", name: "Doomer", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/027/763/07B89120-B48D-45FB-AF1D-49AF6CD16790.jpeg" },
     { id: "bitcoin", name: "Bitcoin", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png" },
     { id: "ethereum", name: "Ethereum", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Ethereum-icon-purple.svg/1200px-Ethereum-icon-purple.svg.png" },
     { id: "solana", name: "Solana", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png" },
