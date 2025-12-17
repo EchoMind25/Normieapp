@@ -359,8 +359,17 @@ export function MemeGenerator() {
       } else if (sticker.url) {
         const img = loadedStickerImages.get(sticker.url);
         if (img) {
-          const size = 60;
-          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+          const baseSize = 120;
+          const aspectRatio = img.naturalWidth / img.naturalHeight;
+          let width, height;
+          if (aspectRatio >= 1) {
+            width = baseSize;
+            height = baseSize / aspectRatio;
+          } else {
+            height = baseSize;
+            width = baseSize * aspectRatio;
+          }
+          ctx.drawImage(img, -width / 2, -height / 2, width, height);
         } else {
           ctx.fillStyle = "rgba(34, 197, 94, 0.5)";
           ctx.font = "12px JetBrains Mono";
@@ -694,7 +703,7 @@ export function MemeGenerator() {
 
     for (const sticker of stickerElements) {
       const dist = Math.sqrt((x - sticker.x) ** 2 + (y - sticker.y) ** 2);
-      if (dist < 30 * sticker.scale) {
+      if (dist < 60 * sticker.scale) {
         setDraggedElement({ type: "sticker", id: sticker.id });
         setSelectedElement({ type: "sticker", id: sticker.id });
         return;
