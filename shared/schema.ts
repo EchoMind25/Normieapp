@@ -246,7 +246,8 @@ export type ChatRoom = typeof chatRooms.$inferSelect;
 export const chatMessages = pgTable("chat_messages", {
   id: uuid("id").primaryKey().defaultRandom(),
   roomId: uuid("room_id").references(() => chatRooms.id, { onDelete: "cascade" }).notNull(),
-  userId: uuid("user_id").references(() => users.id),
+  senderId: uuid("sender_id").references(() => users.id),
+  senderName: varchar("sender_name", { length: 100 }),
   content: text("content").notNull(),
   fileUrl: text("file_url"),
   isDeleted: boolean("is_deleted").default(false),

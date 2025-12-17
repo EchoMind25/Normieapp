@@ -1,0 +1,32 @@
+{
+  "name": "Normie Nation - $NORMIE Community Hub",
+  "short_name": "Normie Nation",
+  "description": "Track $NORMIE memecoin in real-time. Live price, burns, meme generator, community hub, and art gallery. Join the Normie Nation on Solana.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#00ff00",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "social", "entertainment"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

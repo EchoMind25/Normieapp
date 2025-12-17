@@ -409,6 +409,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/gallery/featured", async (req, res) => {
+    try {
+      const items = await storage.getFeaturedGalleryItems();
+      res.json(items.length > 0 ? items[0] : null);
+    } catch (error) {
+      console.error("[Gallery] Error fetching featured item:", error);
+      res.status(500).json({ error: "Failed to fetch featured item" });
+    }
+  });
+
   app.get("/api/gallery/:id", async (req, res) => {
     try {
       const item = await storage.getGalleryItem(req.params.id);
@@ -564,6 +574,78 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error deleting comment:", error);
       res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
+  // =====================================================
+  // Public Chat Routes
+  // =====================================================
+
+  app.get("/api/chat/rooms", async (_req, res) => {
+    try {
+      const rooms = await storage.getPublicChatRooms();
+      res.json(rooms);
+    } catch (error) {
+      console.error("[Chat] Error fetching rooms:", error);
+      res.status(500).json({ error: "Failed to fetch chat rooms" });
+    }
+  });
+
+  app.get("/api/chat/rooms/:roomId/messages", async (req, res) => {
+    try {
+      const messages = await storage.getChatMessages(req.params.roomId, 100);
+      res.json(messages.reverse());
+    } catch (error) {
+      console.error("[Chat] Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  app.post("/api/chat/rooms/:roomId/messages", async (req, res) => {
+    try {
+      const { content, senderName, userId } = req.body;
+      
+      if (!content || content.trim().length === 0) {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+      
+      if (content.length > 500) {
+        return res.status(400).json({ error: "Message too long (max 500 chars)" });
+      }
+      
+      const message = await storage.createChatMessage({
+        roomId: req.params.roomId,
+        content: content.trim(),
+        senderId: userId || null,
+        senderName: senderName || "Anonymous",
+      });
+      
+      res.json(message);
+    } catch (error) {
+      console.error("[Chat] Error creating message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  app.post("/api/chat/rooms", async (req, res) => {
+    try {
+      const { name, description } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ error: "Room name is required" });
+      }
+      
+      const room = await storage.createChatRoom({
+        name,
+        description,
+        type: "public",
+        createdById: null,
+      });
+      
+      res.json(room);
+    } catch (error) {
+      console.error("[Chat] Error creating room:", error);
+      res.status(500).json({ error: "Failed to create chat room" });
     }
   });
 
