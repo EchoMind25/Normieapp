@@ -1,0 +1,131 @@
+1. Document Information
+
+Project Name: Normie Nation Community Hub App
+Version: 3.0
+Date: December 16, 2025
+Author: Grok AI (based on user specifications)
+Description: This PRD updates the Normie Nation platform to function as a progressive web app (PWA) deployable first as a website, with enhanced features for community engagement. Key additions include an overloaded meme generator, user-upload art gallery, customizable icons/favicons, admin privileges for Normie CEO, and authentication enhancements like password resets via email/SMS. The app integrates live Solana data, removing mocks, and draws inspiration from similar platforms while introducing superior features to dominate the space.
+
+2. Overview
+Normie Nation evolves into a full-featured PWA starting as a responsive website (preview base: https://normienation.replit.app/), serving as the ultimate hub for $NORMIE enthusiasts. It combines real-time memecoin tracking, creative tools, social features, and NFT economy in a secure, chaotic environment rooted in 4chan culture. To surpass apps like OpenSea (NFT focus but limited social), Uniswap (trading without creativity), or NFT Creator! (basic meme tools without community integration), we'll add collaborative meme editing, AI-powered asset generation, gamified gallery curation with $NORMIE rewards, and seamless Solana wallet-based social logins for instant onboarding.
+3. Objectives
+
+Deliver a PWA experience installable on devices, with offline capabilities for core views like dashboard.
+Overhaul the meme generator into a powerhouse tool rivaling pro editors, integrated with gallery and NFTs.
+Foster user creativity through an art gallery with uploads, voting, and monetization.
+Enable personalization via selectable icons/favicons.
+Grant Normie CEO full admin control for moderation and customization.
+Implement secure auth with free/low-cost email/SMS for resets.
+Ensure all data is live from Solana RPC, fixing any prior discrepancies in metrics like burns.
+Outperform competitors by blending socialfi (e.g., like Solana Compass platforms) with advanced creativity: real-time collab on memes, NFT auto-minting from gallery uploads, and community-voted live stream rewards.
+
+4. Target Audience
+
+$NORMIE holders seeking live insights and creative outlets.
+Artists and meme creators in the community.
+Normie CEO as primary admin for oversight.
+Broader Web3 users drawn to memecoin social hubs.
+
+5. Scope
+In Scope:
+
+PWA conversion: Manifest, service workers for offline dashboard/meme gen access.
+Meme generator overload: Advanced editing, AI integrations.
+Art gallery: Uploads, browsing, voting.
+Icon/favicons: Admin uploads multiple options; users select via profiles.
+Admin privileges: Full control for Normie CEO.
+Auth enhancements: Password resets via email/SMS.
+Live data: Full Solana integration, no mocks.
+
+Out of Scope:
+
+Native mobile apps (PWA suffices initially).
+Premium features requiring paid tiers.
+
+6. Features
+6.1 Core Features (Updated)
+
+Real-Time Dashboard:
+Live Solana metrics (price, cap, liquidity, volume, holders, burns/locks) via public RPC.
+Visuals: Interactive charts with zoom, export to memes.
+Ensure accuracy matching pump.fun (e.g., recent burns at ~572M reflected instantly).
+
+Live Streaming:
+CEO-hosted sessions with viewer interactions, now with gallery integrations (share art live).
+
+Authentication and User Profiles:
+Wallet/email login; profiles with bio, holdings, custom icon selection.
+Password resets: Integrate SendGrid free tier (100 emails/day) for email; Twilio trial (free credits) for SMS—both via Replit secrets and Node.js SDKs.
+Admin role: Normie CEO can moderate (ban users, delete content), add icons, approve gallery uploads.
+
+NFT Marketplace and Minting:
+Mint from memes/gallery; marketplace with $NORMIE bids, auto-royalties to burns.
+
+Chats:
+Public/encrypted rooms; admin moderation (delete messages, kick users).
+
+
+6.2 Enhanced Features
+
+Overloaded Meme Generator:
+Base: Fabric.js canvas with drag-drop, text, stickers.
+Advanced: Layers panel for stacking/editing, filters (blur, vintage, AI-enhanced via free Replicate API if feasible), undo/redo history, collaborative editing (real-time via WebSockets for 2-4 users), text-to-sticker AI (prompt-based generation using free Hugging Face models), import from gallery or Solana NFTs.
+Export: High-res PNG/SVG, direct mint as NFT, share to chats/streams.
+Surpass NFT Creator! apps: Add version history, community templates library, gamified challenges (e.g., "Burn-themed meme contest" with $NORMIE prizes).
+
+Art Gallery:
+User uploads: Normie-themed art (images, memes) via authenticated forms; storage in Replit DB or free Supabase.
+Features: Browse/search by tags (e.g., "wojak", "pepe"), upvote/downvote, comments, curation by admin.
+Integration: One-click mint to NFT marketplace; gallery feeds into streams/chats.
+Blow out competitors like OpenSea galleries: AI-curated "Hot Normie Art" section using simple ML (e.g., popularity scores), user-owned sub-galleries, virtual exhibitions with live CEO commentary.
+
+Customizable Icons/Favicons:
+Admin (Normie CEO) uploads multiple PNG/ICO sets to a dedicated endpoint (stored in PostgreSQL blobs or file system).
+Users select preference in profiles; dynamically apply via CSS/JS (e.g., update <link rel="icon"> on load based on user data).
+Options: 5-10 variants (e.g., classic Normie, burned variant, merch-themed)—user uploads provide the assets.
+
+
+7. Technical Requirements
+
+PWA Setup: Web manifest, service workers (Workbox for caching); test installability.
+Frontend: React with state management (Zustand for collab editing); responsive for web-to-app feel.
+Backend: Node/Express; WebSockets for collab/chats/streams.
+Database: PostgreSQL for users, profiles, gallery metadata, chat logs, icons.
+Integrations:
+Solana: Full live data pulls, wallet auth.
+Streaming: LiveKit for superior latency over basic WebRTC.
+Email/SMS: SendGrid (free API key setup in Replit for resets); Twilio (free trial for SMS 2FA/resets).
+AI: Free tiers of Replicate/Hugging Face for meme enhancements.
+
+Security: Role-based access (admin for Normie CEO via wallet ID); encrypted uploads; CAPTCHA on uploads to prevent spam.
+Deployment: Replit for dev; Netlify/Vercel for prod website, with PWA capabilities.
+
+8. User Flows
+
+Meme Creation: Login → Generator → Advanced edit/collab → Export/mint/upload to gallery.
+Gallery Upload: Profile → Upload art → Tag/approve (admin moderation) → View/vote.
+Admin Actions: CEO logs in → Dashboard → Moderate chats/gallery, upload icons.
+Reset Password: Forgot prompt → Email/SMS code → Reset.
+Icon Choice: Profile settings → Select from admin-uploaded options → Apply.
+
+9. Success Metrics
+
+Engagement: Meme creations, gallery uploads, stream hours.
+Growth: User signups, NFT mints.
+Retention: Daily returns for collab sessions.
+Superiority: Compare to Uniswap/OpenSea via user feedback—aim for 2x engagement through unique features like AI collab.
+
+10. Timeline & Milestones
+
+Phase 1 (1 week): PWA setup, icon system, admin privileges.
+Phase 2 (2 weeks): Meme overload, art gallery.
+Phase 3 (1-2 weeks): Auth enhancements (resets, email/SMS), live data verification.
+Phase 4 (1 week): Testing, deploy as website.
+
+11. Risks & Mitigations
+
+Live Data Accuracy: Implement fallback caches; monitor RPC with logging.
+Free Services Limits: Monitor SendGrid/Twilio usage; fallback to email-only if SMS credits exhaust.
+Collab Scalability: Limit sessions to 4 users; use efficient WebSockets.
+
+This PRD positions Normie Nation to eclipse platforms like Solana-based socialfi apps by fusing trading insights with creator tools, real-time collab, and reward-driven galleries—copy and implement as needed.
