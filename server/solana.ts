@@ -1,6 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { NORMIE_TOKEN } from "@shared/schema";
-import type { TokenMetrics, PricePoint, DevBuy } from "@shared/schema";
+import type { TokenMetrics, PricePoint, DevBuy, ActivityItem } from "@shared/schema";
 
 const RPC_ENDPOINT = "https://solana-rpc.publicnode.com";
 const DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens";
@@ -23,6 +23,11 @@ let currentMetrics: TokenMetrics | null = null;
 let lastRpcSuccess = Date.now();
 let lastDexScreenerFetch = 0;
 let lastHistoricalFetch = 0;
+
+// Activity cache for real-time token activity tracking
+let activityCache: ActivityItem[] = [];
+let lastActivityFetch = 0;
+const ACTIVITY_CACHE_TTL = 60000; // 60 seconds
 
 function getConnection(): Connection {
   if (!connection) {
@@ -304,6 +309,157 @@ export async function initializePriceHistory(): Promise<void> {
   } catch (error) {
     console.error("[Solana] Failed to initialize price history:", error);
   }
+}
+
+// Format token amount for display
+function formatTokenAmount(amount: number): string {
+  if (amount >= 1000000) {
+    return `${(amount / 1000000).toFixed(1)}M`;
+  } else if (amount >= 1000) {
+    return `${(amount / 1000).toFixed(1)}K`;
+  }
+  return amount.toFixed(0);
+}
+
+// Fetch recent token activity from blockchain
+export async function fetchRecentTokenActivity(): Promise<ActivityItem[]> {
+  const now = Date.now();
+  
+  // Return cached data if fresh (60s TTL)
+  if (activityCache.length > 0 && now - lastActivityFetch < ACTIVITY_CACHE_TTL) {
+    return activityCache;
+  }
+  
+  try {
+    const conn = getConnection();
+    const tokenPubkey = new PublicKey(TOKEN_ADDRESS);
+    
+    // Fetch recent signatures for the token address
+    const signatures = await conn.getSignaturesForAddress(tokenPubkey, { limit: 30 });
+    
+    if (signatures.length === 0) {
+      console.log("[Activity] No recent signatures found for token");
+      return activityCache;
+    }
+    
+    console.log(`[Activity] Fetching ${signatures.length} recent token transactions`);
+    
+    const newActivity: ActivityItem[] = [];
+    const existingIds = new Set(activityCache.map(a => a.id));
+    
+    // Process signatures in batches to avoid overwhelming RPC
+    for (const sig of signatures.slice(0, 25)) {
+      if (!sig.blockTime) continue;
+      
+      const activityId = `tx-${sig.signature.slice(0, 12)}`;
+      
+      // Skip if already in cache (deduplication)
+      if (existingIds.has(activityId)) continue;
+      
+      try {
+        const tx = await conn.getTransaction(sig.signature, {
+          maxSupportedTransactionVersion: 0,
+        });
+        
+        if (!tx || !tx.meta || tx.meta.err) continue;
+        
+        const preBalances = tx.meta.preBalances || [];
+        const postBalances = tx.meta.postBalances || [];
+        const preTokenBalances = tx.meta.preTokenBalances || [];
+        const postTokenBalances = tx.meta.postTokenBalances || [];
+        
+        // Check if this is a buy transaction (SOL decreased, tokens increased)
+        // Look for token balance changes in the $NORMIE token
+        let tokenReceived = 0;
+        let solSpent = 0;
+        
+        // Calculate SOL spent (first account is typically the signer)
+        if (postBalances[0] < preBalances[0]) {
+          solSpent = (preBalances[0] - postBalances[0]) / 1e9;
+        }
+        
+        // Look for token balance increases
+        for (const postToken of postTokenBalances) {
+          if (postToken.mint === TOKEN_ADDRESS) {
+            const preToken = preTokenBalances.find(
+              t => t.accountIndex === postToken.accountIndex && t.mint === TOKEN_ADDRESS
+            );
+            const preAmount = preToken?.uiTokenAmount?.uiAmount || 0;
+            const postAmount = postToken.uiTokenAmount?.uiAmount || 0;
+            
+            if (postAmount > preAmount) {
+              tokenReceived = postAmount - preAmount;
+              break;
+            }
+          }
+        }
+        
+        // Determine transaction type based on patterns
+        if (tokenReceived > 0 && solSpent > 0.001) {
+          // This is a buy - SOL spent and tokens received
+          const isLargeBuy = tokenReceived >= 1000000; // 1M+ tokens
+          const message = isLargeBuy 
+            ? `Large buy: ${formatTokenAmount(tokenReceived)} $NORMIE`
+            : `Buy: ${formatTokenAmount(tokenReceived)} $NORMIE`;
+          
+          newActivity.push({
+            id: activityId,
+            type: "trade",
+            message,
+            amount: tokenReceived,
+            timestamp: new Date(sig.blockTime * 1000).toISOString(),
+          });
+        } else if (solSpent > 0.01) {
+          // Generic trade activity
+          const estimatedTokens = solSpent * (currentMetrics?.price ? 1 / currentMetrics.price : 1000000);
+          const message = `Trade: ~${formatTokenAmount(estimatedTokens)} $NORMIE`;
+          
+          newActivity.push({
+            id: activityId,
+            type: "trade",
+            message,
+            amount: estimatedTokens,
+            timestamp: new Date(sig.blockTime * 1000).toISOString(),
+          });
+        }
+        
+      } catch (txError) {
+        // Silently continue on individual transaction errors
+        continue;
+      }
+    }
+    
+    if (newActivity.length > 0) {
+      // Merge new activity with cache, avoiding duplicates
+      const mergedActivity = [...newActivity, ...activityCache];
+      const uniqueActivity = mergedActivity.filter((item, index) => 
+        mergedActivity.findIndex(a => a.id === item.id) === index
+      );
+      
+      // Sort by timestamp descending and limit to 50 items
+      activityCache = uniqueActivity
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 50);
+      
+      lastActivityFetch = now;
+      lastRpcSuccess = now;
+      
+      console.log(`[Activity] Cached ${activityCache.length} activity items (${newActivity.length} new)`);
+    } else {
+      lastActivityFetch = now;
+    }
+    
+    return activityCache;
+    
+  } catch (error) {
+    console.error("[Activity] Error fetching token activity:", error);
+    return activityCache;
+  }
+}
+
+// Get cached activity items
+export function getActivityCache(): ActivityItem[] {
+  return activityCache;
 }
 
 initializePriceHistory();

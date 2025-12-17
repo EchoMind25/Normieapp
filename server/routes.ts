@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { fetchTokenMetrics, getMetrics, getPriceHistory, addPricePoint, fetchDevBuys, getDevBuys, getConnectionStatus, fetchHistoricalPrices } from "./solana";
+import { fetchTokenMetrics, getMetrics, getPriceHistory, addPricePoint, fetchDevBuys, getDevBuys, getConnectionStatus, fetchHistoricalPrices, fetchRecentTokenActivity, getActivityCache } from "./solana";
 import authRoutes from "./authRoutes";
 import { db } from "./db";
 import { manualDevBuys, users, sessions } from "@shared/schema";
@@ -371,17 +371,23 @@ export async function registerRoutes(
   
   app.get("/api/activity", async (_req, res) => {
     try {
-      const dbActivity = await storage.getRecentActivity(20);
+      // Fetch all activity sources in parallel
+      const [dbActivity, tokenActivity] = await Promise.all([
+        storage.getRecentActivity(20),
+        fetchRecentTokenActivity(),
+      ]);
       
-      const devBuys = getDevBuys().slice(0, 5);
-      const devBuyActivity = devBuys.map((buy, index) => ({
-        id: `devbuy-${buy.signature.slice(0, 8)}`,
+      // Get dev buys and format them
+      const devBuys = getDevBuys().slice(0, 10);
+      const devBuyActivity = devBuys.map((buy) => ({
+        id: `devbuy-${buy.signature.slice(0, 12)}`,
         type: "trade" as const,
-        message: `Dev buy: ${(buy.amount / 1000000).toFixed(2)}M $NORMIE`,
+        message: `Dev buy: ${(buy.amount / 1000000).toFixed(1)}M $NORMIE`,
         amount: buy.amount,
         timestamp: new Date(buy.timestamp).toISOString(),
       }));
       
+      // Format database activity (burns, locks, milestones)
       const formattedDbActivity = dbActivity.map(item => ({
         id: item.id,
         type: item.type as "burn" | "lock" | "trade" | "milestone",
@@ -390,11 +396,27 @@ export async function registerRoutes(
         timestamp: item.createdAt?.toISOString() || new Date().toISOString(),
       }));
       
-      const allActivity = [...formattedDbActivity, ...devBuyActivity]
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 20);
+      // Merge all activity sources
+      const allActivityItems = [
+        ...formattedDbActivity,
+        ...devBuyActivity,
+        ...tokenActivity,
+      ];
       
-      res.json(allActivity);
+      // Deduplicate by id
+      const seenIds = new Set<string>();
+      const uniqueActivity = allActivityItems.filter(item => {
+        if (seenIds.has(item.id)) return false;
+        seenIds.add(item.id);
+        return true;
+      });
+      
+      // Sort by timestamp descending and return top 50
+      const sortedActivity = uniqueActivity
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 50);
+      
+      res.json(sortedActivity);
     } catch (error) {
       console.error("[Activity] Error fetching activity:", error);
       res.status(500).json({ error: "Failed to fetch activity" });
