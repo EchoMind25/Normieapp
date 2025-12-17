@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useQuery } from "@tanstack/react-query";
-import { removeBackground } from "@imgly/background-removal";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,6 @@ import {
   TrendingUp,
   DollarSign,
   Send,
-  Loader2,
 } from "lucide-react";
 import { SiX, SiTelegram } from "react-icons/si";
 import type { TokenMetrics } from "@shared/schema";
@@ -135,8 +133,6 @@ export function MemeGenerator() {
   const [textElements, setTextElements] = useState<TextElement[]>([]);
   const [stickerElements, setStickerElements] = useState<StickerElement[]>([]);
   const [loadedStickerImages, setLoadedStickerImages] = useState<Map<string, HTMLImageElement>>(new Map());
-  const [processingStickerIds, setProcessingStickerIds] = useState<Set<string>>(new Set());
-  const processedStickerIdsRef = useRef<Set<string>>(new Set());
   const [newText, setNewText] = useState("");
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [fontSize, setFontSize] = useState([40]);
@@ -400,109 +396,40 @@ export function MemeGenerator() {
   useEffect(() => {
     stickerElements.forEach((sticker) => {
       if (sticker.url && !loadedStickerImages.has(sticker.url)) {
-        const manifestId = sticker.url.split('/').pop() || "";
-        if (!processedStickerIdsRef.current.has(manifestId) && !processingStickerIds.has(manifestId)) {
-          processAndLoadSticker(manifestId, sticker.content);
-        }
-      }
-    });
-  }, [stickerElements, loadedStickerImages, processingStickerIds, processAndLoadSticker]);
-
-  const processAndLoadSticker = useCallback(async (stickerId: string, stickerName: string) => {
-    const url = getStickerUrl(stickerId);
-    
-    if (processedStickerIdsRef.current.has(stickerId)) {
-      return;
-    }
-
-    setProcessingStickerIds((prev) => {
-      const newSet = new Set(prev);
-      newSet.add(stickerId);
-      return newSet;
-    });
-
-    let objectUrl: string | null = null;
-    let loadedSuccessfully = false;
-
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch sticker: ${response.status}`);
-      }
-      const blob = await response.blob();
-      
-      const transparentBlob = await removeBackground(blob, {
-        model: "isnet_quint8",
-        output: {
-          format: "image/png",
-          quality: 1,
-        },
-      });
-
-      objectUrl = URL.createObjectURL(transparentBlob);
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      
-      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
         img.onload = () => {
           setLoadedStickerImages((prev) => {
             const newMap = new Map(prev);
-            newMap.set(url, img);
+            newMap.set(sticker.url!, img);
             return newMap;
           });
-          if (objectUrl) URL.revokeObjectURL(objectUrl);
-          loadedSuccessfully = true;
-          resolve();
         };
-        img.onerror = () => {
-          if (objectUrl) URL.revokeObjectURL(objectUrl);
-          reject(new Error("Failed to load processed image"));
-        };
-        img.src = objectUrl!;
-      });
-    } catch (error) {
-      console.warn(`Failed to process sticker ${stickerName}:`, error);
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      await new Promise<void>((resolve) => {
-        img.onload = () => {
-          setLoadedStickerImages((prev) => {
-            const newMap = new Map(prev);
-            newMap.set(url, img);
-            return newMap;
-          });
-          loadedSuccessfully = true;
-          resolve();
-        };
-        img.onerror = () => {
-          console.warn(`Failed to load sticker fallback: ${stickerName}`);
-          resolve();
-        };
-        img.src = url;
-      });
-    } finally {
-      if (loadedSuccessfully) {
-        processedStickerIdsRef.current.add(stickerId);
+        img.src = sticker.url;
       }
-      setProcessingStickerIds((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(stickerId);
-        return newSet;
-      });
-    }
-  }, []);
+    });
+  }, [stickerElements, loadedStickerImages]);
 
   useEffect(() => {
     if (!allStickersData) return;
-    const currentCategoryStickers = allStickersData.filter(s => s.category === stickerCategory);
-    currentCategoryStickers.forEach((sticker) => {
-      if (!processedStickerIdsRef.current.has(sticker.id) && !processingStickerIds.has(sticker.id)) {
-        processAndLoadSticker(sticker.id, sticker.name);
+    allStickersData.forEach((sticker) => {
+      const url = getStickerUrl(sticker.id);
+      if (!loadedStickerImages.has(url)) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          setLoadedStickerImages((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(url, img);
+            return newMap;
+          });
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load sticker: ${sticker.name}`);
+        };
+        img.src = url;
       }
     });
-  }, [allStickersData, stickerCategory, processingStickerIds, processAndLoadSticker]);
+  }, [allStickersData, loadedStickerImages]);
 
   const deleteSelectedElement = useCallback(() => {
     if (!selectedElement) return;
@@ -1033,58 +960,35 @@ export function MemeGenerator() {
                       data-testid="slider-sticker-size"
                     />
                   </div>
-                  {processingStickerIds.size > 0 && (
-                    <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground font-mono">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      <span>Removing backgrounds ({processingStickerIds.size} remaining)...</span>
-                    </div>
-                  )}
-                  <ScrollArea className="h-[240px]">
+                  <ScrollArea className="h-[260px]">
                     {stickersLoading ? (
                       <div className="flex items-center justify-center h-full">
                         <p className="text-sm text-muted-foreground font-mono">Loading stickers...</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-4 gap-2">
-                        {getStickersByCategory().map((sticker) => {
-                          const url = getStickerUrl(sticker.id);
-                          const processedImg = loadedStickerImages.get(url);
-                          const isProcessing = processingStickerIds.has(sticker.id);
-                          
-                          return (
-                            <Button
-                              key={sticker.id}
-                              variant="outline"
-                              className="aspect-square p-2 flex flex-col items-center justify-center relative"
-                              onClick={() => addSticker(sticker)}
-                              disabled={isProcessing}
-                              data-testid={`button-sticker-${sticker.id}`}
-                            >
-                              {isProcessing ? (
-                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                              ) : processedImg ? (
-                                <img
-                                  src={processedImg.src}
-                                  alt={sticker.name}
-                                  className="w-10 h-10 object-contain"
-                                />
-                              ) : (
-                                <img
-                                  src={url}
-                                  alt={sticker.name}
-                                  className="w-10 h-10 object-contain opacity-50"
-                                  crossOrigin="anonymous"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = "none";
-                                  }}
-                                />
-                              )}
-                              <span className="text-[9px] mt-1 truncate w-full text-center">
-                                {sticker.name}
-                              </span>
-                            </Button>
-                          );
-                        })}
+                        {getStickersByCategory().map((sticker) => (
+                          <Button
+                            key={sticker.id}
+                            variant="outline"
+                            className="aspect-square p-2 flex flex-col items-center justify-center"
+                            onClick={() => addSticker(sticker)}
+                            data-testid={`button-sticker-${sticker.id}`}
+                          >
+                            <img
+                              src={getStickerUrl(sticker.id)}
+                              alt={sticker.name}
+                              className="w-10 h-10 object-contain"
+                              crossOrigin="anonymous"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                            <span className="text-[9px] mt-1 truncate w-full text-center">
+                              {sticker.name}
+                            </span>
+                          </Button>
+                        ))}
                       </div>
                     )}
                   </ScrollArea>
