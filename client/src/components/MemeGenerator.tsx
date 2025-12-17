@@ -137,6 +137,9 @@ export function MemeGenerator() {
   const [loadedStickerImages, setLoadedStickerImages] = useState<Map<string, HTMLImageElement>>(new Map());
   const [processingStickerIds, setProcessingStickerIds] = useState<Set<string>>(new Set());
   const processedStickerIdsRef = useRef<Set<string>>(new Set());
+  const failedStickerIdsRef = useRef<Set<string>>(new Set());
+  const loadingQueueRef = useRef<{id: string, name: string}[]>([]);
+  const isProcessingQueueRef = useRef(false);
   const [newText, setNewText] = useState("");
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [fontSize, setFontSize] = useState([40]);
@@ -397,11 +400,11 @@ export function MemeGenerator() {
     drawCanvas();
   }, [drawCanvas]);
 
-  const processAndLoadSticker = useCallback(async (stickerId: string, stickerName: string) => {
+  const processAndLoadStickerInternal = useCallback(async (stickerId: string, stickerName: string): Promise<boolean> => {
     const url = getStickerUrl(stickerId);
     
-    if (processedStickerIdsRef.current.has(stickerId)) {
-      return;
+    if (processedStickerIdsRef.current.has(stickerId) || failedStickerIdsRef.current.has(stickerId)) {
+      return false;
     }
 
     setProcessingStickerIds((prev) => {
@@ -420,15 +423,20 @@ export function MemeGenerator() {
       }
       const blob = await response.blob();
       
-      const transparentBlob = await removeBackground(blob, {
-        model: "isnet_quint8",
-        output: {
-          format: "image/png",
-          quality: 1,
-        },
-      });
+      let finalBlob = blob;
+      try {
+        finalBlob = await removeBackground(blob, {
+          model: "isnet_quint8",
+          output: {
+            format: "image/png",
+            quality: 1,
+          },
+        });
+      } catch (bgError) {
+        console.warn(`Background removal failed for ${stickerName}, using original`);
+      }
 
-      objectUrl = URL.createObjectURL(transparentBlob);
+      objectUrl = URL.createObjectURL(finalBlob);
       const img = new Image();
       img.crossOrigin = "anonymous";
       
@@ -447,30 +455,12 @@ export function MemeGenerator() {
           if (objectUrl) URL.revokeObjectURL(objectUrl);
           reject(new Error("Failed to load processed image"));
         };
-        img.src = objectUrl!;
+        img.src = objectUrl;
       });
     } catch (error) {
-      console.warn(`Failed to process sticker ${stickerName}:`, error);
+      console.warn(`Failed to load sticker ${stickerName}:`, error);
       if (objectUrl) URL.revokeObjectURL(objectUrl);
-      
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      await new Promise<void>((resolve) => {
-        img.onload = () => {
-          setLoadedStickerImages((prev) => {
-            const newMap = new Map(prev);
-            newMap.set(url, img);
-            return newMap;
-          });
-          loadedSuccessfully = true;
-          resolve();
-        };
-        img.onerror = () => {
-          console.warn(`Failed to load sticker fallback: ${stickerName}`);
-          resolve();
-        };
-        img.src = url;
-      });
+      failedStickerIdsRef.current.add(stickerId);
     } finally {
       if (loadedSuccessfully) {
         processedStickerIdsRef.current.add(stickerId);
@@ -481,28 +471,51 @@ export function MemeGenerator() {
         return newSet;
       });
     }
+    return loadedSuccessfully;
   }, []);
+
+  const processQueue = useCallback(async () => {
+    if (isProcessingQueueRef.current) return;
+    isProcessingQueueRef.current = true;
+    
+    while (loadingQueueRef.current.length > 0) {
+      const item = loadingQueueRef.current.shift();
+      if (item && !processedStickerIdsRef.current.has(item.id) && !failedStickerIdsRef.current.has(item.id)) {
+        await processAndLoadStickerInternal(item.id, item.name);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    isProcessingQueueRef.current = false;
+  }, [processAndLoadStickerInternal]);
+
+  const queueStickerLoad = useCallback((stickerId: string, stickerName: string) => {
+    if (processedStickerIdsRef.current.has(stickerId) || failedStickerIdsRef.current.has(stickerId)) {
+      return;
+    }
+    if (loadingQueueRef.current.some(item => item.id === stickerId)) {
+      return;
+    }
+    loadingQueueRef.current.push({ id: stickerId, name: stickerName });
+    processQueue();
+  }, [processQueue]);
 
   useEffect(() => {
     stickerElements.forEach((sticker) => {
       if (sticker.url && !loadedStickerImages.has(sticker.url)) {
         const manifestId = sticker.url.split('/').pop() || "";
-        if (!processedStickerIdsRef.current.has(manifestId) && !processingStickerIds.has(manifestId)) {
-          processAndLoadSticker(manifestId, sticker.content);
-        }
+        queueStickerLoad(manifestId, sticker.content);
       }
     });
-  }, [stickerElements, loadedStickerImages, processingStickerIds, processAndLoadSticker]);
+  }, [stickerElements, loadedStickerImages, queueStickerLoad]);
 
   useEffect(() => {
     if (!allStickersData) return;
     const currentCategoryStickers = allStickersData.filter(s => s.category === stickerCategory);
     currentCategoryStickers.forEach((sticker) => {
-      if (!processedStickerIdsRef.current.has(sticker.id) && !processingStickerIds.has(sticker.id)) {
-        processAndLoadSticker(sticker.id, sticker.name);
-      }
+      queueStickerLoad(sticker.id, sticker.name);
     });
-  }, [allStickersData, stickerCategory, processingStickerIds, processAndLoadSticker]);
+  }, [allStickersData, stickerCategory, queueStickerLoad]);
 
   const deleteSelectedElement = useCallback(() => {
     if (!selectedElement) return;
