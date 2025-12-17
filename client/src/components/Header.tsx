@@ -91,14 +91,6 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => scrollToSection("shop")}
-            data-testid="nav-shop"
-          >
-            Shop
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
             onClick={() => scrollToSection("community")}
             data-testid="nav-community"
           >
@@ -251,14 +243,6 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
               data-testid="nav-mobile-memes"
             >
               Memes
-            </Button>
-            <Button
-              variant="ghost"
-              className="justify-start"
-              onClick={() => scrollToSection("shop")}
-              data-testid="nav-mobile-shop"
-            >
-              Shop
             </Button>
             <Button
               variant="ghost"
