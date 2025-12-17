@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useQuery } from "@tanstack/react-query";
 import Upscaler from "upscaler";
-import imglyRemoveBackground from "@imgly/background-removal";
+import { removeBackground } from "@imgly/background-removal";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -569,7 +569,7 @@ export function MemeGenerator() {
     try {
       setProcessingProgress(20);
       
-      const blob = await imglyRemoveBackground(backgroundImage.src, {
+      const blob = await removeBackground(backgroundImage.src, {
         progress: (key: string, current: number, total: number) => {
           const progress = Math.round((current / total) * 70) + 20;
           setProcessingProgress(Math.min(progress, 90));
