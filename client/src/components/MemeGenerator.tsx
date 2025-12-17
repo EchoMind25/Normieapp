@@ -30,28 +30,42 @@ const NORMIE_STICKERS = [
   { id: "pepe-angry", name: "Angry Pepe", emoji: "A", color: "#dc2626" },
   { id: "pepe-cry", name: "Crying Pepe", emoji: "C", color: "#3b82f6" },
   { id: "pepe-laugh", name: "Laughing Pepe", emoji: "L", color: "#eab308" },
+  { id: "pepe-monkas", name: "Monkas", emoji: "MK", color: "#22c55e" },
+  { id: "pepe-comfy", name: "Comfy Pepe", emoji: "CF", color: "#a16207" },
+  { id: "pepe-peepo", name: "Peepo", emoji: "PP", color: "#84cc16" },
   { id: "wojak-sad", name: "Sad Wojak", emoji: "W", color: "#6b7280" },
   { id: "wojak-npc", name: "NPC Wojak", emoji: "N", color: "#9ca3af" },
   { id: "wojak-doomer", name: "Doomer", emoji: "D", color: "#374151" },
   { id: "wojak-bloomer", name: "Bloomer", emoji: "B", color: "#f472b6" },
+  { id: "wojak-zoomer", name: "Zoomer", emoji: "Z", color: "#06b6d4" },
+  { id: "wojak-boomer", name: "Boomer", emoji: "BO", color: "#854d0e" },
+  { id: "wojak-glow", name: "Glow Wojak", emoji: "GW", color: "#22d3ee" },
   { id: "chad", name: "Chad", emoji: "CH", color: "#06b6d4" },
   { id: "troll-face", name: "Troll Face", emoji: "T", color: "#f5f5f5" },
   { id: "doge", name: "Doge", emoji: "DG", color: "#f59e0b" },
+  { id: "cheems", name: "Cheems", emoji: "CM", color: "#fbbf24" },
+  { id: "rage-guy", name: "Rage Guy", emoji: "RG", color: "#ef4444" },
 ];
 
 const CRYPTO_STICKERS = [
   { id: "bitcoin", name: "Bitcoin", emoji: "BTC", color: "#f7931a" },
   { id: "ethereum", name: "Ethereum", emoji: "ETH", color: "#627eea" },
   { id: "solana", name: "Solana", emoji: "SOL", color: "#9945ff" },
+  { id: "bnb", name: "BNB", emoji: "BNB", color: "#f0b90b" },
+  { id: "doge-coin", name: "Dogecoin", emoji: "DOG", color: "#c3a634" },
   { id: "diamond-hands", name: "Diamond Hands", emoji: "DH", color: "#3b82f6" },
   { id: "paper-hands", name: "Paper Hands", emoji: "PH", color: "#9ca3af" },
   { id: "moon", name: "Moon", emoji: "M", color: "#fbbf24" },
   { id: "rocket", name: "Rocket", emoji: "R", color: "#ef4444" },
   { id: "whale", name: "Whale", emoji: "WH", color: "#0ea5e9" },
+  { id: "shrimp", name: "Shrimp", emoji: "SH", color: "#f472b6" },
   { id: "chart-up", name: "Chart Up", emoji: "UP", color: "#22c55e" },
   { id: "chart-down", name: "Chart Down", emoji: "DN", color: "#ef4444" },
   { id: "hodl", name: "HODL", emoji: "HD", color: "#8b5cf6" },
   { id: "burn", name: "Token Burn", emoji: "BR", color: "#f97316" },
+  { id: "rug", name: "Rug Pull", emoji: "RP", color: "#dc2626" },
+  { id: "pump", name: "Pump", emoji: "PU", color: "#22c55e" },
+  { id: "dump", name: "Dump", emoji: "DU", color: "#ef4444" },
 ];
 
 const BRAND_STICKERS = [
@@ -60,11 +74,16 @@ const BRAND_STICKERS = [
   { id: "based", name: "BASED", emoji: "BA", color: "#8b5cf6" },
   { id: "ngmi", name: "NGMI", emoji: "NG", color: "#ef4444" },
   { id: "wagmi", name: "WAGMI", emoji: "WG", color: "#22c55e" },
+  { id: "gmi", name: "GMI", emoji: "GI", color: "#22c55e" },
   { id: "verified", name: "Verified", emoji: "V", color: "#3b82f6" },
   { id: "4chan-clover", name: "4chan Clover", emoji: "4C", color: "#22c55e" },
+  { id: "anon", name: "Anonymous", emoji: "AN", color: "#374151" },
   { id: "supply-burn", name: "Supply Burn", emoji: "SB", color: "#f97316" },
   { id: "locked", name: "Locked", emoji: "LK", color: "#eab308" },
   { id: "gm", name: "GM", emoji: "GM", color: "#fbbf24" },
+  { id: "gn", name: "GN", emoji: "GN", color: "#1e293b" },
+  { id: "lfg", name: "LFG", emoji: "LF", color: "#f97316" },
+  { id: "fud", name: "FUD", emoji: "FD", color: "#dc2626" },
 ];
 
 const COLOR_PRESETS = [
@@ -97,6 +116,15 @@ const GRADIENT_PRESETS = [
   { name: "Emerald", colors: ["#134E5E", "#71B280"] },
 ];
 
+const PATTERN_PRESETS = [
+  { name: "Grid", id: "grid" },
+  { name: "Checkerboard", id: "checkerboard" },
+  { name: "Diagonal", id: "diagonal" },
+  { name: "Dots", id: "dots" },
+  { name: "Stars", id: "stars" },
+  { name: "Binary", id: "binary" },
+];
+
 const FONT_OPTIONS = [
   { name: "Impact", value: "Impact" },
   { name: "Arial Black", value: "Arial Black" },
@@ -116,6 +144,7 @@ interface TextElement {
   fontSize: number;
   color: string;
   font: string;
+  align: "left" | "center" | "right";
   strokeEnabled: boolean;
   strokeColor: string;
   strokeWidth: number;
@@ -139,6 +168,7 @@ interface CanvasState {
   stickerElements: StickerElement[];
   backgroundColor: string;
   gradientColors: string[] | null;
+  patternId: string | null;
 }
 
 export function MemeGenerator() {
@@ -163,18 +193,28 @@ export function MemeGenerator() {
   const [emojiSize, setEmojiSize] = useState([60]);
   const [stickerSize, setStickerSize] = useState([1.5]);
   const [draggedElement, setDraggedElement] = useState<{ type: "text" | "sticker"; id: string } | null>(null);
+  const [selectedElement, setSelectedElement] = useState<{ type: "text" | "sticker"; id: string } | null>(null);
   const [stickerCategory, setStickerCategory] = useState<"normie" | "crypto" | "brand">("normie");
-  const [bgMode, setBgMode] = useState<"solid" | "gradient">("solid");
+  const [bgMode, setBgMode] = useState<"solid" | "gradient" | "pattern">("solid");
+  const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("center");
+  const [patternId, setPatternId] = useState<string | null>(null);
   
   const [history, setHistory] = useState<CanvasState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  const saveToHistory = useCallback(() => {
+  const saveToHistory = useCallback((
+    newTextElements?: TextElement[],
+    newStickerElements?: StickerElement[],
+    newBackgroundColor?: string,
+    newGradientColors?: string[] | null,
+    newPatternId?: string | null
+  ) => {
     const state: CanvasState = {
-      textElements: [...textElements],
-      stickerElements: [...stickerElements],
-      backgroundColor,
-      gradientColors,
+      textElements: [...(newTextElements ?? textElements)],
+      stickerElements: [...(newStickerElements ?? stickerElements)],
+      backgroundColor: newBackgroundColor ?? backgroundColor,
+      gradientColors: newGradientColors !== undefined ? newGradientColors : gradientColors,
+      patternId: newPatternId !== undefined ? newPatternId : patternId,
     };
     
     const newHistory = history.slice(0, historyIndex + 1);
@@ -182,7 +222,7 @@ export function MemeGenerator() {
     if (newHistory.length > 20) newHistory.shift();
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
-  }, [textElements, stickerElements, backgroundColor, gradientColors, history, historyIndex]);
+  }, [textElements, stickerElements, backgroundColor, gradientColors, patternId, history, historyIndex]);
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
@@ -191,6 +231,7 @@ export function MemeGenerator() {
       setStickerElements(prevState.stickerElements);
       setBackgroundColor(prevState.backgroundColor);
       setGradientColors(prevState.gradientColors);
+      setPatternId(prevState.patternId);
       setHistoryIndex(historyIndex - 1);
     }
   }, [history, historyIndex]);
@@ -202,9 +243,81 @@ export function MemeGenerator() {
       setStickerElements(nextState.stickerElements);
       setBackgroundColor(nextState.backgroundColor);
       setGradientColors(nextState.gradientColors);
+      setPatternId(nextState.patternId);
       setHistoryIndex(historyIndex + 1);
     }
   }, [history, historyIndex]);
+
+  const drawPattern = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number, pattern: string) => {
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "rgba(34, 197, 94, 0.3)";
+    ctx.fillStyle = "rgba(34, 197, 94, 0.3)";
+    
+    switch (pattern) {
+      case "grid":
+        for (let x = 0; x <= width; x += 30) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= height; y += 30) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+        break;
+      case "checkerboard":
+        for (let x = 0; x < width; x += 40) {
+          for (let y = 0; y < height; y += 40) {
+            if ((x / 40 + y / 40) % 2 === 0) {
+              ctx.fillRect(x, y, 40, 40);
+            }
+          }
+        }
+        break;
+      case "diagonal":
+        for (let i = -height; i < width + height; i += 20) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i + height, height);
+          ctx.stroke();
+        }
+        break;
+      case "dots":
+        for (let x = 20; x < width; x += 40) {
+          for (let y = 20; y < height; y += 40) {
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        break;
+      case "stars":
+        ctx.font = "20px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (let x = 30; x < width; x += 60) {
+          for (let y = 30; y < height; y += 60) {
+            ctx.fillText("*", x, y);
+          }
+        }
+        break;
+      case "binary":
+        ctx.font = "10px monospace";
+        ctx.textAlign = "left";
+        for (let y = 10; y < height; y += 14) {
+          let line = "";
+          for (let x = 0; x < width / 6; x++) {
+            line += Math.random() > 0.5 ? "1" : "0";
+          }
+          ctx.fillText(line, 2, y);
+        }
+        break;
+    }
+  }, []);
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -220,6 +333,8 @@ export function MemeGenerator() {
       const x = (canvas.width - backgroundImage.width * scale) / 2;
       const y = (canvas.height - backgroundImage.height * scale) / 2;
       ctx.drawImage(backgroundImage, x, y, backgroundImage.width * scale, backgroundImage.height * scale);
+    } else if (patternId) {
+      drawPattern(ctx, canvas.width, canvas.height, patternId);
     } else if (gradientColors) {
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       gradient.addColorStop(0, gradientColors[0]);
@@ -229,13 +344,12 @@ export function MemeGenerator() {
     } else {
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    ctx.fillStyle = "rgba(34, 197, 94, 0.05)";
-    const gridSize = 30;
-    for (let x = 0; x < canvas.width; x += gridSize) {
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.fillRect(x, y, 1, 1);
+      ctx.fillStyle = "rgba(34, 197, 94, 0.05)";
+      const gridSize = 30;
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        for (let y = 0; y < canvas.height; y += gridSize) {
+          ctx.fillRect(x, y, 1, 1);
+        }
       }
     }
 
@@ -268,7 +382,7 @@ export function MemeGenerator() {
     textElements.forEach((text) => {
       ctx.save();
       ctx.font = `bold ${text.fontSize}px ${text.font}`;
-      ctx.textAlign = "center";
+      ctx.textAlign = text.align;
       ctx.textBaseline = "middle";
       
       if (text.shadowEnabled) {
@@ -293,11 +407,26 @@ export function MemeGenerator() {
     ctx.fillStyle = "rgba(34, 197, 94, 0.4)";
     ctx.textAlign = "right";
     ctx.fillText("$NORMIE", canvas.width - 10, canvas.height - 10);
-  }, [backgroundImage, backgroundColor, gradientColors, textElements, stickerElements]);
+  }, [backgroundImage, backgroundColor, gradientColors, patternId, textElements, stickerElements, drawPattern]);
 
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
+
+  const deleteSelectedElement = useCallback(() => {
+    if (!selectedElement) return;
+    
+    if (selectedElement.type === "text") {
+      const newTextElements = textElements.filter(t => t.id !== selectedElement.id);
+      setTextElements(newTextElements);
+      saveToHistory(newTextElements, stickerElements);
+    } else {
+      const newStickerElements = stickerElements.filter(s => s.id !== selectedElement.id);
+      setStickerElements(newStickerElements);
+      saveToHistory(textElements, newStickerElements);
+    }
+    setSelectedElement(null);
+  }, [selectedElement, textElements, stickerElements, saveToHistory]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -309,11 +438,17 @@ export function MemeGenerator() {
         e.preventDefault();
         redo();
       }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedElement && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+          e.preventDefault();
+          deleteSelectedElement();
+        }
+      }
     };
     
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, selectedElement, deleteSelectedElement]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -324,7 +459,8 @@ export function MemeGenerator() {
         img.onload = () => {
           setBackgroundImage(img);
           setGradientColors(null);
-          saveToHistory();
+          setPatternId(null);
+          saveToHistory(textElements, stickerElements, backgroundColor, null, null);
         };
         img.src = event.target?.result as string;
       };
@@ -337,63 +473,61 @@ export function MemeGenerator() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    setTextElements([
-      ...textElements,
-      {
-        id: `text-${Date.now()}`,
-        text: newText,
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        fontSize: fontSize[0],
-        color: textColor,
-        font: selectedFont,
-        strokeEnabled,
-        strokeColor,
-        strokeWidth: strokeWidth[0],
-        shadowEnabled,
-        shadowColor,
-        shadowBlur: shadowBlur[0],
-      },
-    ]);
+    const newElement: TextElement = {
+      id: `text-${Date.now()}`,
+      text: newText,
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      fontSize: fontSize[0],
+      color: textColor,
+      font: selectedFont,
+      align: textAlign,
+      strokeEnabled,
+      strokeColor,
+      strokeWidth: strokeWidth[0],
+      shadowEnabled,
+      shadowColor,
+      shadowBlur: shadowBlur[0],
+    };
+    const newTextElements = [...textElements, newElement];
+    setTextElements(newTextElements);
     setNewText("");
-    saveToHistory();
+    saveToHistory(newTextElements, stickerElements);
   };
 
   const addEmoji = (emojiData: EmojiClickData) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    setStickerElements([
-      ...stickerElements,
-      {
-        id: `emoji-${Date.now()}`,
-        type: "emoji",
-        content: emojiData.emoji,
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        scale: emojiSize[0] / 48,
-      },
-    ]);
-    saveToHistory();
+    const newElement: StickerElement = {
+      id: `emoji-${Date.now()}`,
+      type: "emoji",
+      content: emojiData.emoji,
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      scale: emojiSize[0] / 48,
+    };
+    const newStickerElements = [...stickerElements, newElement];
+    setStickerElements(newStickerElements);
+    saveToHistory(textElements, newStickerElements);
   };
 
   const addSticker = (sticker: { id: string; emoji: string; color: string }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    setStickerElements([
-      ...stickerElements,
-      {
-        id: `sticker-${Date.now()}`,
-        type: "sticker",
-        content: sticker.emoji,
-        color: sticker.color,
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        scale: stickerSize[0],
-      },
-    ]);
-    saveToHistory();
+    const newElement: StickerElement = {
+      id: `sticker-${Date.now()}`,
+      type: "sticker",
+      content: sticker.emoji,
+      color: sticker.color,
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      scale: stickerSize[0],
+    };
+    const newStickerElements = [...stickerElements, newElement];
+    setStickerElements(newStickerElements);
+    saveToHistory(textElements, newStickerElements);
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -410,6 +544,7 @@ export function MemeGenerator() {
       const dist = Math.sqrt((x - sticker.x) ** 2 + (y - sticker.y) ** 2);
       if (dist < 30 * sticker.scale) {
         setDraggedElement({ type: "sticker", id: sticker.id });
+        setSelectedElement({ type: "sticker", id: sticker.id });
         return;
       }
     }
@@ -429,10 +564,13 @@ export function MemeGenerator() {
           y <= text.y + height / 2
         ) {
           setDraggedElement({ type: "text", id: text.id });
+          setSelectedElement({ type: "text", id: text.id });
           return;
         }
       }
     }
+    
+    setSelectedElement(null);
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -464,18 +602,22 @@ export function MemeGenerator() {
 
   const handleCanvasMouseUp = () => {
     if (draggedElement) {
-      saveToHistory();
+      saveToHistory(textElements, stickerElements);
     }
     setDraggedElement(null);
   };
 
   const clearCanvas = () => {
-    setTextElements([]);
-    setStickerElements([]);
+    const emptyText: TextElement[] = [];
+    const emptyStickers: StickerElement[] = [];
+    setTextElements(emptyText);
+    setStickerElements(emptyStickers);
     setBackgroundImage(null);
     setGradientColors(null);
+    setPatternId(null);
     setBackgroundColor("#1a1a1a");
-    saveToHistory();
+    setSelectedElement(null);
+    saveToHistory(emptyText, emptyStickers, "#1a1a1a", null, null);
   };
 
   const downloadMeme = () => {
@@ -773,6 +915,63 @@ export function MemeGenerator() {
                         </div>
                       </div>
 
+                      <div className="flex gap-4">
+                        <div className="flex-1 space-y-2">
+                          <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                            Align
+                          </Label>
+                          <div className="flex gap-1">
+                            <Button
+                              variant={textAlign === "left" ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setTextAlign("left")}
+                              data-testid="button-align-left"
+                            >
+                              L
+                            </Button>
+                            <Button
+                              variant={textAlign === "center" ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setTextAlign("center")}
+                              data-testid="button-align-center"
+                            >
+                              C
+                            </Button>
+                            <Button
+                              variant={textAlign === "right" ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setTextAlign("right")}
+                              data-testid="button-align-right"
+                            >
+                              R
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                            Case
+                          </Label>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setNewText(newText.toUpperCase())}
+                              data-testid="button-case-upper"
+                            >
+                              AA
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setNewText(newText.toLowerCase())}
+                              data-testid="button-case-lower"
+                            >
+                              aa
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="space-y-3 p-3 border rounded-md">
                         <div className="flex items-center justify-between gap-2">
                           <Label className="text-xs font-mono">Stroke/Outline</Label>
@@ -921,6 +1120,15 @@ export function MemeGenerator() {
                         >
                           Gradient
                         </Button>
+                        <Button
+                          variant={bgMode === "pattern" ? "default" : "outline"}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setBgMode("pattern")}
+                          data-testid="button-bg-pattern"
+                        >
+                          Pattern
+                        </Button>
                       </div>
 
                       {bgMode === "solid" ? (
@@ -941,8 +1149,9 @@ export function MemeGenerator() {
                                 onClick={() => {
                                   setBackgroundColor(color.hex);
                                   setGradientColors(null);
+                                  setPatternId(null);
                                   setBackgroundImage(null);
-                                  saveToHistory();
+                                  saveToHistory(textElements, stickerElements, color.hex, null, null);
                                 }}
                                 title={color.name}
                                 data-testid={`button-bg-color-${color.hex}`}
@@ -957,6 +1166,7 @@ export function MemeGenerator() {
                               onChange={(e) => {
                                 setBackgroundColor(e.target.value);
                                 setGradientColors(null);
+                                setPatternId(null);
                                 setBackgroundImage(null);
                               }}
                               className="w-10 h-8 p-0 border-0 cursor-pointer"
@@ -983,8 +1193,9 @@ export function MemeGenerator() {
                                 }}
                                 onClick={() => {
                                   setGradientColors(gradient.colors);
+                                  setPatternId(null);
                                   setBackgroundImage(null);
-                                  saveToHistory();
+                                  saveToHistory(textElements, stickerElements, backgroundColor, gradient.colors, null);
                                 }}
                                 data-testid={`button-gradient-${gradient.name}`}
                               >
@@ -992,6 +1203,33 @@ export function MemeGenerator() {
                                   {gradient.name}
                                 </span>
                               </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {bgMode === "pattern" && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                            Patterns
+                          </Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {PATTERN_PRESETS.map((pattern) => (
+                              <Button
+                                key={pattern.id}
+                                variant={patternId === pattern.id ? "default" : "outline"}
+                                size="sm"
+                                className="h-10"
+                                onClick={() => {
+                                  setPatternId(pattern.id);
+                                  setGradientColors(null);
+                                  setBackgroundImage(null);
+                                  saveToHistory(textElements, stickerElements, backgroundColor, null, pattern.id);
+                                }}
+                                data-testid={`button-pattern-${pattern.id}`}
+                              >
+                                {pattern.name}
+                              </Button>
                             ))}
                           </div>
                         </div>
@@ -1014,9 +1252,11 @@ export function MemeGenerator() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() =>
-                                    setStickerElements(stickerElements.filter((s) => s.id !== sticker.id))
-                                  }
+                                  onClick={() => {
+                                    const newStickerElements = stickerElements.filter((s) => s.id !== sticker.id);
+                                    setStickerElements(newStickerElements);
+                                    saveToHistory(textElements, newStickerElements);
+                                  }}
                                   data-testid={`button-delete-sticker-${sticker.id}`}
                                 >
                                   <Trash2 className="h-3 w-3" />
