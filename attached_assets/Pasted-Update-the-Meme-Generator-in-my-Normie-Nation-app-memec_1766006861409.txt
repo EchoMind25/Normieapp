@@ -1,0 +1,12 @@
+Update the Meme Generator in my Normie Nation app (memecoin companion hub with live dashboard, community features, and upcoming NFT marketplace) to import external stickers instead of generating them via AI. The agent previously set it up for image generation, but switch to importing pre-existing stickers that match the Normie themes—focus on Pepe the Frog variants like Classic Pepe, Smug Pepe, Angry Pepe, Crying Pepe, Laughing Pepe, Thinking Pepe, Comfy Pepe, Surprised Pepe, Sad Pepe, NPC Pepe, Doctor Pepe, and Idiot Pepe (as shown in the attached screenshot with sticker size slider at 1.5x).
+Key fixes and enhancements per the PRD:
+
+Sticker Import System: Source free-to-use Pepe meme stickers from public domains like Freepik (e.g., search "Pepe frog meme" for vectors/PNGs) or PNGEgg (e.g., transparent Pepe PNGs). Download 10-15 variants and add them to the app's assets folder (or upload via Replit file manager). Use URLs if dynamic, but prefer local imports for speed. Display them in a grid below the canvas, make them draggable/resizable onto memes, with a size slider (default 1.5x).
+Integration with Art Gallery: Add an "Art Gallery" section where authenticated users can upload their own Normie-themed art/stickers (store in PostgreSQL with paths; limit to PNG/JPG <5MB). Admins (Normie CEO) can approve/moderate uploads via a dashboard panel. Tie into user profiles for ownership display.
+Admin Privileges: Ensure Normie (admin user) has full control—add UI for adding/removing stickers/icons, moderating chats (encrypted/public), and overseeing NFT mints/marketplace. Use PostgreSQL for storing admin actions/logs.
+Authentication and Security: Integrate user sign-up/login (with password resets via email/SMS using free tiers like SendGrid or Twilio on Replit). Link to profiles for saving memes/art.
+Multiple Icons: Allow users/admins to choose from uploaded icon options for app favicon/PWA (store selections in DB).
+Live Features Tie-In: Ensure meme generator pulls live token data (e.g., overlay price/MCAP on memes) from Solana APIs, and add share buttons to community chats or X/Telegram.
+Overall Polish: Make the generator extensive—add text overlays, filters, templates. Test for bugs (e.g., rendering on mobile), ensure responsiveness, and optimize for high traffic (e.g., cache stickers).
+
+Provide code changes/diffs for components like MemeGenerator.js, update package.json if needed (e.g., for image handling libs), and suggest deployment steps. Confirm fixes by testing sticker drag/drop and uploads.

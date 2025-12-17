@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +22,12 @@ import {
   Undo2,
   Redo2,
   Layers,
+  TrendingUp,
+  DollarSign,
+  Send,
 } from "lucide-react";
-import { SiX } from "react-icons/si";
+import { SiX, SiTelegram } from "react-icons/si";
+import type { TokenMetrics } from "@shared/schema";
 
 const NORMIE_STICKERS = [
   { id: "pepe-classic", name: "Classic Pepe", url: "/stickers/pepe/classic-pepe.png" },
@@ -182,6 +187,28 @@ export function MemeGenerator() {
   
   const [history, setHistory] = useState<CanvasState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const { data: metrics, isLoading: metricsLoading } = useQuery<TokenMetrics>({
+    queryKey: ["/api/metrics"],
+    refetchInterval: 30000,
+  });
+
+  const hasValidMetrics = metrics && metrics.price > 0;
+
+  const formatPrice = (price: number | undefined | null) => {
+    if (!price || price <= 0) return "$0.00";
+    if (price < 0.00001) return `$${price.toFixed(8)}`;
+    if (price < 0.01) return `$${price.toFixed(6)}`;
+    return `$${price.toFixed(4)}`;
+  };
+
+  const formatMarketCap = (mc: number | undefined | null) => {
+    if (!mc || mc <= 0) return "$0";
+    if (mc >= 1e9) return `$${(mc / 1e9).toFixed(2)}B`;
+    if (mc >= 1e6) return `$${(mc / 1e6).toFixed(2)}M`;
+    if (mc >= 1e3) return `$${(mc / 1e3).toFixed(1)}K`;
+    return `$${mc.toFixed(0)}`;
+  };
 
   const saveToHistory = useCallback((
     newTextElements?: TextElement[],
@@ -652,6 +679,95 @@ export function MemeGenerator() {
     window.open(`https://x.com/intent/tweet?text=${text}`, "_blank");
   };
 
+  const shareToTelegram = () => {
+    const text = encodeURIComponent(
+      "Check out my $NORMIE meme! Join the Normie Nation! https://t.me/TheNormieNation"
+    );
+    window.open(`https://t.me/share/url?url=&text=${text}`, "_blank");
+  };
+
+  const addPriceStamp = () => {
+    if (!hasValidMetrics) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const priceText = `PRICE: ${formatPrice(metrics!.price)}`;
+    const newElement: TextElement = {
+      id: `text-${Date.now()}`,
+      text: priceText,
+      x: canvas.width - 120,
+      y: 40,
+      fontSize: 24,
+      color: "#22c55e",
+      font: "JetBrains Mono",
+      align: "right",
+      strokeEnabled: true,
+      strokeColor: "#000000",
+      strokeWidth: 2,
+      shadowEnabled: false,
+      shadowColor: "#000000",
+      shadowBlur: 0,
+    };
+    const newTextElements = [...textElements, newElement];
+    setTextElements(newTextElements);
+    saveToHistory(newTextElements, stickerElements);
+  };
+
+  const addMcapStamp = () => {
+    if (!hasValidMetrics) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const mcapText = `MCAP: ${formatMarketCap(metrics!.marketCap)}`;
+    const newElement: TextElement = {
+      id: `text-${Date.now()}`,
+      text: mcapText,
+      x: canvas.width - 120,
+      y: 70,
+      fontSize: 24,
+      color: "#22c55e",
+      font: "JetBrains Mono",
+      align: "right",
+      strokeEnabled: true,
+      strokeColor: "#000000",
+      strokeWidth: 2,
+      shadowEnabled: false,
+      shadowColor: "#000000",
+      shadowBlur: 0,
+    };
+    const newTextElements = [...textElements, newElement];
+    setTextElements(newTextElements);
+    saveToHistory(newTextElements, stickerElements);
+  };
+
+  const addLiveDataBadge = () => {
+    if (!hasValidMetrics) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const priceChange = metrics!.priceChange24h >= 0 ? `+${metrics!.priceChange24h.toFixed(1)}%` : `${metrics!.priceChange24h.toFixed(1)}%`;
+    const badgeText = `$NORMIE ${formatPrice(metrics!.price)} (${priceChange})`;
+    const newElement: TextElement = {
+      id: `text-${Date.now()}`,
+      text: badgeText,
+      x: canvas.width / 2,
+      y: canvas.height - 40,
+      fontSize: 20,
+      color: metrics.priceChange24h >= 0 ? "#22c55e" : "#ef4444",
+      font: "JetBrains Mono",
+      align: "center",
+      strokeEnabled: true,
+      strokeColor: "#000000",
+      strokeWidth: 2,
+      shadowEnabled: false,
+      shadowColor: "#000000",
+      shadowBlur: 0,
+    };
+    const newTextElements = [...textElements, newElement];
+    setTextElements(newTextElements);
+    saveToHistory(newTextElements, stickerElements);
+  };
+
   const getStickersByCategory = () => {
     switch (stickerCategory) {
       case "crypto": return CRYPTO_STICKERS;
@@ -726,7 +842,16 @@ export function MemeGenerator() {
                     data-testid="button-share-x"
                   >
                     <SiX className="h-4 w-4 mr-1" />
-                    Share
+                    X
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={shareToTelegram}
+                    data-testid="button-share-telegram"
+                  >
+                    <SiTelegram className="h-4 w-4 mr-1" />
+                    TG
                   </Button>
                   <Button
                     size="sm"
@@ -737,6 +862,41 @@ export function MemeGenerator() {
                     Download
                   </Button>
                 </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                  Live Data:
+                </Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addPriceStamp}
+                  disabled={!hasValidMetrics || metricsLoading}
+                  data-testid="button-add-price"
+                >
+                  <DollarSign className="h-3 w-3 mr-1" />
+                  {metricsLoading ? "Loading..." : "Price"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addMcapStamp}
+                  disabled={!hasValidMetrics || metricsLoading}
+                  data-testid="button-add-mcap"
+                >
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  {metricsLoading ? "Loading..." : "MCap"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addLiveDataBadge}
+                  disabled={!hasValidMetrics || metricsLoading}
+                  data-testid="button-add-badge"
+                >
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  {metricsLoading ? "Loading..." : "Full Badge"}
+                </Button>
               </div>
             </Card>
           </div>
