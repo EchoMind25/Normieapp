@@ -1,0 +1,706 @@
+Replit Agent Prompt: Fix Meme Generator Stickers - Replace Generic Emojis with Actual Meme Images
+Issue Identified
+The meme generator sticker panel is showing generic emoji-style circular icons instead of actual classic meme sticker images (Pepe, Wojak, etc.). The stickers need to be replaced with proper transparent PNG images of real memes.
+Objective
+Replace all generic emoji placeholders with authentic meme sticker images that can be dragged onto the canvas as transparent PNGs.
+
+Required Changes
+1. Source Real Meme Sticker Images
+Download and add these specific meme stickers to /public/stickers/ directory:
+Pepe Variations (create /public/stickers/pepe/ folder):
+bash# Download these classic Pepe images:
+# - Classic Pepe: The original green frog with neutral expression
+# - Smug Pepe: Pepe with smug/satisfied smirk
+# - Angry Pepe: Pepe with red face, angry expression
+# - Crying Pepe: Sad Pepe with tears
+# - Laughing Pepe: Pepe laughing/pointing
+# - Surprised Pepe: Pepe with shocked expression
+# - Thinking Pepe: Pepe with hand on chin
+# - Comfy Pepe: Pepe wrapped in blanket with drink
+Sourcing Instructions:
+
+Go to KnowYourMeme.com and search for "Pepe the Frog"
+Download high-res versions of each variation
+Or use these direct links from meme databases:
+
+Classic: https://i.kym-cdn.com/photos/images/original/000/862/065/0e9.jpg
+Smug: https://i.kym-cdn.com/photos/images/original/000/862/077/0e4.png
+Angry: https://i.kym-cdn.com/entries/icons/original/000/024/207/brainlettttt.jpg
+Crying: https://i.kym-cdn.com/photos/images/original/001/461/623/b21.png
+
+
+Use ImageMagick or similar to remove backgrounds and create PNGs:
+
+bash# Example command to remove white background:
+convert input.jpg -fuzz 10% -transparent white output.png
+Wojak Variations (create /public/stickers/wojak/ folder):
+bash# Download these classic Wojak images:
+# - Classic Wojak: Basic sad face guy
+# - NPC Wojak: Gray face with simple features
+# - Doomer: Wojak with cigarette, dark circles
+# - Bloomer: Happy/optimistic Wojak
+# - Zoomer: Young Wojak with broccoli hair
+# - Boomer: Older Wojak with sunglasses, drink
+# - Crying Wojak (Yes Chad counterpart)
+# - Wojak Mask: Smiling mask hiding sad face
+Classic Rage Faces (create /public/stickers/rage/ folder):
+bash# Download these classic internet memes:
+# - Troll Face: The classic troll meme
+# - Rage Guy: FFFFFUUUUU face
+# - Forever Alone: Sad lonely face
+# - Me Gusta: Satisfied face
+# - Poker Face: Neutral face
+# - Y U NO Guy: Angry questioning face
+# - Challenge Accepted: Determined face
+Crypto/Solana Themed (create /public/stickers/crypto/ folder):
+bash# Use official logos and crypto memes:
+# - Bitcoin logo (official): https://bitcoin.org/img/icons/logotop.svg
+# - Ethereum logo: https://ethereum.org/static/...
+# - Solana logo: https://solana.com/branding (download official assets)
+# - Diamond Hands (💎🙌 as image)
+# - Laser Eyes effect overlay
+# - "To the Moon" rocket
+# - Wojak HODL (Wojak holding chart)
+# - Paper Hands (weak hands meme)
+Normie Brand Assets (create /public/stickers/brand/ folder):
+bash# Create custom Normie Nation branded stickers:
+# - Normie logo from the project
+# - "NORMIE" text in Impact font
+# - Supply burn fire icon with "572M BURNED"
+# - Lock icon with "230M LOCKED"
+# - 4chan clover icon
+# - "WAGMI" stamp
+# - "NGMI" stamp
+# - "BASED" stamp
+
+2. Update Sticker Configuration
+Replace the sticker arrays in the meme generator component:
+javascript// client/components/MemeGenerator/stickerConfig.js
+
+export const normieStickers = [
+  // Pepe variations
+  { 
+    id: 'pepe-classic', 
+    name: 'Classic Pepe', 
+    url: '/stickers/pepe/classic-pepe.png',
+    category: 'normie'
+  },
+  { 
+    id: 'pepe-smug', 
+    name: 'Smug Pepe', 
+    url: '/stickers/pepe/smug-pepe.png',
+    category: 'normie'
+  },
+  { 
+    id: 'pepe-angry', 
+    name: 'Angry Pepe', 
+    url: '/stickers/pepe/angry-pepe.png',
+    category: 'normie'
+  },
+  { 
+    id: 'pepe-cry', 
+    name: 'Crying Pepe', 
+    url: '/stickers/pepe/crying-pepe.png',
+    category: 'normie'
+  },
+  { 
+    id: 'pepe-laugh', 
+    name: 'Laughing Pepe', 
+    url: '/stickers/pepe/laughing-pepe.png',
+    category: 'normie'
+  },
+  { 
+    id: 'pepe-surprised', 
+    name: 'Surprised Pepe', 
+    url: '/stickers/pepe/surprised-pepe.png',
+    category: 'normie'
+  },
+  { 
+    id: 'pepe-thinking', 
+    name: 'Thinking Pepe', 
+    url: '/stickers/pepe/thinking-pepe.png',
+    category: 'normie'
+  },
+  { 
+    id: 'pepe-comfy', 
+    name: 'Comfy Pepe', 
+    url: '/stickers/pepe/comfy-pepe.png',
+    category: 'normie'
+  },
+  
+  // Wojak variations
+  { 
+    id: 'wojak-sad', 
+    name: 'Sad Wojak', 
+    url: '/stickers/wojak/sad-wojak.png',
+    category: 'normie'
+  },
+  { 
+    id: 'wojak-npc', 
+    name: 'NPC Wojak', 
+    url: '/stickers/wojak/npc-wojak.png',
+    category: 'normie'
+  },
+  { 
+    id: 'wojak-doomer', 
+    name: 'Doomer', 
+    url: '/stickers/wojak/doomer.png',
+    category: 'normie'
+  },
+  { 
+    id: 'wojak-bloomer', 
+    name: 'Bloomer', 
+    url: '/stickers/wojak/bloomer.png',
+    category: 'normie'
+  },
+  { 
+    id: 'wojak-zoomer', 
+    name: 'Zoomer', 
+    url: '/stickers/wojak/zoomer.png',
+    category: 'normie'
+  },
+  { 
+    id: 'wojak-boomer', 
+    name: 'Boomer', 
+    url: '/stickers/wojak/boomer.png',
+    category: 'normie'
+  },
+  
+  // Classic rage faces
+  { 
+    id: 'troll-face', 
+    name: 'Troll Face', 
+    url: '/stickers/rage/troll-face.png',
+    category: 'normie'
+  },
+  { 
+    id: 'rage-guy', 
+    name: 'Rage Guy', 
+    url: '/stickers/rage/rage-guy.png',
+    category: 'normie'
+  },
+  { 
+    id: 'forever-alone', 
+    name: 'Forever Alone', 
+    url: '/stickers/rage/forever-alone.png',
+    category: 'normie'
+  },
+  { 
+    id: 'me-gusta', 
+    name: 'Me Gusta', 
+    url: '/stickers/rage/me-gusta.png',
+    category: 'normie'
+  }
+];
+
+export const cryptoStickers = [
+  { 
+    id: 'bitcoin', 
+    name: 'Bitcoin', 
+    url: '/stickers/crypto/bitcoin.png',
+    category: 'crypto'
+  },
+  { 
+    id: 'ethereum', 
+    name: 'Ethereum', 
+    url: '/stickers/crypto/ethereum.png',
+    category: 'crypto'
+  },
+  { 
+    id: 'solana', 
+    name: 'Solana', 
+    url: '/stickers/crypto/solana.png',
+    category: 'crypto'
+  },
+  { 
+    id: 'diamond-hands', 
+    name: 'Diamond Hands', 
+    url: '/stickers/crypto/diamond-hands.png',
+    category: 'crypto'
+  },
+  { 
+    id: 'rocket', 
+    name: 'To The Moon', 
+    url: '/stickers/crypto/rocket.png',
+    category: 'crypto'
+  },
+  { 
+    id: 'wojak-hodl', 
+    name: 'HODL Wojak', 
+    url: '/stickers/crypto/wojak-hodl.png',
+    category: 'crypto'
+  },
+  { 
+    id: 'paper-hands', 
+    name: 'Paper Hands', 
+    url: '/stickers/crypto/paper-hands.png',
+    category: 'crypto'
+  },
+  { 
+    id: 'laser-eyes', 
+    name: 'Laser Eyes', 
+    url: '/stickers/crypto/laser-eyes.png',
+    category: 'crypto'
+  }
+];
+
+export const brandStickers = [
+  { 
+    id: 'normie-logo', 
+    name: 'Normie Logo', 
+    url: '/stickers/brand/normie-logo.png',
+    category: 'brand'
+  },
+  { 
+    id: 'normie-text', 
+    name: 'NORMIE', 
+    url: '/stickers/brand/normie-text.png',
+    category: 'brand'
+  },
+  { 
+    id: 'burn-badge', 
+    name: 'Supply Burn', 
+    url: '/stickers/brand/burn-badge.png',
+    category: 'brand'
+  },
+  { 
+    id: 'lock-badge', 
+    name: 'Locked', 
+    url: '/stickers/brand/lock-badge.png',
+    category: 'brand'
+  },
+  { 
+    id: 'clover', 
+    name: '4chan Clover', 
+    url: '/stickers/brand/4chan-clover.png',
+    category: 'brand'
+  },
+  { 
+    id: 'wagmi', 
+    name: 'WAGMI', 
+    url: '/stickers/brand/wagmi-stamp.png',
+    category: 'brand'
+  },
+  { 
+    id: 'ngmi', 
+    name: 'NGMI', 
+    url: '/stickers/brand/ngmi-stamp.png',
+    category: 'brand'
+  },
+  { 
+    id: 'based', 
+    name: 'BASED', 
+    url: '/stickers/brand/based-stamp.png',
+    category: 'brand'
+  }
+];
+
+3. Fix Sticker Rendering
+Ensure stickers load as actual images, not emoji circles:
+jsx// client/components/MemeGenerator/StickerPanel.jsx
+
+import { normieStickers, cryptoStickers, brandStickers } from './stickerConfig';
+
+function StickerPanel({ onStickerSelect }) {
+  const [activeTab, setActiveTab] = useState('normie');
+  const [imageLoadErrors, setImageLoadErrors] = useState({});
+
+  const getStickersByTab = () => {
+    switch(activeTab) {
+      case 'normie': return normieStickers;
+      case 'crypto': return cryptoStickers;
+      case 'brand': return brandStickers;
+      default: return [];
+    }
+  };
+
+  const handleImageError = (stickerId) => {
+    console.error(`Failed to load sticker: ${stickerId}`);
+    setImageLoadErrors(prev => ({ ...prev, [stickerId]: true }));
+  };
+
+  return (
+    <div className="sticker-panel">
+      <div className="sticker-tabs">
+        <button 
+          className={activeTab === 'normie' ? 'active' : ''} 
+          onClick={() => setActiveTab('normie')}
+        >
+          Normie
+        </button>
+        <button 
+          className={activeTab === 'crypto' ? 'active' : ''} 
+          onClick={() => setActiveTab('crypto')}
+        >
+          Crypto
+        </button>
+        <button 
+          className={activeTab === 'brand' ? 'active' : ''} 
+          onClick={() => setActiveTab('brand')}
+        >
+          Brand
+        </button>
+      </div>
+
+      <div className="sticker-size-control">
+        <label>Sticker Size: 1.5x</label>
+        <input type="range" min="0.5" max="3" step="0.1" defaultValue="1.5" />
+      </div>
+
+      <div className="sticker-grid">
+        {getStickersByTab().map(sticker => (
+          <div 
+            key={sticker.id} 
+            className="sticker-item"
+            onClick={() => !imageLoadErrors[sticker.id] && onStickerSelect(sticker)}
+          >
+            {imageLoadErrors[sticker.id] ? (
+              <div className="sticker-error">
+                <span>❌</span>
+                <p>Missing</p>
+              </div>
+            ) : (
+              <>
+                <img 
+                  src={sticker.url} 
+                  alt={sticker.name}
+                  onError={() => handleImageError(sticker.id)}
+                  loading="lazy"
+                />
+                <span className="sticker-name">{sticker.name}</span>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {Object.keys(imageLoadErrors).length > 0 && (
+        <div className="sticker-warning">
+          ⚠️ Some stickers failed to load. Please add images to /public/stickers/
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default StickerPanel;
+
+4. Update Canvas Sticker Insertion
+Fix the addStickerToCanvas function to properly load images:
+javascript// client/components/MemeGenerator/MemeCanvas.jsx
+
+const addStickerToCanvas = (sticker) => {
+  if (!canvas) return;
+
+  fabric.Image.fromURL(
+    sticker.url,
+    (img) => {
+      // Set initial size based on slider
+      const scale = stickerSize || 1.5;
+      img.scale(scale);
+
+      // Center on canvas
+      img.set({
+        left: canvas.width / 2,
+        top: canvas.height / 2,
+        originX: 'center',
+        originY: 'center'
+      });
+
+      // Make it selectable and movable
+      img.setControlsVisibility({
+        mt: true, // middle top
+        mb: true, // middle bottom
+        ml: true, // middle left
+        mr: true, // middle right
+        bl: true, // bottom left
+        br: true, // bottom right
+        tl: true, // top left
+        tr: true, // top right
+        mtr: true // rotating point
+      });
+
+      canvas.add(img);
+      canvas.setActiveObject(img);
+      canvas.renderAll();
+      
+      saveCanvasState(); // For undo/redo
+    },
+    {
+      crossOrigin: 'anonymous' // Allow cross-origin if using external URLs
+    }
+  );
+};
+
+5. CSS Styling for Sticker Panel
+css/* client/styles/MemeGenerator.css */
+
+.sticker-panel {
+  background: #1a1a1a;
+  border-radius: 8px;
+  padding: 15px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.sticker-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.sticker-tabs button {
+  flex: 1;
+  padding: 10px;
+  background: #2a2a2a;
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.sticker-tabs button.active {
+  background: #00ff00;
+  color: #000;
+}
+
+.sticker-tabs button:hover {
+  transform: scale(1.05);
+}
+
+.sticker-size-control {
+  margin-bottom: 15px;
+  color: #00ff00;
+}
+
+.sticker-size-control input[type="range"] {
+  width: 100%;
+  margin-top: 5px;
+}
+
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.sticker-item {
+  aspect-ratio: 1;
+  background: #2a2a2a;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.sticker-item:hover {
+  border-color: #00ff00;
+  transform: scale(1.05);
+  background: #333;
+}
+
+.sticker-item img {
+  width: 100%;
+  height: auto;
+  max-height: 80%;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+.sticker-name {
+  font-size: 10px;
+  color: #aaa;
+  text-align: center;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.sticker-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ff4444;
+  height: 100%;
+}
+
+.sticker-error span {
+  font-size: 24px;
+}
+
+.sticker-error p {
+  font-size: 9px;
+  margin: 4px 0 0 0;
+}
+
+.sticker-warning {
+  margin-top: 15px;
+  padding: 10px;
+  background: #ff440020;
+  border: 1px solid #ff4444;
+  border-radius: 4px;
+  color: #ff4444;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .sticker-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  
+  .sticker-item {
+    padding: 6px;
+  }
+  
+  .sticker-name {
+    font-size: 9px;
+  }
+}
+
+Temporary Solution (If Can't Download Images Immediately)
+Use placeholder image service to demonstrate functionality:
+javascript// For testing, use placeholder images that look like memes:
+
+const temporaryStickers = [
+  { 
+    id: 'pepe-classic', 
+    name: 'Classic Pepe', 
+    url: 'https://via.placeholder.com/200x200/00ff00/000000?text=Pepe',
+    category: 'normie'
+  },
+  { 
+    id: 'wojak-sad', 
+    name: 'Sad Wojak', 
+    url: 'https://via.placeholder.com/200x200/cccccc/000000?text=Wojak',
+    category: 'normie'
+  },
+  // ... etc
+];
+
+// OR use this API for random meme images as placeholders:
+// https://api.memegen.link/images/{template}.png
+// Example: https://api.memegen.link/images/doge.png
+
+Asset Creation Script (If Building from Scratch)
+Create a Node script to generate basic brand stickers:
+javascript// scripts/generate-brand-stickers.js
+const sharp = require('sharp');
+
+async function createTextSticker(text, filename) {
+  const svg = `
+    <svg width="400" height="400">
+      <rect width="400" height="400" fill="black" rx="20"/>
+      <text 
+        x="50%" 
+        y="50%" 
+        font-family="Impact, Arial Black" 
+        font-size="60" 
+        font-weight="bold" 
+        fill="#00ff00" 
+        text-anchor="middle" 
+        dominant-baseline="middle"
+      >
+        ${text}
+      </text>
+    </svg>
+  `;
+  
+  await sharp(Buffer.from(svg))
+    .png()
+    .toFile(`public/stickers/brand/${filename}.png`);
+}
+
+async function generateBrandStickers() {
+  await createTextSticker('NORMIE', 'normie-text');
+  await createTextSticker('WAGMI', 'wagmi-stamp');
+  await createTextSticker('NGMI', 'ngmi-stamp');
+  await createTextSticker('BASED', 'based-stamp');
+  await createTextSticker('572M\nBURNED', 'burn-badge');
+  await createTextSticker('230M\nLOCKED', 'lock-badge');
+  
+  console.log('Brand stickers generated!');
+}
+
+generateBrandStickers();
+
+Testing Requirements
+After implementation, verify:
+
+ All sticker images load without errors
+ Stickers appear as actual meme images (not emoji circles)
+ Clicking sticker adds it to canvas as draggable image
+ Stickers maintain transparency (PNG alpha channel)
+ Sticker size slider affects newly added stickers
+ Stickers can be resized/rotated on canvas
+ Tab switching shows correct sticker categories
+ Error handling shows missing sticker message
+ Lazy loading works (images load as you scroll)
+ Mobile view shows 3-column grid properly
+
+
+Deliverables
+Provide after completion:
+
+Asset Inventory:
+
+List of all sticker files added
+File sizes and formats
+Source URLs where applicable
+Missing assets that need manual addition
+
+
+Sticker Configuration:
+
+Complete stickerConfig.js file
+Category organization
+Naming conventions used
+
+
+Integration Report:
+
+How stickers integrate with canvas
+Size/scaling behavior
+Performance with 50+ stickers loaded
+
+
+Asset Creation Guide:
+
+Instructions for Braxton to add custom stickers
+Recommended dimensions (suggest 400x400px)
+File format requirements (PNG with transparency)
+Naming convention to follow
+
+
+Known Issues:
+
+Any stickers still showing as placeholders
+Copyright concerns with specific images
+Performance issues if any
+
+
+
+
+Priority Instructions
+CRITICAL: The stickers must be actual transparent PNG images of meme faces, NOT circular emoji icons. If real meme images cannot be downloaded automatically:
+
+Create placeholder images with text labels
+Provide Braxton with exact folder structure to add real images
+Include a checklist of required sticker images
+Test with at least 3 real images to prove the system works
+
+Focus on getting the infrastructure right so Braxton can easily drop in proper meme images afterward.
+Begin implementation immediately. Prioritize making the sticker panel display IMAGES not emoji circles. Report progress with screenshots showing actual image stickers loading correctly.

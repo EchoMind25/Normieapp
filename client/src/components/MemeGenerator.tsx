@@ -25,65 +25,44 @@ import {
 import { SiX } from "react-icons/si";
 
 const NORMIE_STICKERS = [
-  { id: "pepe-classic", name: "Classic Pepe", emoji: "🐸", color: "#22c55e" },
-  { id: "pepe-smug", name: "Smug Pepe", emoji: "😏", color: "#16a34a" },
-  { id: "pepe-angry", name: "Angry Pepe", emoji: "😤", color: "#dc2626" },
-  { id: "pepe-cry", name: "Crying Pepe", emoji: "😢", color: "#3b82f6" },
-  { id: "pepe-laugh", name: "Laughing Pepe", emoji: "🤣", color: "#eab308" },
-  { id: "pepe-monkas", name: "Monkas", emoji: "😰", color: "#22c55e" },
-  { id: "pepe-comfy", name: "Comfy Pepe", emoji: "😌", color: "#a16207" },
-  { id: "pepe-peepo", name: "Peepo", emoji: "🥺", color: "#84cc16" },
-  { id: "wojak-sad", name: "Sad Wojak", emoji: "😔", color: "#6b7280" },
-  { id: "wojak-npc", name: "NPC Wojak", emoji: "🤖", color: "#9ca3af" },
-  { id: "wojak-doomer", name: "Doomer", emoji: "💀", color: "#374151" },
-  { id: "wojak-bloomer", name: "Bloomer", emoji: "🌸", color: "#f472b6" },
-  { id: "wojak-zoomer", name: "Zoomer", emoji: "⚡", color: "#06b6d4" },
-  { id: "wojak-boomer", name: "Boomer", emoji: "👴", color: "#854d0e" },
-  { id: "wojak-glow", name: "Glow Wojak", emoji: "✨", color: "#22d3ee" },
-  { id: "chad", name: "Chad", emoji: "💪", color: "#06b6d4" },
-  { id: "troll-face", name: "Troll Face", emoji: "😈", color: "#f5f5f5" },
-  { id: "doge", name: "Doge", emoji: "🐕", color: "#f59e0b" },
-  { id: "cheems", name: "Cheems", emoji: "🐶", color: "#fbbf24" },
-  { id: "rage-guy", name: "Rage Guy", emoji: "🔥", color: "#ef4444" },
+  { id: "pepe-classic", name: "Classic Pepe", url: "/stickers/pepe/classic-pepe.png" },
+  { id: "pepe-smug", name: "Smug Pepe", url: "/stickers/pepe/smug-pepe.png" },
+  { id: "pepe-angry", name: "Angry Pepe", url: "/stickers/pepe/angry-pepe.png" },
+  { id: "pepe-cry", name: "Crying Pepe", url: "/stickers/pepe/crying-pepe.png" },
+  { id: "pepe-laugh", name: "Laughing Pepe", url: "/stickers/pepe/laughing-pepe.png" },
+  { id: "pepe-thinking", name: "Thinking Pepe", url: "/stickers/pepe/thinking-pepe.png" },
+  { id: "pepe-comfy", name: "Comfy Pepe", url: "/stickers/pepe/comfy-pepe.png" },
+  { id: "pepe-surprised", name: "Surprised Pepe", url: "/stickers/pepe/surprised-pepe.png" },
+  { id: "wojak-sad", name: "Sad Wojak", url: "/stickers/wojak/sad-wojak.png" },
+  { id: "wojak-npc", name: "NPC Wojak", url: "/stickers/wojak/npc-wojak.png" },
+  { id: "wojak-doomer", name: "Doomer", url: "/stickers/wojak/doomer.png" },
+  { id: "wojak-bloomer", name: "Bloomer", url: "/stickers/wojak/bloomer.png" },
+  { id: "wojak-zoomer", name: "Zoomer", url: "/stickers/wojak/zoomer.png" },
+  { id: "wojak-boomer", name: "Boomer", url: "/stickers/wojak/boomer.png" },
+  { id: "chad", name: "Chad", url: "/stickers/wojak/chad.png" },
+  { id: "troll-face", name: "Troll Face", url: "/stickers/rage/troll-face.png" },
+  { id: "doge", name: "Doge", url: "/stickers/rage/doge.png" },
 ];
 
 const CRYPTO_STICKERS = [
-  { id: "bitcoin", name: "Bitcoin", emoji: "₿", color: "#f7931a" },
-  { id: "ethereum", name: "Ethereum", emoji: "Ξ", color: "#627eea" },
-  { id: "solana", name: "Solana", emoji: "◎", color: "#9945ff" },
-  { id: "bnb", name: "BNB", emoji: "🔶", color: "#f0b90b" },
-  { id: "doge-coin", name: "Dogecoin", emoji: "🐕", color: "#c3a634" },
-  { id: "diamond-hands", name: "Diamond Hands", emoji: "💎", color: "#3b82f6" },
-  { id: "paper-hands", name: "Paper Hands", emoji: "📄", color: "#9ca3af" },
-  { id: "moon", name: "Moon", emoji: "🌙", color: "#fbbf24" },
-  { id: "rocket", name: "Rocket", emoji: "🚀", color: "#ef4444" },
-  { id: "whale", name: "Whale", emoji: "🐋", color: "#0ea5e9" },
-  { id: "shrimp", name: "Shrimp", emoji: "🦐", color: "#f472b6" },
-  { id: "chart-up", name: "Chart Up", emoji: "📈", color: "#22c55e" },
-  { id: "chart-down", name: "Chart Down", emoji: "📉", color: "#ef4444" },
-  { id: "hodl", name: "HODL", emoji: "🤲", color: "#8b5cf6" },
-  { id: "burn", name: "Token Burn", emoji: "🔥", color: "#f97316" },
-  { id: "rug", name: "Rug Pull", emoji: "🧹", color: "#dc2626" },
-  { id: "pump", name: "Pump", emoji: "⬆️", color: "#22c55e" },
-  { id: "dump", name: "Dump", emoji: "⬇️", color: "#ef4444" },
+  { id: "bitcoin", name: "Bitcoin", url: "/stickers/crypto/bitcoin.png" },
+  { id: "ethereum", name: "Ethereum", url: "/stickers/crypto/ethereum.png" },
+  { id: "solana", name: "Solana", url: "/stickers/crypto/solana.png" },
+  { id: "diamond-hands", name: "Diamond Hands", url: "/stickers/crypto/diamond-hands.png" },
+  { id: "paper-hands", name: "Paper Hands", url: "/stickers/crypto/paper-hands.png" },
+  { id: "rocket", name: "To The Moon", url: "/stickers/crypto/rocket.png" },
+  { id: "chart-up", name: "Chart Up", url: "/stickers/crypto/chart-up.png" },
+  { id: "chart-down", name: "Chart Down", url: "/stickers/crypto/chart-down.png" },
+  { id: "burn", name: "Token Burn", url: "/stickers/crypto/burn.png" },
 ];
 
 const BRAND_STICKERS = [
-  { id: "normie-logo", name: "Normie Logo", emoji: "🐸", color: "#22c55e" },
-  { id: "normie-nation", name: "Normie Nation", emoji: "🌍", color: "#16a34a" },
-  { id: "based", name: "BASED", emoji: "👑", color: "#8b5cf6" },
-  { id: "ngmi", name: "NGMI", emoji: "❌", color: "#ef4444" },
-  { id: "wagmi", name: "WAGMI", emoji: "✅", color: "#22c55e" },
-  { id: "gmi", name: "GMI", emoji: "🎯", color: "#22c55e" },
-  { id: "verified", name: "Verified", emoji: "✓", color: "#3b82f6" },
-  { id: "4chan-clover", name: "4chan Clover", emoji: "🍀", color: "#22c55e" },
-  { id: "anon", name: "Anonymous", emoji: "🎭", color: "#374151" },
-  { id: "supply-burn", name: "Supply Burn", emoji: "🔥", color: "#f97316" },
-  { id: "locked", name: "Locked", emoji: "🔒", color: "#eab308" },
-  { id: "gm", name: "GM", emoji: "☀️", color: "#fbbf24" },
-  { id: "gn", name: "GN", emoji: "🌙", color: "#1e293b" },
-  { id: "lfg", name: "LFG", emoji: "🚀", color: "#f97316" },
-  { id: "fud", name: "FUD", emoji: "😱", color: "#dc2626" },
+  { id: "normie-logo", name: "Normie Logo", url: "/stickers/brand/normie-logo.png" },
+  { id: "based", name: "BASED", url: "/stickers/brand/based.png" },
+  { id: "ngmi", name: "NGMI", url: "/stickers/brand/ngmi.png" },
+  { id: "wagmi", name: "WAGMI", url: "/stickers/brand/wagmi.png" },
+  { id: "4chan-clover", name: "4chan Clover", url: "/stickers/brand/4chan-clover.png" },
+  { id: "locked", name: "Locked", url: "/stickers/brand/locked.png" },
 ];
 
 const COLOR_PRESETS = [
@@ -157,7 +136,8 @@ interface StickerElement {
   id: string;
   type: "sticker" | "emoji";
   content: string;
-  color?: string;
+  url?: string;
+  imageLoaded?: boolean;
   x: number;
   y: number;
   scale: number;
@@ -180,6 +160,7 @@ export function MemeGenerator() {
   const [gradientColors, setGradientColors] = useState<string[] | null>(null);
   const [textElements, setTextElements] = useState<TextElement[]>([]);
   const [stickerElements, setStickerElements] = useState<StickerElement[]>([]);
+  const [loadedStickerImages, setLoadedStickerImages] = useState<Map<string, HTMLImageElement>>(new Map());
   const [newText, setNewText] = useState("");
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [fontSize, setFontSize] = useState([40]);
@@ -363,16 +344,18 @@ export function MemeGenerator() {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(sticker.content, 0, 0);
-      } else {
-        ctx.beginPath();
-        ctx.arc(0, 0, 28, 0, Math.PI * 2);
-        ctx.fillStyle = sticker.color || "#22c55e";
-        ctx.fill();
-        
-        ctx.font = "32px serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(sticker.content, 0, 0);
+      } else if (sticker.url) {
+        const img = loadedStickerImages.get(sticker.url);
+        if (img) {
+          const size = 60;
+          ctx.drawImage(img, -size / 2, -size / 2, size, size);
+        } else {
+          ctx.fillStyle = "rgba(34, 197, 94, 0.5)";
+          ctx.font = "12px JetBrains Mono";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("Loading...", 0, 0);
+        }
       }
       
       ctx.restore();
@@ -406,11 +389,44 @@ export function MemeGenerator() {
     ctx.fillStyle = "rgba(34, 197, 94, 0.4)";
     ctx.textAlign = "right";
     ctx.fillText("$NORMIE", canvas.width - 10, canvas.height - 10);
-  }, [backgroundImage, backgroundColor, gradientColors, patternId, textElements, stickerElements, drawPattern]);
+  }, [backgroundImage, backgroundColor, gradientColors, patternId, textElements, stickerElements, drawPattern, loadedStickerImages]);
 
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
+
+  useEffect(() => {
+    stickerElements.forEach((sticker) => {
+      if (sticker.url && !loadedStickerImages.has(sticker.url)) {
+        const img = new Image();
+        img.onload = () => {
+          setLoadedStickerImages((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(sticker.url!, img);
+            return newMap;
+          });
+        };
+        img.src = sticker.url;
+      }
+    });
+  }, [stickerElements, loadedStickerImages]);
+
+  useEffect(() => {
+    const allStickers = [...NORMIE_STICKERS, ...CRYPTO_STICKERS, ...BRAND_STICKERS];
+    allStickers.forEach((sticker) => {
+      if (!loadedStickerImages.has(sticker.url)) {
+        const img = new Image();
+        img.onload = () => {
+          setLoadedStickerImages((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(sticker.url, img);
+            return newMap;
+          });
+        };
+        img.src = sticker.url;
+      }
+    });
+  }, []);
 
   const deleteSelectedElement = useCallback(() => {
     if (!selectedElement) return;
@@ -511,15 +527,15 @@ export function MemeGenerator() {
     saveToHistory(textElements, newStickerElements);
   };
 
-  const addSticker = (sticker: { id: string; emoji: string; color: string }) => {
+  const addSticker = (sticker: { id: string; name: string; url: string }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const newElement: StickerElement = {
       id: `sticker-${Date.now()}`,
       type: "sticker",
-      content: sticker.emoji,
-      color: sticker.color,
+      content: sticker.name,
+      url: sticker.url,
       x: canvas.width / 2,
       y: canvas.height / 2,
       scale: stickerSize[0],
@@ -820,12 +836,11 @@ export function MemeGenerator() {
                           onClick={() => addSticker(sticker)}
                           data-testid={`button-sticker-${sticker.id}`}
                         >
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
-                            style={{ backgroundColor: sticker.color }}
-                          >
-                            {sticker.emoji}
-                          </div>
+                          <img
+                            src={sticker.url}
+                            alt={sticker.name}
+                            className="w-10 h-10 object-contain"
+                          />
                           <span className="text-[9px] mt-1 truncate w-full text-center">
                             {sticker.name}
                           </span>
