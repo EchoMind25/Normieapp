@@ -73,9 +73,9 @@ export function LiveChat() {
 
   const sendMutation = useMutation({
     mutationFn: async (content: string) => {
-      return apiRequest(`/api/chat/rooms/${DEFAULT_ROOM_ID}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ content, senderName: userName }),
+      return apiRequest("POST", `/api/chat/rooms/${DEFAULT_ROOM_ID}/messages`, { 
+        content, 
+        senderName: userName 
       });
     },
     onSuccess: () => {

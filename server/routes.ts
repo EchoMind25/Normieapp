@@ -2,6 +2,9 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { fetchTokenMetrics, getMetrics, getPriceHistory, addPricePoint, fetchDevBuys, getDevBuys, getConnectionStatus, fetchHistoricalPrices } from "./solana";
 import authRoutes from "./authRoutes";
 import { db } from "./db";
@@ -10,6 +13,35 @@ import { eq, desc, and, gt } from "drizzle-orm";
 import { verifyJWT } from "./auth";
 import { z } from "zod";
 import { storage } from "./storage";
+
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const galleryStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `gallery-${uniqueSuffix}${ext}`);
+  },
+});
+
+const galleryUpload = multer({
+  storage: galleryStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG and PNG images are allowed"));
+    }
+  },
+});
 
 const manualDevBuyInputSchema = z.object({
   timestamp: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date format"),
@@ -416,6 +448,19 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Gallery] Error fetching featured item:", error);
       res.status(500).json({ error: "Failed to fetch featured item" });
+    }
+  });
+
+  app.post("/api/gallery/upload", galleryUpload.single("image"), (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+      }
+      const imageUrl = `/uploads/${req.file.filename}`;
+      res.json({ url: imageUrl, filename: req.file.filename });
+    } catch (error) {
+      console.error("[Gallery] Error uploading image:", error);
+      res.status(500).json({ error: "Failed to upload image" });
     }
   });
 

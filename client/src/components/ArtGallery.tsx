@@ -120,14 +120,13 @@ function UploadForm({ onSuccess }: UploadFormProps) {
   const [imageUrl, setImageUrl] = useState("");
   const [creatorName, setCreatorName] = useState("");
   const [tags, setTags] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   const uploadMutation = useMutation({
     mutationFn: async (data: { title: string; description: string; imageUrl: string; creatorName: string; tags: string[] }) => {
-      return apiRequest("/api/gallery", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/gallery", data);
     },
     onSuccess: () => {
       toast({ title: "Artwork Submitted", description: "Your artwork has been submitted for review." });
@@ -136,6 +135,7 @@ function UploadForm({ onSuccess }: UploadFormProps) {
       setImageUrl("");
       setCreatorName("");
       setTags("");
+      setSelectedFile(null);
       onSuccess();
     },
     onError: () => {
@@ -143,20 +143,68 @@ function UploadForm({ onSuccess }: UploadFormProps) {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!["image/jpeg", "image/png"].includes(file.type)) {
+        toast({ title: "Error", description: "Only JPG and PNG images are allowed.", variant: "destructive" });
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: "Error", description: "File size must be under 5MB.", variant: "destructive" });
+        return;
+      }
+      setSelectedFile(file);
+      setImageUrl("");
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !imageUrl) {
-      toast({ title: "Error", description: "Title and image URL are required.", variant: "destructive" });
+    if (!title) {
+      toast({ title: "Error", description: "Title is required.", variant: "destructive" });
       return;
     }
+    if (!selectedFile && !imageUrl) {
+      toast({ title: "Error", description: "Please upload an image or provide a URL.", variant: "destructive" });
+      return;
+    }
+
+    let finalImageUrl = imageUrl;
+
+    if (selectedFile) {
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("image", selectedFile);
+        const response = await fetch("/api/gallery/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Upload failed");
+        }
+        const result = await response.json();
+        finalImageUrl = result.url;
+      } catch (error: any) {
+        toast({ title: "Upload Error", description: error.message || "Failed to upload image.", variant: "destructive" });
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    }
+
     uploadMutation.mutate({
       title,
       description,
-      imageUrl,
+      imageUrl: finalImageUrl,
       creatorName: creatorName || "Anonymous",
       tags: tags.split(",").map(t => t.trim()).filter(Boolean),
     });
   };
+
+  const isPending = uploadMutation.isPending || isUploading;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -172,17 +220,42 @@ function UploadForm({ onSuccess }: UploadFormProps) {
         />
       </div>
       <div>
-        <Label htmlFor="imageUrl">Image URL *</Label>
+        <Label htmlFor="imageFile">Upload Image</Label>
+        <Input
+          id="imageFile"
+          type="file"
+          accept="image/jpeg,image/png"
+          onChange={handleFileChange}
+          className="font-mono cursor-pointer"
+          data-testid="input-gallery-file"
+        />
+        {selectedFile && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Selected: {selectedFile.name}
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground mt-1">
+          JPG or PNG, max 5MB
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">OR</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+      <div>
+        <Label htmlFor="imageUrl">Image URL</Label>
         <Input
           id="imageUrl"
           value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
+          onChange={(e) => { setImageUrl(e.target.value); setSelectedFile(null); }}
           placeholder="https://example.com/image.png"
           className="font-mono"
+          disabled={!!selectedFile}
           data-testid="input-gallery-image-url"
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Paste a direct link to your meme image
+          Or paste a direct link to your meme image
         </p>
       </div>
       <div>
@@ -222,15 +295,15 @@ function UploadForm({ onSuccess }: UploadFormProps) {
       <Button 
         type="submit" 
         className="w-full" 
-        disabled={uploadMutation.isPending}
+        disabled={isPending}
         data-testid="button-submit-gallery"
       >
-        {uploadMutation.isPending ? (
+        {isPending ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         ) : (
           <Upload className="w-4 h-4 mr-2" />
         )}
-        Submit Artwork
+        {isUploading ? "Uploading..." : "Submit Artwork"}
       </Button>
     </form>
   );
@@ -253,10 +326,7 @@ function ItemDetails({ item, onClose }: ItemDetailsProps) {
 
   const commentMutation = useMutation({
     mutationFn: async (data: { content: string; visitorName: string }) => {
-      return apiRequest(`/api/gallery/${item.id}/comments`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", `/api/gallery/${item.id}/comments`, data);
     },
     onSuccess: () => {
       setNewComment("");
@@ -413,10 +483,7 @@ export function ArtGallery() {
 
   const voteMutation = useMutation({
     mutationFn: async ({ id, voteType }: { id: string; voteType: "up" | "down" }) => {
-      return apiRequest(`/api/gallery/${id}/vote`, {
-        method: "POST",
-        body: JSON.stringify({ voteType, visitorId }),
-      });
+      return apiRequest("POST", `/api/gallery/${id}/vote`, { voteType, visitorId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });

@@ -197,6 +197,26 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
   const devBuyPoints = (() => {
     const result: (number | null)[] = new Array(chartData.length).fill(null);
     
+    const getToleranceMs = () => {
+      switch (timeRange) {
+        case "live":
+        case "5m":
+          return 60 * 1000;
+        case "1h":
+          return 5 * 60 * 1000;
+        case "6h":
+          return 30 * 60 * 1000;
+        case "24h":
+          return 2 * 60 * 60 * 1000;
+        case "7d":
+          return 12 * 60 * 60 * 1000;
+        default:
+          return 60 * 60 * 1000;
+      }
+    };
+    
+    const toleranceMs = getToleranceMs();
+    
     devBuys.forEach((buy) => {
       let closestIndex = -1;
       let closestDiff = Infinity;
@@ -209,7 +229,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
         }
       });
       
-      if (closestIndex !== -1 && closestDiff < 60 * 60 * 1000) {
+      if (closestIndex !== -1 && closestDiff < toleranceMs) {
         result[closestIndex] = buy.price;
       }
     });
