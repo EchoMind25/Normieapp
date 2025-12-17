@@ -92,7 +92,6 @@ const apiLimiter = rateLimit({
   max: 300,
   message: { error: "Too many requests, try again later" },
   validate: { xForwardedForHeader: false },
-  skip: (req) => req.path.startsWith("/api/sticker-proxy/") || req.path === "/api/stickers",
 });
 
 const authLimiter = rateLimit({
@@ -718,26 +717,26 @@ export async function registerRoutes(
   });
 
   const STICKER_MANIFEST = [
-    { id: "pepe-classic", name: "Classic Pepe", category: "normie", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f438.png" },
-    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f60f.png" },
-    { id: "pepe-sad", name: "Sad Pepe", category: "normie", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f622.png" },
-    { id: "pepe-cry", name: "Crying Pepe", category: "normie", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f62d.png" },
-    { id: "wojak-sad", name: "Sad Wojak", category: "normie", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f625.png" },
-    { id: "wojak-chad", name: "Chad", category: "normie", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f4aa.png" },
-    { id: "doge", name: "Doge", category: "normie", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f436.png" },
-    { id: "troll", name: "Troll Face", category: "normie", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f608.png" },
-    { id: "bitcoin", name: "Bitcoin", category: "crypto", url: "https://cryptologos.cc/logos/bitcoin-btc-logo.png" },
-    { id: "ethereum", name: "Ethereum", category: "crypto", url: "https://cryptologos.cc/logos/ethereum-eth-logo.png" },
-    { id: "solana", name: "Solana", category: "crypto", url: "https://cryptologos.cc/logos/solana-sol-logo.png" },
-    { id: "diamond", name: "Diamond", category: "crypto", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f48e.png" },
-    { id: "rocket", name: "Rocket", category: "crypto", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f680.png" },
-    { id: "fire", name: "Fire", category: "crypto", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f525.png" },
-    { id: "money", name: "Money", category: "crypto", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f4b0.png" },
-    { id: "moon", name: "Moon", category: "crypto", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f315.png" },
-    { id: "clover", name: "Clover", category: "brand", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f340.png" },
-    { id: "thumbsup", name: "Thumbs Up", category: "brand", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f44d.png" },
-    { id: "skull", name: "Skull", category: "brand", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f480.png" },
-    { id: "crown", name: "Crown", category: "brand", url: "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/1f451.png" },
+    { id: "pepe-classic", name: "Classic Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/017/618/pepefroggie.jpg" },
+    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/000/862/065/0e9.jpg" },
+    { id: "pepe-sad", name: "Sad Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/facebook/000/020/565/reeee.jpg" },
+    { id: "pepe-cry", name: "Crying Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/original/001/384/545/7b9.jpg" },
+    { id: "wojak-sad", name: "Sad Wojak", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/031/671/cover1.jpg" },
+    { id: "wojak-chad", name: "Chad", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/026/152/gigachad.jpg" },
+    { id: "doge", name: "Doge", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg" },
+    { id: "troll", name: "Troll Face", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/000/091/TrollFace.jpg" },
+    { id: "bitcoin", name: "Bitcoin", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png" },
+    { id: "ethereum", name: "Ethereum", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Ethereum-icon-purple.svg/1200px-Ethereum-icon-purple.svg.png" },
+    { id: "solana", name: "Solana", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png" },
+    { id: "diamond", name: "Diamond", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Diamond_font_awesome.svg/1200px-Diamond_font_awesome.svg.png" },
+    { id: "rocket", name: "Rocket", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Twemoji_1f680.svg/1200px-Twemoji_1f680.svg.png" },
+    { id: "fire", name: "Fire", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Noto_Emoji_v2.034_1f525.svg/1200px-Noto_Emoji_v2.034_1f525.svg.png" },
+    { id: "money", name: "Money", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Twemoji2_1f4b0.svg/1200px-Twemoji2_1f4b0.svg.png" },
+    { id: "moon", name: "Moon", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Twemoji12_1f315.svg/1200px-Twemoji12_1f315.svg.png" },
+    { id: "clover", name: "Clover", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Clover_symbol.svg/1200px-Clover_symbol.svg.png" },
+    { id: "thumbsup", name: "Thumbs Up", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Twemoji_1f44d.svg/1200px-Twemoji_1f44d.svg.png" },
+    { id: "skull", name: "Skull", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Twemoji_1f480.svg/1200px-Twemoji_1f480.svg.png" },
+    { id: "crown", name: "Crown", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Twemoji2_1f451.svg/1200px-Twemoji2_1f451.svg.png" },
   ];
 
   const stickerCache = new Map<string, { data: Buffer; contentType: string; fetchedAt: number }>();
