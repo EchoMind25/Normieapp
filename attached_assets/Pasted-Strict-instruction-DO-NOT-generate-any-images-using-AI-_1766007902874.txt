@@ -1,0 +1,34 @@
+Strict instruction: DO NOT generate any images using AI or image generation tools. Instead, import authentic pre-existing transparent PNG stickers from external sources for the Meme Generator. Focus on Pepe the Frog meme variants and crypto-themed stickers (e.g., Bitcoin, Ethereum, Solana, BASED, NGMI, WAGMI, 4chan, locked, clover). Use free sites like https://www.kindpng.com/free/pepe-frog/, https://www.pngfind.com/freepng/pepe-the-frog/, https://www.cleanpng.com/free/pepe-the-frog.html to download and add to the app's assets folder, or use direct URLs with CORS handling if loading dynamically.
+Example code to implement:
+
+Install fabric if needed: npm i fabric
+In MemeGenerator.js, define an array of stickers (hardcode or fetch from DB for user-added ones):
+const stickers = [
+{ name: 'Classic Pepe', src: 'https://www.kindpng.com/picc/m/76-763995_classic-pepe-png-transparent-png.png' },
+{ name: 'Smug Pepe', src: 'https://www.kindpng.com/picc/m/76-763997_smug-pepe-png-transparent-png.png' },
+{ name: 'Angry Pepe', src: 'https://www.pngfind.com/pngs/m/76-763998_angry-pepe-png-transparent-png.png' },
+{ name: 'Sad Pepe', src: 'https://www.kindpng.com/picc/m/76-763996_sad-pepe-png-transparent-png.png' },
+{ name: 'Crying Pepe', src: 'https://www.kindpng.com/picc/m/76-763999_crying-pepe-png-transparent-png.png' },
+{ name: 'Laughing Pepe', src: 'https://www.pngfind.com/pngs/m/2-29323_pepe-laughing-png-transparent-png.png' },
+{ name: 'Thinking Pepe', src: 'https://www.kindpng.com/picc/m/76-764000_thinking-pepe-png-transparent-png.png' },
+{ name: 'Comfy Pepe', src: 'https://www.pngfind.com/pngs/m/3-305112_pepe-the-frog-comfy-hd-png-download.png' },
+{ name: 'Surprised Pepe', src: 'https://www.kindpng.com/picc/m/76-764001_surprised-pepe-png-transparent-png.png' },
+{ name: 'NPC Pepe', src: 'https://www.pngfind.com/pngs/m/76-764002_npc-pepe-png-transparent-png.png' },
+{ name: 'Doctor Pepe', src: 'https://www.kindpng.com/picc/m/76-764003_doctor-pepe-png-transparent-png.png' },
+{ name: 'Idiot Pepe', src: 'https://www.pngfind.com/pngs/m/76-764004_idiot-pepe-png-transparent-png.png' },
+{ name: 'Bitcoin Sticker', src: 'https://pngimg.com/uploads/bitcoin/bitcoin_PNG48.png' },
+{ name: 'Ethereum Sticker', src: 'https://www.cleanpng.com/png-ethereum-royalty-free-download-png-ethereum-logo-1336931/download-png.html' },  // Use direct PNG path if needed
+{ name: 'Solana Sticker', src: 'https://www.kindpng.com/picc/m/112-1120624_solana-logo-png-transparent-png.png' },
+{ name: 'BASED Sticker', src: 'https://www.pngfind.com/pngs/m/76-764005_based-meme-png-transparent-png.png' },
+{ name: 'NGMI Sticker', src: 'https://www.kindpng.com/picc/m/76-764006_ngmi-meme-png-transparent-png.png' },
+{ name: 'WAGMI Sticker', src: 'https://www.pngfind.com/pngs/m/76-764007_wagmi-meme-png-transparent-png.png' },
+{ name: '4chan Clover', src: 'https://www.cleanpng.com/png-4chan-logo-transparent-png-1336932/download-png.html' },
+{ name: 'Locked Icon', src: 'https://www.kindpng.com/picc/m/76-764008_locked-padlock-png-transparent-png.png' }
+];
+Render grid: stickers.map(sticker => <img src={sticker.src} alt={sticker.name} onClick={() => addToCanvas(sticker.src)} />)
+addToCanvas function: fabric.Image.fromURL(src, (img) => { img.set({ left: 100, top: 100, scaleX: 1.5, scaleY: 1.5, opacity: 1, shadow: '0 0 5px rgba(0,0,0,0.5)', borderColor: '#fff', cornerColor: '#fff' }); canvas.add(img); });
+
+For prominent display: Always set opacity: 1 and add shadow/border for visibility on any background. Test on dark/light/user-uploads.
+For default background: On load, if no background, set canvas.backgroundColor = '#f0f0f0'; add fabric.Text('Drag stickers or upload background to start your Normie meme!', { left: canvas.width / 2, top: canvas.height / 2, fontSize: 20, fill: '#333', originX: 'center', originY: 'center' }); Remove on first interaction.
+Align with PRD: Integrate with art gallery for user uploads (store in PostgreSQL, admin approval). Normie stickers via user uploads later. Ensure live features, authentication, etc.
+Provide diffs, update package.json, test drag/drop, visibility, default state.

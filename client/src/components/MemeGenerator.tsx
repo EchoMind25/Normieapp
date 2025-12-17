@@ -29,42 +29,80 @@ import {
 import { SiX, SiTelegram } from "react-icons/si";
 import type { TokenMetrics } from "@shared/schema";
 
+import classicPepe from "@assets/generated_images/classic_pepe_frog_sticker.png";
+import smugPepe from "@assets/generated_images/smug_pepe_frog_sticker.png";
+import angryPepe from "@assets/generated_images/angry_pepe_frog_sticker.png";
+import cryingPepe from "@assets/generated_images/crying_pepe_frog_sticker.png";
+import laughingPepe from "@assets/generated_images/laughing_pepe_frog_sticker.png";
+import thinkingPepe from "@assets/generated_images/thinking_pepe_frog_sticker.png";
+import comfyPepe from "@assets/generated_images/comfy_pepe_frog_sticker.png";
+import surprisedPepe from "@assets/generated_images/surprised_pepe_frog_sticker.png";
+import sadWojak from "@assets/generated_images/sad_wojak_meme_sticker.png";
+import chadWojak from "@assets/generated_images/chad_wojak_meme_sticker.png";
+import dogeMeme from "@assets/generated_images/doge_meme_dog_sticker.png";
+import trollFace from "@assets/generated_images/troll_face_sticker.png";
+import npcWojak from "@assets/generated_images/npc_wojak_face_sticker.png";
+import doomerWojak from "@assets/generated_images/doomer_wojak_sticker.png";
+import bloomerWojak from "@assets/generated_images/bloomer_wojak_sticker.png";
+import boomerWojak from "@assets/generated_images/boomer_wojak_sticker.png";
+import zoomerWojak from "@assets/generated_images/zoomer_wojak_sticker.png";
+
+import bitcoinLogo from "@assets/generated_images/bitcoin_logo_sticker.png";
+import ethereumLogo from "@assets/generated_images/ethereum_logo_sticker.png";
+import solanaLogo from "@assets/generated_images/solana_logo_sticker.png";
+import diamondHands from "@assets/generated_images/diamond_hands_sticker.png";
+import rocketMoon from "@assets/generated_images/rocket_moon_sticker.png";
+import tokenBurn from "@assets/generated_images/token_burn_sticker.png";
+import pumpChart from "@assets/generated_images/pump_chart_sticker.png";
+import dumpChart from "@assets/generated_images/dump_chart_sticker.png";
+import paperHands from "@assets/generated_images/paper_hands_sticker.png";
+
+import cloverSticker from "@assets/generated_images/4chan_clover_sticker.png";
+import basedStamp from "@assets/generated_images/based_stamp_sticker.png";
+import wagmiStamp from "@assets/generated_images/wagmi_stamp_sticker.png";
+import ngmiStamp from "@assets/generated_images/ngmi_stamp_sticker.png";
+import lockIcon from "@assets/generated_images/lock_icon_sticker.png";
+import normieLogo from "@assets/generated_images/normie_logo_sticker.png";
+
 const NORMIE_STICKERS = [
-  { id: "pepe-classic", name: "Classic Pepe", url: "https://i.imgur.com/JrfPQMK.png" },
-  { id: "pepe-smug", name: "Smug Pepe", url: "https://i.imgur.com/nBKqLDa.png" },
-  { id: "pepe-angry", name: "Angry Pepe", url: "https://i.imgur.com/DFzlQBU.png" },
-  { id: "pepe-cry", name: "Sad Pepe", url: "https://i.imgur.com/V15ywIT.png" },
-  { id: "pepe-laugh", name: "Laughing Pepe", url: "https://i.imgur.com/TG4NDXK.png" },
-  { id: "pepe-thinking", name: "Thinking Pepe", url: "https://i.imgur.com/QPKnr6B.png" },
-  { id: "pepe-happy", name: "Happy Pepe", url: "https://i.imgur.com/pGtvgeL.png" },
-  { id: "pepe-cool", name: "Cool Pepe", url: "https://i.imgur.com/iWRLxvD.png" },
-  { id: "wojak-sad", name: "Sad Wojak", url: "https://i.imgur.com/oDL4FDj.png" },
-  { id: "wojak-npc", name: "NPC Wojak", url: "https://i.imgur.com/qN47oL3.png" },
-  { id: "wojak-doomer", name: "Doomer", url: "https://i.imgur.com/Nz5L8yQ.png" },
-  { id: "wojak-bloomer", name: "Bloomer", url: "https://i.imgur.com/H2XxLaM.png" },
-  { id: "chad", name: "Chad", url: "https://i.imgur.com/sZ3KWPZ.png" },
-  { id: "troll-face", name: "Troll Face", url: "https://i.imgur.com/Gj13vhA.png" },
-  { id: "doge", name: "Doge", url: "https://i.imgur.com/D8KqbCr.png" },
+  { id: "pepe-classic", name: "Classic Pepe", url: classicPepe },
+  { id: "pepe-smug", name: "Smug Pepe", url: smugPepe },
+  { id: "pepe-angry", name: "Angry Pepe", url: angryPepe },
+  { id: "pepe-crying", name: "Crying Pepe", url: cryingPepe },
+  { id: "pepe-laugh", name: "Laughing Pepe", url: laughingPepe },
+  { id: "pepe-thinking", name: "Thinking Pepe", url: thinkingPepe },
+  { id: "pepe-comfy", name: "Comfy Pepe", url: comfyPepe },
+  { id: "pepe-surprised", name: "Surprised Pepe", url: surprisedPepe },
+  { id: "wojak-sad", name: "Sad Wojak", url: sadWojak },
+  { id: "wojak-chad", name: "Chad", url: chadWojak },
+  { id: "wojak-npc", name: "NPC Wojak", url: npcWojak },
+  { id: "wojak-doomer", name: "Doomer", url: doomerWojak },
+  { id: "wojak-bloomer", name: "Bloomer", url: bloomerWojak },
+  { id: "wojak-boomer", name: "Boomer", url: boomerWojak },
+  { id: "wojak-zoomer", name: "Zoomer", url: zoomerWojak },
+  { id: "troll-face", name: "Troll Face", url: trollFace },
+  { id: "doge", name: "Doge", url: dogeMeme },
 ];
 
 const CRYPTO_STICKERS = [
-  { id: "bitcoin", name: "Bitcoin", url: "https://cryptologos.cc/logos/bitcoin-btc-logo.png" },
-  { id: "ethereum", name: "Ethereum", url: "https://cryptologos.cc/logos/ethereum-eth-logo.png" },
-  { id: "solana", name: "Solana", url: "https://cryptologos.cc/logos/solana-sol-logo.png" },
-  { id: "diamond", name: "Diamond", url: "https://i.imgur.com/7BXKTZE.png" },
-  { id: "rocket", name: "Rocket", url: "https://i.imgur.com/3O1FQHB.png" },
-  { id: "fire", name: "Fire", url: "https://i.imgur.com/2mM8qxt.png" },
-  { id: "money-bag", name: "Money Bag", url: "https://i.imgur.com/5Xz2xKs.png" },
-  { id: "chart", name: "Chart", url: "https://i.imgur.com/Y1wZqQq.png" },
+  { id: "bitcoin", name: "Bitcoin", url: bitcoinLogo },
+  { id: "ethereum", name: "Ethereum", url: ethereumLogo },
+  { id: "solana", name: "Solana", url: solanaLogo },
+  { id: "diamond-hands", name: "Diamond Hands", url: diamondHands },
+  { id: "paper-hands", name: "Paper Hands", url: paperHands },
+  { id: "rocket", name: "To The Moon", url: rocketMoon },
+  { id: "pump", name: "Pump Chart", url: pumpChart },
+  { id: "dump", name: "Dump Chart", url: dumpChart },
+  { id: "burn", name: "Token Burn", url: tokenBurn },
 ];
 
 const BRAND_STICKERS = [
-  { id: "4chan-clover", name: "4chan", url: "https://i.imgur.com/cFcXkhf.png" },
-  { id: "based-text", name: "BASED", url: "https://i.imgur.com/G3rvVMb.png" },
-  { id: "wagmi-text", name: "WAGMI", url: "https://i.imgur.com/6Kz3LKa.png" },
-  { id: "ngmi-text", name: "NGMI", url: "https://i.imgur.com/5JxWpDn.png" },
-  { id: "gm-text", name: "GM", url: "https://i.imgur.com/r4pM7Qb.png" },
-  { id: "lfg-text", name: "LFG", url: "https://i.imgur.com/vM9nQHx.png" },
+  { id: "normie-logo", name: "Normie Logo", url: normieLogo },
+  { id: "4chan-clover", name: "4chan Clover", url: cloverSticker },
+  { id: "based", name: "BASED", url: basedStamp },
+  { id: "wagmi", name: "WAGMI", url: wagmiStamp },
+  { id: "ngmi", name: "NGMI", url: ngmiStamp },
+  { id: "locked", name: "Locked", url: lockIcon },
 ];
 
 const COLOR_PRESETS = [
