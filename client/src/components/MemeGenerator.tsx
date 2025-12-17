@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import { useQuery } from "@tanstack/react-query";
+import Upscaler from "upscaler";
+import imglyRemoveBackground from "@imgly/background-removal";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import {
   Upload,
   Download,
@@ -25,8 +28,12 @@ import {
   TrendingUp,
   DollarSign,
   Send,
+  Sparkles,
+  Eraser,
+  Loader2,
 } from "lucide-react";
 import { SiX, SiTelegram } from "react-icons/si";
+import { useToast } from "@/hooks/use-toast";
 import type { TokenMetrics } from "@shared/schema";
 
 interface StickerInfo {
@@ -126,8 +133,10 @@ interface CanvasState {
 export function MemeGenerator() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
+  const [prevBgUrl, setPrevBgUrl] = useState<string | null>(null);
   const [backgroundColor, setBackgroundColor] = useState("#1a1a1a");
   const [gradientColors, setGradientColors] = useState<string[] | null>(null);
   const [textElements, setTextElements] = useState<TextElement[]>([]);
@@ -154,6 +163,11 @@ export function MemeGenerator() {
   
   const [history, setHistory] = useState<CanvasState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  
+  const [isUpscaling, setIsUpscaling] = useState(false);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const upscalerRef = useRef<Upscaler | null>(null);
 
   const { data: metrics, isLoading: metricsLoading } = useQuery<TokenMetrics>({
     queryKey: ["/api/metrics"],
@@ -483,6 +497,125 @@ export function MemeGenerator() {
         img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpscaleImage = async () => {
+    if (!backgroundImage || isUpscaling) return;
+    
+    setIsUpscaling(true);
+    setProcessingProgress(10);
+    
+    try {
+      if (!upscalerRef.current) {
+        upscalerRef.current = new Upscaler();
+      }
+      
+      setProcessingProgress(30);
+      
+      const upscaledSrc = await upscalerRef.current.upscale(backgroundImage, {
+        patchSize: 64,
+        padding: 2,
+        progress: (progress: number) => {
+          setProcessingProgress(30 + Math.round(progress * 60));
+        },
+      });
+      
+      setProcessingProgress(95);
+      
+      const newImg = new Image();
+      newImg.onload = () => {
+        if (prevBgUrl && prevBgUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(prevBgUrl);
+        }
+        setPrevBgUrl(newImg.src);
+        setBackgroundImage(newImg);
+        setProcessingProgress(100);
+        toast({
+          title: "Image Enhanced",
+          description: "Resolution has been improved using AI upscaling.",
+        });
+        setTimeout(() => {
+          setProcessingProgress(0);
+        }, 500);
+      };
+      newImg.onerror = () => {
+        toast({
+          title: "Enhancement Failed",
+          description: "Could not load the enhanced image.",
+          variant: "destructive",
+        });
+      };
+      newImg.src = upscaledSrc as string;
+    } catch (error) {
+      console.error("Upscaling failed:", error);
+      toast({
+        title: "Enhancement Failed",
+        description: "Could not enhance the image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpscaling(false);
+      setProcessingProgress(0);
+    }
+  };
+
+  const handleRemoveBackground = async () => {
+    if (!backgroundImage || isRemovingBg) return;
+    
+    setIsRemovingBg(true);
+    setProcessingProgress(10);
+    
+    try {
+      setProcessingProgress(20);
+      
+      const blob = await imglyRemoveBackground(backgroundImage.src, {
+        progress: (key: string, current: number, total: number) => {
+          const progress = Math.round((current / total) * 70) + 20;
+          setProcessingProgress(Math.min(progress, 90));
+        },
+      });
+      
+      setProcessingProgress(95);
+      
+      if (prevBgUrl && prevBgUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(prevBgUrl);
+      }
+      
+      const url = URL.createObjectURL(blob);
+      setPrevBgUrl(url);
+      
+      const newImg = new Image();
+      newImg.onload = () => {
+        setBackgroundImage(newImg);
+        setProcessingProgress(100);
+        toast({
+          title: "Background Removed",
+          description: "The background has been removed from your image.",
+        });
+        setTimeout(() => {
+          setProcessingProgress(0);
+        }, 500);
+      };
+      newImg.onerror = () => {
+        URL.revokeObjectURL(url);
+        toast({
+          title: "Removal Failed",
+          description: "Could not load the processed image.",
+          variant: "destructive",
+        });
+      };
+      newImg.src = url;
+    } catch (error) {
+      console.error("Background removal failed:", error);
+      toast({
+        title: "Background Removal Failed",
+        description: "Could not remove the background. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRemovingBg(false);
+      setProcessingProgress(0);
     }
   };
 
@@ -1258,6 +1391,54 @@ export function MemeGenerator() {
                         <Upload className="h-4 w-4 mr-2" />
                         Upload Image
                       </Button>
+
+                      {backgroundImage && (
+                        <div className="space-y-3 p-3 rounded-md bg-muted/50">
+                          <Label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+                            Image Enhancement
+                          </Label>
+                          
+                          {(isUpscaling || isRemovingBg) && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                <span className="text-xs font-mono text-muted-foreground">
+                                  {isUpscaling ? "Enhancing resolution..." : "Removing background..."}
+                                </span>
+                              </div>
+                              <Progress value={processingProgress} className="h-2" />
+                            </div>
+                          )}
+                          
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={handleUpscaleImage}
+                              disabled={isUpscaling || isRemovingBg}
+                              data-testid="button-upscale-image"
+                            >
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              Enhance
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={handleRemoveBackground}
+                              disabled={isUpscaling || isRemovingBg}
+                              data-testid="button-remove-bg"
+                            >
+                              <Eraser className="h-3 w-3 mr-1" />
+                              Remove BG
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            AI-powered processing runs locally in your browser
+                          </p>
+                        </div>
+                      )}
 
                       <div className="flex gap-2">
                         <Button
