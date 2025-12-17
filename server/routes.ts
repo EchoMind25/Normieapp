@@ -718,10 +718,10 @@ export async function registerRoutes(
 
   const STICKER_MANIFEST = [
     { id: "pepe-classic", name: "Classic Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/017/618/pepefroggie.jpg" },
-    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/000/862/065/0e9.jpg" },
-    { id: "pepe-sad", name: "Sad Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/facebook/000/020/565/reeee.jpg" },
-    { id: "pepe-cry", name: "Crying Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/original/001/384/545/7b9.jpg" },
-    { id: "wojak-sad", name: "Sad Wojak", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/031/671/cover1.jpg" },
+    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/001/074/167/3f1.gif" },
+    { id: "pepe-sad", name: "Sad Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/001/354/099/bba.png" },
+    { id: "pepe-cry", name: "Crying Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/000/948/077/dce.jpg" },
+    { id: "wojak-sad", name: "Sad Wojak", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/001/883/586/14f.jpg" },
     { id: "wojak-chad", name: "Chad", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/026/152/gigachad.jpg" },
     { id: "doge", name: "Doge", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg" },
     { id: "troll", name: "Troll Face", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/000/091/TrollFace.jpg" },
