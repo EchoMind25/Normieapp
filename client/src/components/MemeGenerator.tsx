@@ -29,81 +29,13 @@ import {
 import { SiX, SiTelegram } from "react-icons/si";
 import type { TokenMetrics } from "@shared/schema";
 
-import classicPepe from "@assets/generated_images/classic_pepe_frog_sticker.png";
-import smugPepe from "@assets/generated_images/smug_pepe_frog_sticker.png";
-import angryPepe from "@assets/generated_images/angry_pepe_frog_sticker.png";
-import cryingPepe from "@assets/generated_images/crying_pepe_frog_sticker.png";
-import laughingPepe from "@assets/generated_images/laughing_pepe_frog_sticker.png";
-import thinkingPepe from "@assets/generated_images/thinking_pepe_frog_sticker.png";
-import comfyPepe from "@assets/generated_images/comfy_pepe_frog_sticker.png";
-import surprisedPepe from "@assets/generated_images/surprised_pepe_frog_sticker.png";
-import sadWojak from "@assets/generated_images/sad_wojak_meme_sticker.png";
-import chadWojak from "@assets/generated_images/chad_wojak_meme_sticker.png";
-import dogeMeme from "@assets/generated_images/doge_meme_dog_sticker.png";
-import trollFace from "@assets/generated_images/troll_face_sticker.png";
-import npcWojak from "@assets/generated_images/npc_wojak_face_sticker.png";
-import doomerWojak from "@assets/generated_images/doomer_wojak_sticker.png";
-import bloomerWojak from "@assets/generated_images/bloomer_wojak_sticker.png";
-import boomerWojak from "@assets/generated_images/boomer_wojak_sticker.png";
-import zoomerWojak from "@assets/generated_images/zoomer_wojak_sticker.png";
+interface StickerInfo {
+  id: string;
+  name: string;
+  category: string;
+}
 
-import bitcoinLogo from "@assets/generated_images/bitcoin_logo_sticker.png";
-import ethereumLogo from "@assets/generated_images/ethereum_logo_sticker.png";
-import solanaLogo from "@assets/generated_images/solana_logo_sticker.png";
-import diamondHands from "@assets/generated_images/diamond_hands_sticker.png";
-import rocketMoon from "@assets/generated_images/rocket_moon_sticker.png";
-import tokenBurn from "@assets/generated_images/token_burn_sticker.png";
-import pumpChart from "@assets/generated_images/pump_chart_sticker.png";
-import dumpChart from "@assets/generated_images/dump_chart_sticker.png";
-import paperHands from "@assets/generated_images/paper_hands_sticker.png";
-
-import cloverSticker from "@assets/generated_images/4chan_clover_sticker.png";
-import basedStamp from "@assets/generated_images/based_stamp_sticker.png";
-import wagmiStamp from "@assets/generated_images/wagmi_stamp_sticker.png";
-import ngmiStamp from "@assets/generated_images/ngmi_stamp_sticker.png";
-import lockIcon from "@assets/generated_images/lock_icon_sticker.png";
-import normieLogo from "@assets/generated_images/normie_logo_sticker.png";
-
-const NORMIE_STICKERS = [
-  { id: "pepe-classic", name: "Classic Pepe", url: classicPepe },
-  { id: "pepe-smug", name: "Smug Pepe", url: smugPepe },
-  { id: "pepe-angry", name: "Angry Pepe", url: angryPepe },
-  { id: "pepe-crying", name: "Crying Pepe", url: cryingPepe },
-  { id: "pepe-laugh", name: "Laughing Pepe", url: laughingPepe },
-  { id: "pepe-thinking", name: "Thinking Pepe", url: thinkingPepe },
-  { id: "pepe-comfy", name: "Comfy Pepe", url: comfyPepe },
-  { id: "pepe-surprised", name: "Surprised Pepe", url: surprisedPepe },
-  { id: "wojak-sad", name: "Sad Wojak", url: sadWojak },
-  { id: "wojak-chad", name: "Chad", url: chadWojak },
-  { id: "wojak-npc", name: "NPC Wojak", url: npcWojak },
-  { id: "wojak-doomer", name: "Doomer", url: doomerWojak },
-  { id: "wojak-bloomer", name: "Bloomer", url: bloomerWojak },
-  { id: "wojak-boomer", name: "Boomer", url: boomerWojak },
-  { id: "wojak-zoomer", name: "Zoomer", url: zoomerWojak },
-  { id: "troll-face", name: "Troll Face", url: trollFace },
-  { id: "doge", name: "Doge", url: dogeMeme },
-];
-
-const CRYPTO_STICKERS = [
-  { id: "bitcoin", name: "Bitcoin", url: bitcoinLogo },
-  { id: "ethereum", name: "Ethereum", url: ethereumLogo },
-  { id: "solana", name: "Solana", url: solanaLogo },
-  { id: "diamond-hands", name: "Diamond Hands", url: diamondHands },
-  { id: "paper-hands", name: "Paper Hands", url: paperHands },
-  { id: "rocket", name: "To The Moon", url: rocketMoon },
-  { id: "pump", name: "Pump Chart", url: pumpChart },
-  { id: "dump", name: "Dump Chart", url: dumpChart },
-  { id: "burn", name: "Token Burn", url: tokenBurn },
-];
-
-const BRAND_STICKERS = [
-  { id: "normie-logo", name: "Normie Logo", url: normieLogo },
-  { id: "4chan-clover", name: "4chan Clover", url: cloverSticker },
-  { id: "based", name: "BASED", url: basedStamp },
-  { id: "wagmi", name: "WAGMI", url: wagmiStamp },
-  { id: "ngmi", name: "NGMI", url: ngmiStamp },
-  { id: "locked", name: "Locked", url: lockIcon },
-];
+const getStickerUrl = (stickerId: string) => `/api/sticker-proxy/${stickerId}`;
 
 const COLOR_PRESETS = [
   { name: "White", hex: "#FFFFFF" },
@@ -226,6 +158,10 @@ export function MemeGenerator() {
   const { data: metrics, isLoading: metricsLoading } = useQuery<TokenMetrics>({
     queryKey: ["/api/metrics"],
     refetchInterval: 30000,
+  });
+
+  const { data: allStickersData, isLoading: stickersLoading } = useQuery<StickerInfo[]>({
+    queryKey: ["/api/stickers"],
   });
 
   const hasValidMetrics = metrics && metrics.price > 0;
@@ -474,21 +410,26 @@ export function MemeGenerator() {
   }, [stickerElements, loadedStickerImages]);
 
   useEffect(() => {
-    const allStickers = [...NORMIE_STICKERS, ...CRYPTO_STICKERS, ...BRAND_STICKERS];
-    allStickers.forEach((sticker) => {
-      if (!loadedStickerImages.has(sticker.url)) {
+    if (!allStickersData) return;
+    allStickersData.forEach((sticker) => {
+      const url = getStickerUrl(sticker.id);
+      if (!loadedStickerImages.has(url)) {
         const img = new Image();
+        img.crossOrigin = "anonymous";
         img.onload = () => {
           setLoadedStickerImages((prev) => {
             const newMap = new Map(prev);
-            newMap.set(sticker.url, img);
+            newMap.set(url, img);
             return newMap;
           });
         };
-        img.src = sticker.url;
+        img.onerror = () => {
+          console.warn(`Failed to load sticker: ${sticker.name}`);
+        };
+        img.src = url;
       }
     });
-  }, []);
+  }, [allStickersData, loadedStickerImages]);
 
   const deleteSelectedElement = useCallback(() => {
     if (!selectedElement) return;
@@ -589,15 +530,16 @@ export function MemeGenerator() {
     saveToHistory(textElements, newStickerElements);
   };
 
-  const addSticker = (sticker: { id: string; name: string; url: string }) => {
+  const addSticker = (sticker: StickerInfo) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const url = getStickerUrl(sticker.id);
     const newElement: StickerElement = {
       id: `sticker-${Date.now()}`,
       type: "sticker",
       content: sticker.name,
-      url: sticker.url,
+      url: url,
       x: canvas.width / 2,
       y: canvas.height / 2,
       scale: stickerSize[0],
@@ -803,12 +745,9 @@ export function MemeGenerator() {
     saveToHistory(newTextElements, stickerElements);
   };
 
-  const getStickersByCategory = () => {
-    switch (stickerCategory) {
-      case "crypto": return CRYPTO_STICKERS;
-      case "brand": return BRAND_STICKERS;
-      default: return NORMIE_STICKERS;
-    }
+  const getStickersByCategory = (): StickerInfo[] => {
+    if (!allStickersData) return [];
+    return allStickersData.filter(s => s.category === stickerCategory);
   };
 
   return (
@@ -1022,26 +961,36 @@ export function MemeGenerator() {
                     />
                   </div>
                   <ScrollArea className="h-[260px]">
-                    <div className="grid grid-cols-4 gap-2">
-                      {getStickersByCategory().map((sticker) => (
-                        <Button
-                          key={sticker.id}
-                          variant="outline"
-                          className="aspect-square p-2 flex flex-col items-center justify-center"
-                          onClick={() => addSticker(sticker)}
-                          data-testid={`button-sticker-${sticker.id}`}
-                        >
-                          <img
-                            src={sticker.url}
-                            alt={sticker.name}
-                            className="w-10 h-10 object-contain"
-                          />
-                          <span className="text-[9px] mt-1 truncate w-full text-center">
-                            {sticker.name}
-                          </span>
-                        </Button>
-                      ))}
-                    </div>
+                    {stickersLoading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-sm text-muted-foreground font-mono">Loading stickers...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-2">
+                        {getStickersByCategory().map((sticker) => (
+                          <Button
+                            key={sticker.id}
+                            variant="outline"
+                            className="aspect-square p-2 flex flex-col items-center justify-center"
+                            onClick={() => addSticker(sticker)}
+                            data-testid={`button-sticker-${sticker.id}`}
+                          >
+                            <img
+                              src={getStickerUrl(sticker.id)}
+                              alt={sticker.name}
+                              className="w-10 h-10 object-contain"
+                              crossOrigin="anonymous"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                            <span className="text-[9px] mt-1 truncate w-full text-center">
+                              {sticker.name}
+                            </span>
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </ScrollArea>
                 </TabsContent>
 

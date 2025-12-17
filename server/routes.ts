@@ -716,5 +716,87 @@ export async function registerRoutes(
     }
   });
 
+  const STICKER_MANIFEST = [
+    { id: "pepe-classic", name: "Classic Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/017/618/pepefroggie.jpg" },
+    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/000/862/065/0e9.jpg" },
+    { id: "pepe-sad", name: "Sad Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/facebook/000/020/565/reeee.jpg" },
+    { id: "pepe-cry", name: "Crying Pepe", category: "normie", url: "https://i.kym-cdn.com/photos/images/original/001/384/545/7b9.jpg" },
+    { id: "wojak-sad", name: "Sad Wojak", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/031/671/cover1.jpg" },
+    { id: "wojak-chad", name: "Chad", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/026/152/gigachad.jpg" },
+    { id: "doge", name: "Doge", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg" },
+    { id: "troll", name: "Troll Face", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/000/091/TrollFace.jpg" },
+    { id: "bitcoin", name: "Bitcoin", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png" },
+    { id: "ethereum", name: "Ethereum", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Ethereum-icon-purple.svg/1200px-Ethereum-icon-purple.svg.png" },
+    { id: "solana", name: "Solana", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png" },
+    { id: "diamond", name: "Diamond", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Diamond_font_awesome.svg/1200px-Diamond_font_awesome.svg.png" },
+    { id: "rocket", name: "Rocket", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Twemoji_1f680.svg/1200px-Twemoji_1f680.svg.png" },
+    { id: "fire", name: "Fire", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Noto_Emoji_v2.034_1f525.svg/1200px-Noto_Emoji_v2.034_1f525.svg.png" },
+    { id: "money", name: "Money", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Twemoji2_1f4b0.svg/1200px-Twemoji2_1f4b0.svg.png" },
+    { id: "moon", name: "Moon", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Twemoji12_1f315.svg/1200px-Twemoji12_1f315.svg.png" },
+    { id: "clover", name: "Clover", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Clover_symbol.svg/1200px-Clover_symbol.svg.png" },
+    { id: "thumbsup", name: "Thumbs Up", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Twemoji_1f44d.svg/1200px-Twemoji_1f44d.svg.png" },
+    { id: "skull", name: "Skull", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Twemoji_1f480.svg/1200px-Twemoji_1f480.svg.png" },
+    { id: "crown", name: "Crown", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Twemoji2_1f451.svg/1200px-Twemoji2_1f451.svg.png" },
+  ];
+
+  const stickerCache = new Map<string, { data: Buffer; contentType: string; fetchedAt: number }>();
+  const STICKER_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+  app.get("/api/stickers", (_req, res) => {
+    res.json(STICKER_MANIFEST.map(s => ({ id: s.id, name: s.name, category: s.category })));
+  });
+
+  app.get("/api/sticker-proxy/:stickerId", async (req, res) => {
+    try {
+      const { stickerId } = req.params;
+      const sticker = STICKER_MANIFEST.find(s => s.id === stickerId);
+      
+      if (!sticker) {
+        return res.status(404).json({ error: "Sticker not found" });
+      }
+
+      const cached = stickerCache.get(stickerId);
+      if (cached && Date.now() - cached.fetchedAt < STICKER_CACHE_TTL) {
+        res.set({
+          "Content-Type": cached.contentType,
+          "Cache-Control": "public, max-age=86400",
+          "Access-Control-Allow-Origin": "*",
+        });
+        return res.send(cached.data);
+      }
+
+      const response = await fetch(sticker.url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "image/png,image/*,*/*",
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`[Sticker] Failed to fetch ${stickerId}: ${response.status}`);
+        return res.status(502).json({ error: "Failed to fetch sticker" });
+      }
+
+      const contentType = response.headers.get("content-type") || "image/png";
+      const buffer = Buffer.from(await response.arrayBuffer());
+
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(413).json({ error: "Sticker too large" });
+      }
+
+      stickerCache.set(stickerId, { data: buffer, contentType, fetchedAt: Date.now() });
+
+      res.set({
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=86400",
+        "Access-Control-Allow-Origin": "*",
+      });
+      res.send(buffer);
+    } catch (error) {
+      console.error("[Sticker] Proxy error:", error);
+      res.status(500).json({ error: "Failed to proxy sticker" });
+    }
+  });
+
   return httpServer;
 }
