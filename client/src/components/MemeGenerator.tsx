@@ -397,17 +397,6 @@ export function MemeGenerator() {
     drawCanvas();
   }, [drawCanvas]);
 
-  useEffect(() => {
-    stickerElements.forEach((sticker) => {
-      if (sticker.url && !loadedStickerImages.has(sticker.url)) {
-        const manifestId = sticker.url.split('/').pop() || "";
-        if (!processedStickerIdsRef.current.has(manifestId) && !processingStickerIds.has(manifestId)) {
-          processAndLoadSticker(manifestId, sticker.content);
-        }
-      }
-    });
-  }, [stickerElements, loadedStickerImages, processingStickerIds, processAndLoadSticker]);
-
   const processAndLoadSticker = useCallback(async (stickerId: string, stickerName: string) => {
     const url = getStickerUrl(stickerId);
     
@@ -493,6 +482,17 @@ export function MemeGenerator() {
       });
     }
   }, []);
+
+  useEffect(() => {
+    stickerElements.forEach((sticker) => {
+      if (sticker.url && !loadedStickerImages.has(sticker.url)) {
+        const manifestId = sticker.url.split('/').pop() || "";
+        if (!processedStickerIdsRef.current.has(manifestId) && !processingStickerIds.has(manifestId)) {
+          processAndLoadSticker(manifestId, sticker.content);
+        }
+      }
+    });
+  }, [stickerElements, loadedStickerImages, processingStickerIds, processAndLoadSticker]);
 
   useEffect(() => {
     if (!allStickersData) return;
