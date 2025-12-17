@@ -97,18 +97,7 @@ export const NORMIE_TOKEN = {
   description: "A 4chan-inspired memecoin focused on everyday 'normie' culture. Relentless burns, community raids, and merch empire.",
 };
 
-// Fallback/seed data for when RPC is unavailable
-export const FALLBACK_METRICS: TokenMetrics = {
-  price: 0.00019233,
-  priceChange24h: 6.88,
-  marketCap: 192300,
-  marketCapChange24h: 6.88,
-  volume24h: 15500,
-  liquidity: 21500,
-  totalSupply: 1000000000,
-  circulatingSupply: 428000000,
-  burnedTokens: 572000000,
-  lockedTokens: 230000000,
-  holders: 1847,
-  lastUpdated: new Date().toISOString(),
-};
+// Data sources:
+// - DexScreener API for real-time token metrics (price, market cap, volume, liquidity)
+// - Solana RPC for dev wallet transaction history
+// - pump.fun for token info: https://pump.fun/coin/FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump

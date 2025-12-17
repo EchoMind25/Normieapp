@@ -1,16 +1,18 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import { NORMIE_TOKEN, FALLBACK_METRICS } from "@shared/schema";
+import { NORMIE_TOKEN } from "@shared/schema";
 import type { TokenMetrics, PricePoint, DevBuy } from "@shared/schema";
 
 const RPC_ENDPOINT = "https://solana-rpc.publicnode.com";
+const DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens";
 const TOKEN_ADDRESS = NORMIE_TOKEN.address;
 const DEV_WALLET = "FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump";
 
 let connection: Connection | null = null;
 let priceHistory: PricePoint[] = [];
 let devBuys: DevBuy[] = [];
-let currentMetrics: TokenMetrics = { ...FALLBACK_METRICS };
+let currentMetrics: TokenMetrics | null = null;
 let lastRpcSuccess = Date.now();
+let lastDexScreenerFetch = 0;
 
 function getConnection(): Connection {
   if (!connection) {
@@ -20,46 +22,74 @@ function getConnection(): Connection {
 }
 
 export async function fetchTokenMetrics(): Promise<TokenMetrics> {
-  const startTime = Date.now();
+  const now = Date.now();
+  
+  if (currentMetrics && now - lastDexScreenerFetch < 5000) {
+    return currentMetrics;
+  }
+  
   try {
-    const conn = getConnection();
-    const tokenPubkey = new PublicKey(TOKEN_ADDRESS);
+    const response = await fetch(`${DEXSCREENER_API}/${TOKEN_ADDRESS}`);
+    if (!response.ok) {
+      throw new Error(`DexScreener API error: ${response.status}`);
+    }
     
-    const accountInfo = await conn.getAccountInfo(tokenPubkey);
+    const data = await response.json();
     
-    if (accountInfo) {
-      lastRpcSuccess = Date.now();
-      console.log(`[Solana] RPC call successful in ${Date.now() - startTime}ms`);
+    if (data.pairs && data.pairs.length > 0) {
+      const pair = data.pairs[0];
+      lastDexScreenerFetch = now;
+      lastRpcSuccess = now;
       
-      const variance = (Math.random() - 0.5) * 0.00002;
-      const priceChange = (Math.random() - 0.3) * 2;
+      const price = parseFloat(pair.priceUsd) || 0;
+      const marketCap = pair.marketCap || pair.fdv || 0;
+      const volume24h = pair.volume?.h24 || 0;
+      const liquidity = pair.liquidity?.usd || 0;
+      const priceChange24h = pair.priceChange?.h24 || 0;
+      
+      console.log(`[DexScreener] Fetched real data - Price: $${price.toFixed(8)}, MCap: $${marketCap}`);
       
       currentMetrics = {
-        price: FALLBACK_METRICS.price + variance,
-        priceChange24h: FALLBACK_METRICS.priceChange24h + priceChange,
-        marketCap: Math.round(FALLBACK_METRICS.marketCap * (1 + variance / FALLBACK_METRICS.price)),
-        marketCapChange24h: FALLBACK_METRICS.marketCapChange24h + priceChange,
-        volume24h: FALLBACK_METRICS.volume24h + Math.random() * 2000 - 1000,
-        liquidity: FALLBACK_METRICS.liquidity + Math.random() * 500 - 250,
-        totalSupply: FALLBACK_METRICS.totalSupply,
-        circulatingSupply: FALLBACK_METRICS.circulatingSupply,
-        burnedTokens: FALLBACK_METRICS.burnedTokens,
-        lockedTokens: FALLBACK_METRICS.lockedTokens,
-        holders: FALLBACK_METRICS.holders + Math.floor(Math.random() * 5 - 2),
+        price,
+        priceChange24h,
+        marketCap,
+        marketCapChange24h: priceChange24h,
+        volume24h,
+        liquidity,
+        totalSupply: 1000000000,
+        circulatingSupply: pair.fdv && price > 0 ? Math.floor(pair.fdv / price) : 1000000000,
+        burnedTokens: 572000000,
+        lockedTokens: 230000000,
+        holders: 0,
         lastUpdated: new Date().toISOString(),
       };
+      
+      return currentMetrics;
     }
+    
+    throw new Error("No pairs found in DexScreener response");
   } catch (error) {
-    console.error("[Solana] Error fetching metrics:", error);
-    const variance = (Math.random() - 0.5) * 0.00002;
-    currentMetrics = {
-      ...currentMetrics,
-      price: FALLBACK_METRICS.price + variance,
+    console.error("[DexScreener] Error fetching metrics:", error);
+    
+    if (currentMetrics) {
+      return currentMetrics;
+    }
+    
+    return {
+      price: 0,
+      priceChange24h: 0,
+      marketCap: 0,
+      marketCapChange24h: 0,
+      volume24h: 0,
+      liquidity: 0,
+      totalSupply: 1000000000,
+      circulatingSupply: 1000000000,
+      burnedTokens: 572000000,
+      lockedTokens: 230000000,
+      holders: 0,
       lastUpdated: new Date().toISOString(),
     };
   }
-  
-  return currentMetrics;
 }
 
 export async function fetchDevBuys(): Promise<DevBuy[]> {
@@ -67,58 +97,56 @@ export async function fetchDevBuys(): Promise<DevBuy[]> {
     const conn = getConnection();
     const devPubkey = new PublicKey(DEV_WALLET);
     
-    const signatures = await conn.getSignaturesForAddress(devPubkey, { limit: 20 });
+    const signatures = await conn.getSignaturesForAddress(devPubkey, { limit: 50 });
     
     if (signatures.length > 0) {
       console.log(`[Solana] Found ${signatures.length} dev wallet transactions`);
       
-      const newDevBuys: DevBuy[] = signatures
-        .filter(sig => sig.blockTime)
-        .slice(0, 5)
-        .map((sig, index) => ({
-          signature: sig.signature,
-          timestamp: (sig.blockTime || Math.floor(Date.now() / 1000) - index * 3600) * 1000,
-          amount: Math.random() * 50000000 + 10000000,
-          price: FALLBACK_METRICS.price * (1 + (Math.random() - 0.5) * 0.1),
-        }));
+      const recentBuys: DevBuy[] = [];
       
-      devBuys = newDevBuys;
+      for (const sig of signatures.slice(0, 10)) {
+        if (!sig.blockTime) continue;
+        
+        try {
+          const tx = await conn.getTransaction(sig.signature, {
+            maxSupportedTransactionVersion: 0,
+          });
+          
+          if (tx && tx.meta && !tx.meta.err) {
+            const preBalances = tx.meta.preBalances || [];
+            const postBalances = tx.meta.postBalances || [];
+            
+            if (postBalances[0] < preBalances[0]) {
+              const solSpent = (preBalances[0] - postBalances[0]) / 1e9;
+              
+              if (solSpent > 0.01) {
+                recentBuys.push({
+                  signature: sig.signature,
+                  timestamp: sig.blockTime * 1000,
+                  amount: solSpent * 1000000,
+                  price: currentMetrics?.price || 0,
+                });
+              }
+            }
+          }
+        } catch (txError) {
+          console.error(`[Solana] Error parsing tx ${sig.signature}:`, txError);
+        }
+      }
+      
+      if (recentBuys.length > 0) {
+        devBuys = recentBuys;
+        console.log(`[Solana] Identified ${recentBuys.length} dev buys`);
+      }
     }
   } catch (error) {
     console.error("[Solana] Error fetching dev buys:", error);
-    if (devBuys.length === 0) {
-      generateMockDevBuys();
-    }
   }
   
   return devBuys;
 }
 
-function generateMockDevBuys(): void {
-  const now = Date.now();
-  devBuys = [
-    {
-      signature: "mock1",
-      timestamp: now - 2 * 60 * 60 * 1000,
-      amount: 25000000,
-      price: FALLBACK_METRICS.price * 0.95,
-    },
-    {
-      signature: "mock2",
-      timestamp: now - 6 * 60 * 60 * 1000,
-      amount: 15000000,
-      price: FALLBACK_METRICS.price * 0.92,
-    },
-    {
-      signature: "mock3",
-      timestamp: now - 12 * 60 * 60 * 1000,
-      amount: 35000000,
-      price: FALLBACK_METRICS.price * 0.88,
-    },
-  ];
-}
-
-export function getMetrics(): TokenMetrics {
+export function getMetrics(): TokenMetrics | null {
   return currentMetrics;
 }
 
@@ -127,6 +155,8 @@ export function getDevBuys(): DevBuy[] {
 }
 
 export function addPricePoint(metrics: TokenMetrics): void {
+  if (metrics.price <= 0) return;
+  
   const point: PricePoint = {
     timestamp: Date.now(),
     price: metrics.price,
@@ -152,20 +182,16 @@ export function getConnectionStatus(): { isConnected: boolean; lastSuccess: numb
   };
 }
 
-export function initializePriceHistory(): void {
-  const now = Date.now();
-  const basePrice = FALLBACK_METRICS.price;
-  
-  for (let i = 47; i >= 0; i--) {
-    const timestamp = now - i * 5 * 60 * 1000;
-    const variance = (Math.random() - 0.5) * 0.00003;
-    priceHistory.push({
-      timestamp,
-      price: basePrice + variance,
-      volume: Math.random() * 1000 + 500,
-    });
+export async function initializePriceHistory(): Promise<void> {
+  try {
+    const metrics = await fetchTokenMetrics();
+    if (metrics && metrics.price > 0) {
+      addPricePoint(metrics);
+      console.log("[Solana] Initialized with real price data");
+    }
+  } catch (error) {
+    console.error("[Solana] Failed to initialize price history:", error);
   }
 }
 
 initializePriceHistory();
-generateMockDevBuys();
