@@ -9,6 +9,7 @@ import { manualDevBuys, users, sessions } from "@shared/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import { verifyJWT } from "./auth";
 import { z } from "zod";
+import { storage } from "./storage";
 
 const manualDevBuyInputSchema = z.object({
   timestamp: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date format"),
@@ -227,6 +228,167 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error deleting manual dev buy:", error);
       res.status(500).json({ error: "Failed to delete manual dev buy" });
+    }
+  });
+
+  // =====================================================
+  // Community Polls Routes
+  // =====================================================
+  
+  app.get("/api/polls", async (_req, res) => {
+    try {
+      const activePolls = await storage.getActivePolls();
+      const pollsFormatted = activePolls.map(poll => ({
+        id: poll.id,
+        question: poll.question,
+        options: poll.options.map(opt => ({
+          id: opt.id,
+          text: opt.text,
+          votes: opt.votes || 0,
+        })),
+        totalVotes: poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0),
+        isActive: poll.isActive,
+        endsAt: poll.endsAt?.toISOString(),
+      }));
+      res.json(pollsFormatted);
+    } catch (error) {
+      console.error("[Polls] Error fetching polls:", error);
+      res.status(500).json({ error: "Failed to fetch polls" });
+    }
+  });
+
+  app.post("/api/polls/:pollId/vote", async (req, res) => {
+    try {
+      const { pollId } = req.params;
+      const { optionId, visitorId } = req.body;
+      
+      if (!optionId || !visitorId) {
+        return res.status(400).json({ error: "Option ID and visitor ID are required" });
+      }
+      
+      const hasVoted = await storage.hasVoted(pollId, visitorId);
+      if (hasVoted) {
+        return res.status(400).json({ error: "You have already voted on this poll" });
+      }
+      
+      await storage.vote(pollId, optionId, visitorId);
+      
+      const updatedPoll = await storage.getPoll(pollId);
+      if (!updatedPoll) {
+        return res.status(404).json({ error: "Poll not found" });
+      }
+      
+      res.json({
+        id: updatedPoll.id,
+        question: updatedPoll.question,
+        options: updatedPoll.options.map(opt => ({
+          id: opt.id,
+          text: opt.text,
+          votes: opt.votes || 0,
+        })),
+        totalVotes: updatedPoll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0),
+        isActive: updatedPoll.isActive,
+      });
+    } catch (error) {
+      console.error("[Polls] Error voting:", error);
+      res.status(500).json({ error: "Failed to vote" });
+    }
+  });
+
+  app.get("/api/polls/:pollId/voted", async (req, res) => {
+    try {
+      const { pollId } = req.params;
+      const visitorId = req.query.visitorId as string;
+      
+      if (!visitorId) {
+        return res.status(400).json({ error: "Visitor ID is required" });
+      }
+      
+      const hasVoted = await storage.hasVoted(pollId, visitorId);
+      res.json({ hasVoted });
+    } catch (error) {
+      console.error("[Polls] Error checking vote status:", error);
+      res.status(500).json({ error: "Failed to check vote status" });
+    }
+  });
+
+  // Admin: Create poll
+  app.post("/api/admin/polls", requireAdmin, async (req, res) => {
+    try {
+      const { question, options } = req.body;
+      
+      if (!question || !options || !Array.isArray(options) || options.length < 2) {
+        return res.status(400).json({ error: "Question and at least 2 options are required" });
+      }
+      
+      const poll = await storage.createPoll(
+        { question, isActive: true, createdBy: (req as any).userId },
+        options
+      );
+      
+      res.json(poll);
+    } catch (error) {
+      console.error("[Admin] Error creating poll:", error);
+      res.status(500).json({ error: "Failed to create poll" });
+    }
+  });
+
+  // =====================================================
+  // Activity Feed Routes
+  // =====================================================
+  
+  app.get("/api/activity", async (_req, res) => {
+    try {
+      const dbActivity = await storage.getRecentActivity(20);
+      
+      const devBuys = getDevBuys().slice(0, 5);
+      const devBuyActivity = devBuys.map((buy, index) => ({
+        id: `devbuy-${buy.signature.slice(0, 8)}`,
+        type: "trade" as const,
+        message: `Dev buy: ${(buy.amount / 1000000).toFixed(2)}M $NORMIE`,
+        amount: buy.amount,
+        timestamp: new Date(buy.timestamp).toISOString(),
+      }));
+      
+      const formattedDbActivity = dbActivity.map(item => ({
+        id: item.id,
+        type: item.type as "burn" | "lock" | "trade" | "milestone",
+        message: item.message,
+        amount: item.amount ? parseFloat(item.amount) : undefined,
+        timestamp: item.createdAt?.toISOString() || new Date().toISOString(),
+      }));
+      
+      const allActivity = [...formattedDbActivity, ...devBuyActivity]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 20);
+      
+      res.json(allActivity);
+    } catch (error) {
+      console.error("[Activity] Error fetching activity:", error);
+      res.status(500).json({ error: "Failed to fetch activity" });
+    }
+  });
+
+  // Admin: Add activity item
+  app.post("/api/admin/activity", requireAdmin, async (req, res) => {
+    try {
+      const { type, message, amount, txSignature } = req.body;
+      
+      if (!type || !message) {
+        return res.status(400).json({ error: "Type and message are required" });
+      }
+      
+      const activity = await storage.createActivityItem({
+        type,
+        message,
+        amount: amount?.toString(),
+        txSignature,
+      });
+      
+      res.json(activity);
+    } catch (error) {
+      console.error("[Admin] Error adding activity:", error);
+      res.status(500).json({ error: "Failed to add activity" });
     }
   });
 

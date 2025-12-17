@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ExternalLink,
   Vote,
@@ -14,79 +15,12 @@ import {
   Clock,
   Users,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 import { SiTelegram, SiX } from "react-icons/si";
 import { NORMIE_TOKEN } from "@shared/schema";
 import type { Poll, ActivityItem } from "@shared/schema";
-
-const SAMPLE_POLLS: Poll[] = [
-  {
-    id: "poll-1",
-    question: "Next burn milestone target?",
-    options: [
-      { id: "opt-1", text: "600M tokens", votes: 234 },
-      { id: "opt-2", text: "700M tokens", votes: 456 },
-      { id: "opt-3", text: "1B tokens", votes: 123 },
-    ],
-    totalVotes: 813,
-    isActive: true,
-  },
-  {
-    id: "poll-2",
-    question: "Which merch should drop next?",
-    options: [
-      { id: "opt-1", text: "Socks", votes: 156 },
-      { id: "opt-2", text: "Phone Cases", votes: 289 },
-      { id: "opt-3", text: "Stickers Pack", votes: 201 },
-      { id: "opt-4", text: "Caps/Hats", votes: 178 },
-    ],
-    totalVotes: 824,
-    isActive: true,
-  },
-];
-
-const SAMPLE_ACTIVITY: ActivityItem[] = [
-  {
-    id: "act-1",
-    type: "burn",
-    message: "31M tokens burned by dev team",
-    amount: 31000000,
-    timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-  },
-  {
-    id: "act-2",
-    type: "lock",
-    message: "230M tokens locked in vault",
-    amount: 230000000,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: "act-3",
-    type: "milestone",
-    message: "Reached 1,500 holders milestone!",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-  },
-  {
-    id: "act-4",
-    type: "trade",
-    message: "Large buy detected: 50 SOL",
-    amount: 50,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
-  },
-  {
-    id: "act-5",
-    type: "burn",
-    message: "Weekly burn executed: 15M tokens",
-    amount: 15000000,
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-  },
-  {
-    id: "act-6",
-    type: "milestone",
-    message: "Market cap surpassed $200K ATH",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-  },
-];
+import { useToast } from "@/hooks/use-toast";
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   burn: <Flame className="h-4 w-4 text-destructive" />,
@@ -95,28 +29,140 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   trade: <Zap className="h-4 w-4 text-chart-2" />,
 };
 
+function getVisitorId(): string {
+  let visitorId = localStorage.getItem("normie_visitor_id");
+  if (!visitorId) {
+    visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    localStorage.setItem("normie_visitor_id", visitorId);
+  }
+  return visitorId;
+}
+
 export function CommunityHub() {
-  const [polls, setPolls] = useState(SAMPLE_POLLS);
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [votedPolls, setVotedPolls] = useState<Set<string>>(new Set());
+  const [isLoadingPolls, setIsLoadingPolls] = useState(true);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(true);
+  const [isVoting, setIsVoting] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const handleVote = (pollId: string, optionId: string) => {
-    if (votedPolls.has(pollId)) return;
-
-    setPolls((prev) =>
-      prev.map((poll) => {
-        if (poll.id === pollId) {
-          return {
-            ...poll,
-            options: poll.options.map((opt) =>
-              opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
-            ),
-            totalVotes: poll.totalVotes + 1,
-          };
+  const fetchPolls = useCallback(async (showLoading = false) => {
+    if (showLoading) setIsLoadingPolls(true);
+    try {
+      const response = await fetch("/api/polls");
+      if (response.ok) {
+        const data = await response.json();
+        setPolls(data);
+        
+        const visitorId = getVisitorId();
+        for (const poll of data) {
+          const voteCheck = await fetch(`/api/polls/${poll.id}/voted?visitorId=${encodeURIComponent(visitorId)}`);
+          if (voteCheck.ok) {
+            const { hasVoted } = await voteCheck.json();
+            if (hasVoted) {
+              setVotedPolls((prev) => new Set(prev).add(poll.id));
+            }
+          }
         }
-        return poll;
-      })
-    );
-    setVotedPolls((prev) => new Set(prev).add(pollId));
+      } else {
+        toast({
+          title: "Connection issue",
+          description: "Could not load polls. Try refreshing.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("[Polls] Error fetching polls:", error);
+      toast({
+        title: "Connection issue",
+        description: "Could not load polls. Try refreshing.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingPolls(false);
+    }
+  }, [toast]);
+
+  const fetchActivity = useCallback(async (showLoading = false) => {
+    if (showLoading) setIsLoadingActivity(true);
+    try {
+      const response = await fetch("/api/activity");
+      if (response.ok) {
+        const data = await response.json();
+        setActivity(data);
+      } else {
+        toast({
+          title: "Connection issue",
+          description: "Could not load activity. Try refreshing.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("[Activity] Error fetching activity:", error);
+      toast({
+        title: "Connection issue",
+        description: "Could not load activity. Try refreshing.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingActivity(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchPolls();
+    fetchActivity();
+    
+    const pollInterval = setInterval(fetchPolls, 30000);
+    const activityInterval = setInterval(fetchActivity, 15000);
+    
+    return () => {
+      clearInterval(pollInterval);
+      clearInterval(activityInterval);
+    };
+  }, [fetchPolls, fetchActivity]);
+
+  const handleVote = async (pollId: string, optionId: string) => {
+    if (votedPolls.has(pollId) || isVoting) return;
+
+    setIsVoting(pollId);
+    const visitorId = getVisitorId();
+
+    try {
+      const response = await fetch(`/api/polls/${pollId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ optionId, visitorId }),
+      });
+
+      if (response.ok) {
+        const updatedPoll = await response.json();
+        setPolls((prev) =>
+          prev.map((poll) => (poll.id === pollId ? updatedPoll : poll))
+        );
+        setVotedPolls((prev) => new Set(prev).add(pollId));
+        toast({
+          title: "Vote recorded!",
+          description: "Thanks for participating in the poll.",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Could not vote",
+          description: error.error || "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit vote. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVoting(null);
+    }
   };
 
   const formatTimeAgo = (timestamp: string) => {
@@ -146,8 +192,32 @@ export function CommunityHub() {
             <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Vote className="h-4 w-4" />
               Community Polls
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fetchPolls(true)}
+                className="h-6 w-6 ml-auto"
+                data-testid="button-refresh-polls"
+              >
+                <RefreshCw className={`h-3 w-3 ${isLoadingPolls ? "animate-spin" : ""}`} />
+              </Button>
             </h3>
-            {polls.map((poll) => (
+            {isLoadingPolls ? (
+              <Card className="p-4">
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              </Card>
+            ) : polls.length === 0 ? (
+              <Card className="p-6 text-center">
+                <Vote className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No active polls right now</p>
+                <p className="text-xs text-muted-foreground mt-1">Check back soon for community voting!</p>
+              </Card>
+            ) : polls.map((poll) => (
               <Card key={poll.id} className="p-4" data-testid={`card-poll-${poll.id}`}>
                 <div className="flex items-start justify-between gap-2 mb-4">
                   <h4 className="font-mono font-medium">{poll.question}</h4>
@@ -213,6 +283,15 @@ export function CommunityHub() {
             <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Flame className="h-4 w-4" />
               Activity Feed
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fetchActivity(true)}
+                className="h-6 w-6 ml-auto"
+                data-testid="button-refresh-activity"
+              >
+                <RefreshCw className={`h-3 w-3 ${isLoadingActivity ? "animate-spin" : ""}`} />
+              </Button>
             </h3>
             <Card className="p-0 overflow-hidden">
               <div className="bg-muted/50 px-4 py-2 border-b flex items-center gap-2">
@@ -223,22 +302,39 @@ export function CommunityHub() {
               </div>
               <ScrollArea className="h-80">
                 <div className="p-4 space-y-3 font-mono text-sm">
-                  {SAMPLE_ACTIVITY.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-start gap-3 p-2 rounded-md bg-muted/30"
-                      data-testid={`activity-${item.id}`}
-                    >
-                      <div className="mt-0.5">{ACTIVITY_ICONS[item.type]}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-foreground">{item.message}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <Clock className="h-3 w-3" />
-                          {formatTimeAgo(item.timestamp)}
-                        </p>
+                  {isLoadingActivity ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-start gap-3 p-2">
+                        <Skeleton className="h-4 w-4 rounded" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-1/4" />
+                        </div>
                       </div>
+                    ))
+                  ) : activity.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <p className="text-sm">No activity yet</p>
+                      <p className="text-xs mt-1">Watch for burns, trades, and milestones</p>
                     </div>
-                  ))}
+                  ) : (
+                    activity.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-start gap-3 p-2 rounded-md bg-muted/30"
+                        data-testid={`activity-${item.id}`}
+                      >
+                        <div className="mt-0.5">{ACTIVITY_ICONS[item.type] || <Zap className="h-4 w-4" />}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground">{item.message}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3" />
+                            {formatTimeAgo(item.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <span className="animate-blink">_</span>
                     <span className="text-xs">Awaiting next event...</span>

@@ -302,6 +302,80 @@ export type InsertAuthChallenge = z.infer<typeof insertAuthChallengeSchema>;
 export type AuthChallenge = typeof authChallenges.$inferSelect;
 
 // =====================================================
+// Community Polls Tables
+// =====================================================
+
+// Polls table
+export const polls = pgTable("polls", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  question: varchar("question", { length: 500 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  endsAt: timestamp("ends_at"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPollDbSchema = createInsertSchema(polls).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertPollDb = z.infer<typeof insertPollDbSchema>;
+export type PollDb = typeof polls.$inferSelect;
+
+// Poll options table
+export const pollOptions = pgTable("poll_options", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  pollId: uuid("poll_id").references(() => polls.id, { onDelete: "cascade" }).notNull(),
+  text: varchar("text", { length: 200 }).notNull(),
+  votes: integer("votes").default(0),
+}, (table) => [
+  index("idx_poll_options_poll").on(table.pollId),
+]);
+
+export const insertPollOptionSchema = createInsertSchema(pollOptions).omit({ 
+  id: true, 
+  votes: true,
+});
+export type InsertPollOption = z.infer<typeof insertPollOptionSchema>;
+export type PollOption = typeof pollOptions.$inferSelect;
+
+// Poll votes table (to track who voted)
+export const pollVotes = pgTable("poll_votes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  pollId: uuid("poll_id").references(() => polls.id, { onDelete: "cascade" }).notNull(),
+  optionId: uuid("option_id").references(() => pollOptions.id, { onDelete: "cascade" }).notNull(),
+  visitorId: varchar("visitor_id", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_poll_votes_poll").on(table.pollId),
+  index("idx_poll_votes_visitor").on(table.visitorId),
+]);
+
+export const insertPollVoteSchema = createInsertSchema(pollVotes).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertPollVote = z.infer<typeof insertPollVoteSchema>;
+export type PollVote = typeof pollVotes.$inferSelect;
+
+// Activity items table for real activity feed
+export const activityItems = pgTable("activity_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: varchar("type", { length: 20 }).notNull(),
+  message: text("message").notNull(),
+  amount: decimal("amount", { precision: 20, scale: 6 }),
+  txSignature: varchar("tx_signature", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertActivityItemDbSchema = createInsertSchema(activityItems).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertActivityItemDb = z.infer<typeof insertActivityItemDbSchema>;
+export type ActivityItemDb = typeof activityItems.$inferSelect;
+
+// =====================================================
 // Normie token constants
 // =====================================================
 

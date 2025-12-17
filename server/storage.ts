@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, gt, desc } from "drizzle-orm";
+import { eq, and, gt, desc, sql } from "drizzle-orm";
 import {
   users,
   sessions,
@@ -11,6 +11,10 @@ import {
   chatRooms,
   chatMessages,
   chatRoomMembers,
+  polls,
+  pollOptions,
+  pollVotes,
+  activityItems,
   type User,
   type InsertUser,
   type Session,
@@ -31,6 +35,14 @@ import {
   type InsertChatMessage,
   type ChatRoomMember,
   type InsertChatRoomMember,
+  type PollDb,
+  type InsertPollDb,
+  type PollOption,
+  type InsertPollOption,
+  type PollVote,
+  type InsertPollVote,
+  type ActivityItemDb,
+  type InsertActivityItemDb,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -89,6 +101,17 @@ export interface IStorage {
   removeChatRoomMember(roomId: string, userId: string): Promise<void>;
   getChatRoomMembers(roomId: string): Promise<ChatRoomMember[]>;
   isRoomMember(roomId: string, userId: string): Promise<boolean>;
+  
+  // Polls
+  getActivePolls(): Promise<Array<PollDb & { options: PollOption[] }>>;
+  getPoll(id: string): Promise<(PollDb & { options: PollOption[] }) | undefined>;
+  createPoll(poll: InsertPollDb, options: string[]): Promise<PollDb>;
+  hasVoted(pollId: string, visitorId: string): Promise<boolean>;
+  vote(pollId: string, optionId: string, visitorId: string): Promise<void>;
+  
+  // Activity Feed
+  getRecentActivity(limit?: number): Promise<ActivityItemDb[]>;
+  createActivityItem(item: InsertActivityItemDb): Promise<ActivityItemDb>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -309,6 +332,79 @@ export class DatabaseStorage implements IStorage {
       .from(chatRoomMembers)
       .where(and(eq(chatRoomMembers.roomId, roomId), eq(chatRoomMembers.userId, userId)));
     return !!member;
+  }
+
+  // Polls
+  async getActivePolls(): Promise<Array<PollDb & { options: PollOption[] }>> {
+    const activePollsList = await db
+      .select()
+      .from(polls)
+      .where(eq(polls.isActive, true))
+      .orderBy(desc(polls.createdAt));
+    
+    const pollsWithOptions = await Promise.all(
+      activePollsList.map(async (poll) => {
+        const options = await db
+          .select()
+          .from(pollOptions)
+          .where(eq(pollOptions.pollId, poll.id));
+        return { ...poll, options };
+      })
+    );
+    
+    return pollsWithOptions;
+  }
+
+  async getPoll(id: string): Promise<(PollDb & { options: PollOption[] }) | undefined> {
+    const [poll] = await db.select().from(polls).where(eq(polls.id, id));
+    if (!poll) return undefined;
+    
+    const options = await db
+      .select()
+      .from(pollOptions)
+      .where(eq(pollOptions.pollId, id));
+    
+    return { ...poll, options };
+  }
+
+  async createPoll(poll: InsertPollDb, optionTexts: string[]): Promise<PollDb> {
+    const [created] = await db.insert(polls).values(poll).returning();
+    
+    for (const text of optionTexts) {
+      await db.insert(pollOptions).values({ pollId: created.id, text });
+    }
+    
+    return created;
+  }
+
+  async hasVoted(pollId: string, visitorId: string): Promise<boolean> {
+    const [vote] = await db
+      .select()
+      .from(pollVotes)
+      .where(and(eq(pollVotes.pollId, pollId), eq(pollVotes.visitorId, visitorId)));
+    return !!vote;
+  }
+
+  async vote(pollId: string, optionId: string, visitorId: string): Promise<void> {
+    await db.insert(pollVotes).values({ pollId, optionId, visitorId });
+    await db
+      .update(pollOptions)
+      .set({ votes: sql`${pollOptions.votes} + 1` })
+      .where(eq(pollOptions.id, optionId));
+  }
+
+  // Activity Feed
+  async getRecentActivity(limit: number = 20): Promise<ActivityItemDb[]> {
+    return db
+      .select()
+      .from(activityItems)
+      .orderBy(desc(activityItems.createdAt))
+      .limit(limit);
+  }
+
+  async createActivityItem(item: InsertActivityItemDb): Promise<ActivityItemDb> {
+    const [created] = await db.insert(activityItems).values(item).returning();
+    return created;
   }
 }
 
