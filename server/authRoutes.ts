@@ -428,4 +428,148 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// =====================================================
+// Profile Update
+// =====================================================
+
+router.patch(
+  "/profile",
+  authMiddleware,
+  [
+    body("username")
+      .optional()
+      .isLength({ min: 3, max: 50 })
+      .matches(/^[a-zA-Z0-9_]+$/)
+      .withMessage("Username must be 3-50 alphanumeric characters with underscores"),
+    body("bio")
+      .optional({ nullable: true })
+      .custom((value) => {
+        if (value === null || value === "") return true;
+        if (typeof value === "string" && value.length <= 500) return true;
+        throw new Error("Bio must be 500 characters or less");
+      }),
+    body("avatarUrl")
+      .optional({ nullable: true })
+      .custom((value) => {
+        if (value === null || value === "") return true;
+        try {
+          new URL(value);
+          return true;
+        } catch {
+          throw new Error("Avatar must be a valid URL");
+        }
+      }),
+    body("holdingsVisible")
+      .optional()
+      .isBoolean()
+      .withMessage("Holdings visibility must be true or false"),
+  ],
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      if (!req.user) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
+
+      const { username, bio, avatarUrl, holdingsVisible } = req.body;
+      const updates: Record<string, any> = {};
+
+      if (username !== undefined && username !== req.user.username) {
+        const existingUsername = await storage.getUserByUsername(username);
+        if (existingUsername && existingUsername.id !== req.user.id) {
+          res.status(400).json({ error: "Username already taken" });
+          return;
+        }
+        updates.username = username;
+      }
+
+      if (bio !== undefined) updates.bio = bio === "" ? null : bio;
+      if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl === "" ? null : avatarUrl;
+      if (holdingsVisible !== undefined) updates.holdingsVisible = holdingsVisible;
+
+      if (Object.keys(updates).length === 0) {
+        res.status(400).json({ error: "No valid fields to update" });
+        return;
+      }
+
+      const updatedUser = await storage.updateUser(req.user.id, updates);
+      if (!updatedUser) {
+        res.status(500).json({ error: "Failed to update profile" });
+        return;
+      }
+
+      res.json({
+        user: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          walletAddress: updatedUser.walletAddress,
+          role: updatedUser.role,
+          avatarUrl: updatedUser.avatarUrl,
+          bio: updatedUser.bio,
+          holdingsVisible: updatedUser.holdingsVisible,
+          createdAt: updatedUser.createdAt,
+        },
+      });
+    } catch (error) {
+      console.error("[Auth] Profile update error:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  }
+);
+
+// Change password (for email users)
+router.post(
+  "/change-password",
+  authMiddleware,
+  [
+    body("currentPassword").notEmpty().withMessage("Current password is required"),
+    body("newPassword")
+      .isLength({ min: 8 })
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      .withMessage("New password must be at least 8 characters with lowercase, uppercase, and number"),
+  ],
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      if (!req.user) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
+
+      if (!req.user.passwordHash) {
+        res.status(400).json({ error: "Password change not available for wallet-only accounts" });
+        return;
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      const isValid = await verifyPassword(currentPassword, req.user.passwordHash);
+      if (!isValid) {
+        res.status(401).json({ error: "Current password is incorrect" });
+        return;
+      }
+
+      const newPasswordHash = await hashPassword(newPassword);
+      await storage.updateUser(req.user.id, { passwordHash: newPasswordHash });
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("[Auth] Password change error:", error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  }
+);
+
 export default router;

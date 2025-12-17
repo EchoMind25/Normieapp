@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -8,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Terminal, Menu, X, Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield } from "lucide-react";
+import { Terminal, Menu, X, Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings } from "lucide-react";
 import { SiTelegram, SiX } from "react-icons/si";
 import { NORMIE_TOKEN } from "@shared/schema";
 import type { TokenMetrics } from "@shared/schema";
@@ -22,6 +23,7 @@ interface HeaderProps {
 }
 
 export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
+  const [, setLocation] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
@@ -160,15 +162,19 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
                   }
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setLocation("/profile")} data-testid="menu-profile">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuItem data-testid="menu-admin">
                       <Shield className="h-4 w-4 mr-2" />
                       Admin Panel
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                   </>
                 )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} data-testid="menu-logout">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout

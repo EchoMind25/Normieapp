@@ -1,0 +1,442 @@
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound } from "lucide-react";
+
+const profileSchema = z.object({
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(50, "Username must be 50 characters or less")
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
+  bio: z.string().max(500, "Bio must be 500 characters or less").optional().or(z.literal("")),
+  avatarUrl: z.string().refine(
+    (val) => val === "" || /^https?:\/\/.+/.test(val),
+    "Must be a valid URL or empty"
+  ).optional(),
+  holdingsVisible: z.boolean(),
+});
+
+type ProfileFormData = z.infer<typeof profileSchema>;
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      "Password must contain lowercase, uppercase, and number"
+    ),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type PasswordFormData = z.infer<typeof passwordSchema>;
+
+export default function Profile() {
+  const [, setLocation] = useLocation();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  const profileForm = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      username: user?.username || "",
+      bio: user?.bio || "",
+      avatarUrl: user?.avatarUrl || "",
+      holdingsVisible: user?.holdingsVisible || false,
+    },
+  });
+
+  const passwordForm = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: ProfileFormData) => {
+      const res = await apiRequest("PATCH", "/api/auth/profile", {
+        username: data.username,
+        bio: data.bio || "",
+        avatarUrl: data.avatarUrl || "",
+        holdingsVisible: data.holdingsVisible,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update profile");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      if (data?.user) {
+        profileForm.reset({
+          username: data.user.username || "",
+          bio: data.user.bio || "",
+          avatarUrl: data.user.avatarUrl || "",
+          holdingsVisible: data.user.holdingsVisible || false,
+        });
+      }
+      toast({ title: "Profile updated", description: "Your changes have been saved" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: PasswordFormData) => {
+      const res = await apiRequest("POST", "/api/auth/change-password", {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to change password");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      passwordForm.reset();
+      setShowPasswordForm(false);
+      toast({ title: "Password changed", description: "Your password has been updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Password change failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-muted-foreground font-mono">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    setLocation("/");
+    return null;
+  }
+
+  const onProfileSubmit = (data: ProfileFormData) => {
+    updateProfileMutation.mutate(data);
+  };
+
+  const onPasswordSubmit = (data: PasswordFormData) => {
+    changePasswordMutation.mutate(data);
+  };
+
+  const hasEmailAuth = !!user.email;
+  const hasWalletAuth = !!user.walletAddress;
+
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation("/")}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold font-mono">Profile Settings</h1>
+            <p className="text-muted-foreground text-sm">Manage your account</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-mono">
+              <User className="h-5 w-5" />
+              Account Info
+            </CardTitle>
+            <CardDescription>Your account details and connected methods</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={user.avatarUrl || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary font-mono text-xl">
+                  {user.username.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold">{user.username}</span>
+                  {user.role === "admin" && (
+                    <Shield className="h-4 w-4 text-primary" />
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  {hasWalletAuth && (
+                    <span className="flex items-center gap-1">
+                      <Wallet className="h-3 w-3" />
+                      {user.walletAddress?.slice(0, 4)}...{user.walletAddress?.slice(-4)}
+                    </span>
+                  )}
+                  {hasEmailAuth && (
+                    <span className="flex items-center gap-1">
+                      <Mail className="h-3 w-3" />
+                      {user.email}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-mono">Edit Profile</CardTitle>
+            <CardDescription>Update your public profile information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...profileForm}>
+              <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                <FormField
+                  control={profileForm.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Username</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="normie_123"
+                          className="font-mono"
+                          data-testid="input-username"
+                        />
+                      </FormControl>
+                      <FormDescription>3-50 characters, letters, numbers, underscores only</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={profileForm.control}
+                  name="bio"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bio</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          placeholder="Tell us about yourself..."
+                          className="font-mono resize-none"
+                          rows={3}
+                          data-testid="input-bio"
+                        />
+                      </FormControl>
+                      <FormDescription>{field.value?.length || 0}/500 characters</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={profileForm.control}
+                  name="avatarUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Avatar URL</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="https://example.com/avatar.png"
+                          className="font-mono"
+                          data-testid="input-avatar-url"
+                        />
+                      </FormControl>
+                      <FormDescription>Direct link to your profile picture</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={profileForm.control}
+                  name="holdingsVisible"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-md border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="flex items-center gap-2">
+                          {field.value ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          Show Holdings
+                        </FormLabel>
+                        <FormDescription>
+                          Display your $NORMIE balance on your public profile
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-holdings-visible"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <Button
+                  type="submit"
+                  disabled={updateProfileMutation.isPending}
+                  className="w-full"
+                  data-testid="button-save-profile"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {hasEmailAuth && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-mono">
+                <KeyRound className="h-5 w-5" />
+                Security
+              </CardTitle>
+              <CardDescription>Manage your password</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!showPasswordForm ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPasswordForm(true)}
+                  data-testid="button-change-password"
+                >
+                  Change Password
+                </Button>
+              ) : (
+                <Form {...passwordForm}>
+                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                    <FormField
+                      control={passwordForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="password"
+                              data-testid="input-current-password"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={passwordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="password"
+                              data-testid="input-new-password"
+                            />
+                          </FormControl>
+                          <FormDescription>8+ characters with lowercase, uppercase, and number</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={passwordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="password"
+                              data-testid="input-confirm-password"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowPasswordForm(false);
+                          passwordForm.reset();
+                        }}
+                        data-testid="button-cancel-password"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={changePasswordMutation.isPending}
+                        data-testid="button-save-password"
+                      >
+                        {changePasswordMutation.isPending ? "Updating..." : "Update Password"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="text-center text-xs text-muted-foreground font-mono pb-8">
+          Member since {new Date(user.createdAt).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+  );
+}
