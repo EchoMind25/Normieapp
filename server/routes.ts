@@ -10,7 +10,7 @@ import authRoutes from "./authRoutes";
 import { db } from "./db";
 import { manualDevBuys, users, sessions } from "@shared/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
-import { verifyJWT } from "./auth";
+import { verifyJWT, isReservedUsername } from "./auth";
 import { z } from "zod";
 import { storage } from "./storage";
 
@@ -680,11 +680,27 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Message too long (max 500 chars)" });
       }
       
+      // Block reserved sender names UNLESS the userId is an admin
+      let validatedSenderName = senderName || "Anonymous";
+      let isAdminUser = false;
+      
+      if (userId) {
+        const user = await storage.getUser(userId);
+        if (user && user.role === "admin") {
+          isAdminUser = true;
+        }
+      }
+      
+      // Only strip reserved names for non-admin users
+      if (isReservedUsername(validatedSenderName) && !isAdminUser) {
+        validatedSenderName = "Anonymous";
+      }
+      
       const message = await storage.createChatMessage({
         roomId: req.params.roomId,
         content: content.trim(),
         senderId: userId || null,
-        senderName: senderName || "Anonymous",
+        senderName: validatedSenderName,
       });
       
       res.json(message);

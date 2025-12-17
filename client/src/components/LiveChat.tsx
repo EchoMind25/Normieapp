@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Send, Users, Loader2, Hash } from "lucide-react";
+import { MessageSquare, Send, Users, Loader2, Hash, Crown, ShieldCheck } from "lucide-react";
 import type { ChatRoom, ChatMessage } from "@shared/schema";
 
 const DEFAULT_ROOM_ID = "00000000-0000-0000-0000-000000000001";
@@ -30,9 +30,23 @@ interface ChatMessageItemProps {
   isOwnMessage: boolean;
 }
 
+// Check if username is the official Normie admin
+function isNormieAdmin(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return name.toLowerCase() === "normie";
+}
+
+// Check if a username is reserved (for client-side validation)
+function isReservedName(name: string): boolean {
+  const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const reserved = ["normie", "normieceo", "thenormie", "normienation", "n0rmie", "normi3"];
+  return reserved.includes(normalized);
+}
+
 function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
   const timestamp = message.createdAt ? new Date(message.createdAt) : new Date();
   const timeStr = timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const isAdmin = isNormieAdmin(message.senderName);
   
   return (
     <div 
@@ -40,8 +54,14 @@ function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
       data-testid={`chat-message-${message.id}`}
     >
       <div className="flex items-center gap-2 mb-0.5">
-        <span className="text-xs font-mono font-semibold text-primary">
+        <span className={`text-xs font-mono font-semibold ${isAdmin ? "text-yellow-500" : "text-primary"}`}>
+          {isAdmin && <Crown className="w-3 h-3 inline mr-1" />}
           {message.senderName || "Anonymous"}
+          {isAdmin && (
+            <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px] text-yellow-500 border-yellow-500/50">
+              CEO
+            </Badge>
+          )}
         </span>
         <span className="text-xs text-muted-foreground">{timeStr}</span>
       </div>
@@ -104,9 +124,19 @@ export function LiveChat() {
   };
 
   const handleNameSave = () => {
-    if (tempName.trim()) {
-      setUserName(tempName.trim());
-      setVisitorName(tempName.trim());
+    const trimmedName = tempName.trim();
+    if (trimmedName) {
+      // Block reserved names
+      if (isReservedName(trimmedName)) {
+        toast({ 
+          title: "Reserved Name", 
+          description: "This name is reserved for official use only", 
+          variant: "destructive" 
+        });
+        return;
+      }
+      setUserName(trimmedName);
+      setVisitorName(trimmedName);
     }
     setIsEditingName(false);
   };

@@ -3,6 +3,8 @@ import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { storage } from "./storage";
+import { hashPassword, ADMIN_USERNAME, ADMIN_EMAIL } from "./auth";
 
 const app = express();
 const httpServer = createServer(app);
@@ -62,7 +64,40 @@ app.use((req, res, next) => {
   next();
 });
 
+// Seed admin account on startup
+async function seedAdminAccount() {
+  try {
+    const existingAdmin = await storage.getUserByUsername(ADMIN_USERNAME);
+    if (existingAdmin) {
+      log(`Admin account "${ADMIN_USERNAME}" already exists`, "seed");
+      return;
+    }
+
+    // Create admin account with password from environment or default
+    const adminPassword = process.env.NORMIE_ADMIN_PASSWORD || "NormieAdmin2024!";
+    const passwordHash = await hashPassword(adminPassword);
+
+    await storage.createUser({
+      username: ADMIN_USERNAME,
+      email: ADMIN_EMAIL,
+      passwordHash,
+      role: "admin",
+      walletAddress: process.env.ADMIN_WALLET_ADDRESS || null,
+    });
+
+    log(`Admin account "${ADMIN_USERNAME}" created successfully`, "seed");
+    if (!process.env.NORMIE_ADMIN_PASSWORD) {
+      log("WARNING: Using default admin password. Set NORMIE_ADMIN_PASSWORD in production!", "seed");
+    }
+  } catch (error) {
+    log(`Failed to seed admin account: ${error}`, "seed");
+  }
+}
+
 (async () => {
+  // Seed admin account first
+  await seedAdminAccount();
+  
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

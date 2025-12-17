@@ -11,6 +11,8 @@ import {
   generatePasswordResetToken,
   authMiddleware,
   determineRole,
+  isReservedUsername,
+  ADMIN_USERNAME,
   type AuthRequest,
 } from "./auth";
 
@@ -78,8 +80,13 @@ router.post("/wallet/verify", async (req: Request, res: Response) => {
     let user = await storage.getUserByWallet(walletAddress);
     
     if (!user) {
-      const username = `normie_${walletAddress.slice(0, 8)}`;
+      let username = `normie_${walletAddress.slice(0, 8)}`;
       const role = determineRole(walletAddress);
+      
+      // Ensure wallet-generated usernames don't conflict with reserved names
+      if (isReservedUsername(username)) {
+        username = `user_${walletAddress.slice(0, 8)}`;
+      }
       
       user = await storage.createUser({
         walletAddress,
@@ -166,6 +173,12 @@ router.post(
         return;
       }
 
+      // Block reserved usernames (Normie, NormieCEO, variations)
+      if (isReservedUsername(username)) {
+        res.status(400).json({ error: "This username is reserved" });
+        return;
+      }
+
       const passwordHash = await hashPassword(password);
 
       const user = await storage.createUser({
@@ -215,7 +228,7 @@ router.post(
 router.post(
   "/login",
   [
-    body("email").isEmail().normalizeEmail(),
+    body("identifier").notEmpty().withMessage("Username or email is required"),
     body("password").notEmpty(),
   ],
   async (req: Request, res: Response) => {
@@ -226,9 +239,18 @@ router.post(
         return;
       }
 
-      const { email, password } = req.body;
+      const { identifier, password } = req.body;
 
-      const user = await storage.getUserByEmail(email);
+      // Try to find user by email first, then by username
+      let user = identifier.includes("@") 
+        ? await storage.getUserByEmail(identifier.toLowerCase())
+        : await storage.getUserByUsername(identifier);
+      
+      // If not found by username, try email as fallback
+      if (!user && !identifier.includes("@")) {
+        user = await storage.getUserByEmail(identifier.toLowerCase());
+      }
+
       if (!user || !user.passwordHash) {
         res.status(401).json({ error: "Invalid credentials" });
         return;
@@ -481,6 +503,12 @@ router.patch(
       const updates: Record<string, any> = {};
 
       if (username !== undefined && username !== req.user.username) {
+        // Block reserved usernames (except for admin who already has "Normie")
+        if (isReservedUsername(username) && req.user.role !== "admin") {
+          res.status(400).json({ error: "This username is reserved" });
+          return;
+        }
+        
         const existingUsername = await storage.getUserByUsername(username);
         if (existingUsername && existingUsername.id !== req.user.id) {
           res.status(400).json({ error: "Username already taken" });

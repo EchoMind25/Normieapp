@@ -122,6 +122,44 @@ export function determineRole(walletAddress: string | null): string {
   return "user";
 }
 
+// Reserved username patterns to protect the Normie brand
+const RESERVED_USERNAME_PATTERNS = [
+  /^n[o0]rm[i1!]e$/i,
+  /^n[o0]rm[i1!]eceo$/i,
+  /^n[o0]rm[i1!]e[_\-\s]?ceo$/i,
+  /^the[_\-\s]?n[o0]rm[i1!]e$/i,
+  /^n[o0]rm[i1!]e[_\-\s]?nation$/i,
+  /^official[_\-\s]?n[o0]rm[i1!]e$/i,
+  /^real[_\-\s]?n[o0]rm[i1!]e$/i,
+  /^normie[_\-\s]?admin$/i,
+  /^n0rm1e$/i,
+  /^n0rmie$/i,
+  /^normi3$/i,
+];
+
+export function isReservedUsername(username: string): boolean {
+  // Normalize the username - remove special chars, lowercase
+  const normalized = username.toLowerCase().replace(/[^a-z0-9]/g, "");
+  
+  // Check exact matches for core reserved names
+  const exactReserved = ["normie", "normieceo", "thenormie", "normienation"];
+  if (exactReserved.includes(normalized)) {
+    return true;
+  }
+  
+  // Check pattern matches
+  for (const pattern of RESERVED_USERNAME_PATTERNS) {
+    if (pattern.test(username)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+export const ADMIN_USERNAME = "Normie";
+export const ADMIN_EMAIL = "admin@normienation.com";
+
 export async function authMiddleware(
   req: AuthRequest,
   res: Response,
