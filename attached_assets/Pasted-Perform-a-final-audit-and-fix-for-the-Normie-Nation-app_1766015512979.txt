@@ -1,0 +1,27 @@
+Perform a final audit and fix for the Normie Nation app (memecoin companion hub on Replit with live dashboard from Solana/Base, price chart, meme generator with imported Pepe/crypto stickers, art gallery for user uploads, NFT marketplace, community chats (encrypted/public), live streaming, user profiles, authentication, admin dashboard for Normie CEO, PostgreSQL DB integration) before beta deployment.
+
+Site-Wide Audit and Fixes:
+
+
+Run a comprehensive check: Inspect console for errors/warnings (e.g., unhandled promises, React keys, deprecated APIs). Test all sections (Dashboard, Memes, Community, Art Gallery, NFT, Profiles, Chats, Streaming) for functionality—navigation, forms, API calls, edge cases (poor network, mobile, empty data).
+Remove unused code: Scan for unused imports/variables/functions/components/files (manual or ESLint); delete to reduce bundle size.
+Optimize: Fix re-renders (React DevTools), inefficient loops; add memoization (React.memo, useMemo). Ensure responsiveness (media queries), accessibility (ARIA, keyboard nav), security (sanitized inputs, env vars for keys).
+Confirm previous fixes: Meme generator uses imported stickers only (no generation), prominent display (opacity=1, shadows/borders), default light gray background with placeholder text. Chart not reversed, top bar metrics live/accurate/no duplication, holders >0.
+General cleanup: Consistent code format, remove production console.logs, update dependencies (npm outdated).
+
+
+Add Favicon and App Icon: Use this image URL: https://res.cloudinary.com/dmt4dpsnw/image/upload/v1765997164/Normie-Favicon_on9ov0.png (green frog with glasses/beard/red outline on black—Pepe variant).
+
+
+Favicon: Add to index.html <head>: <link rel="icon" href="URL" type="image/png" sizes="any">; include variants (16x16, 32x32, etc.) if possible.
+Top-Left Icon: Place small version (32x32/48x48) in header/navbar next to title, clickable to home: Normie Icon.
+App Icon/PWA: Update/create manifest.json with "icons": [{"src": "URL", "sizes": "192x192", "type": "image/png"}, {"src": "URL", "sizes": "512x512", "type": "image/png"}]; add <link rel="manifest" href="/manifest.json"> to <head>. Support maskable icons.
+
+
+Normie Admin Account:
+
+
+Create/provide credentials: If not exists, add admin user in PostgreSQL (users table): username 'normie_ceo', email 'normie@normienation.com', hashed password (generate secure random, e.g., via bcrypt). Output credentials in response (e.g., Username: normie_ceo, Password: [generated]).
+Forced Password Change: Add DB flag (e.g., password_changed: boolean default false). On login, if false and user is admin, redirect to change password form; prevent access to other pages until changed. Prompt repeatedly (e.g., modal/alert) if not done. Update flag to true on successful change.
+
+Make minimal changes—provide code diffs/updated files. Test fully: Reload, check favicon/icon, login as admin (force change), audit no issues. Deploy to Replit and confirm beta-ready.

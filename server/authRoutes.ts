@@ -296,6 +296,7 @@ router.post(
           walletAddress: user.walletAddress,
           role: user.role,
           avatarUrl: user.avatarUrl,
+          passwordChanged: user.passwordChanged ?? true,
         },
         token,
       });
@@ -442,6 +443,7 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
         bio: req.user.bio,
         holdingsVisible: req.user.holdingsVisible,
         createdAt: req.user.createdAt,
+        passwordChanged: req.user.passwordChanged ?? true,
       },
     });
   } catch (error) {
@@ -449,6 +451,56 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: "Failed to get user data" });
   }
 });
+
+router.post(
+  "/force-change-password",
+  authMiddleware,
+  [
+    body("currentPassword").notEmpty(),
+    body("newPassword")
+      .isLength({ min: 8 })
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      .withMessage("Password must be at least 8 characters with lowercase, uppercase, and number"),
+  ],
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      if (!req.user) {
+        res.status(401).json({ error: "Not authenticated" });
+        return;
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!req.user.passwordHash) {
+        res.status(400).json({ error: "Account does not use password authentication" });
+        return;
+      }
+
+      const isValid = await verifyPassword(currentPassword, req.user.passwordHash);
+      if (!isValid) {
+        res.status(401).json({ error: "Current password is incorrect" });
+        return;
+      }
+
+      const newPasswordHash = await hashPassword(newPassword);
+      await storage.updateUser(req.user.id, {
+        passwordHash: newPasswordHash,
+        passwordChanged: true,
+      });
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("[Auth] Force change password error:", error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  }
+);
 
 // =====================================================
 // Profile Update

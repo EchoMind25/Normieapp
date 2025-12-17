@@ -100,6 +100,7 @@ export const users = pgTable("users", {
   selectedIconId: uuid("selected_icon_id").references(() => icons.id),
   role: varchar("role", { length: 20 }).default("user"),
   holdingsVisible: boolean("holdings_visible").default(false),
+  passwordChanged: boolean("password_changed").default(true),
   bannedAt: timestamp("banned_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

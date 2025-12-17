@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import Home from "@/pages/Home";
 import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
@@ -28,6 +29,7 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
+          <ForcePasswordChange />
           <Router />
         </TooltipProvider>
       </AuthProvider>

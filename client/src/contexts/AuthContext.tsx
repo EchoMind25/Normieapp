@@ -14,6 +14,7 @@ export interface User {
   bio: string | null;
   holdingsVisible: boolean;
   createdAt: string;
+  passwordChanged?: boolean;
 }
 
 interface AuthContextType {
@@ -21,12 +22,14 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  requiresPasswordChange: boolean;
   loginWithWallet: (provider: WalletProvider) => Promise<boolean>;
   loginWithEmail: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, username: string) => Promise<boolean>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<boolean>;
   resetPassword: (token: string, password: string) => Promise<boolean>;
+  forceChangePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -154,17 +157,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [toast]);
 
+  const forceChangePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+      const res = await apiRequest("POST", "/api/auth/force-change-password", { currentPassword, newPassword });
+      if (res.ok) {
+        await refetch();
+        toast({ title: "Password changed!", description: "Your password has been updated successfully" });
+        return true;
+      }
+      const error = await res.json();
+      toast({ title: "Password change failed", description: error.error || error.errors?.[0]?.msg || "Could not change password", variant: "destructive" });
+      return false;
+    } catch (error) {
+      toast({ title: "Error", description: "Password change failed", variant: "destructive" });
+      return false;
+    }
+  }, [refetch, toast]);
+
+  const requiresPasswordChange = !!(user && user.role === "admin" && user.passwordChanged === false);
+
   const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated: !!user,
     isAdmin: user?.role === "admin",
+    requiresPasswordChange,
     loginWithWallet,
     loginWithEmail,
     register,
     logout,
     requestPasswordReset,
     resetPassword,
+    forceChangePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

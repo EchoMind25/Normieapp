@@ -9,18 +9,18 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "https://res.cloudinary.com/dmt4dpsnw/image/upload/w_64,h_64,c_fill/v1765997164/Normie-Favicon_on9ov0.png",
       "sizes": "64x64",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-192.png",
+      "src": "https://res.cloudinary.com/dmt4dpsnw/image/upload/w_192,h_192,c_fill/v1765997164/Normie-Favicon_on9ov0.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "https://res.cloudinary.com/dmt4dpsnw/image/upload/w_512,h_512,c_fill/v1765997164/Normie-Favicon_on9ov0.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

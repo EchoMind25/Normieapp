@@ -745,14 +745,14 @@ export async function registerRoutes(
     { id: "ethereum", name: "Ethereum", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Ethereum-icon-purple.svg/1200px-Ethereum-icon-purple.svg.png" },
     { id: "solana", name: "Solana", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png" },
     { id: "diamond", name: "Diamond", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Diamond_font_awesome.svg/1200px-Diamond_font_awesome.svg.png" },
-    { id: "rocket", name: "Rocket", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Twemoji_1f680.svg/1200px-Twemoji_1f680.svg.png" },
-    { id: "fire", name: "Fire", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Noto_Emoji_v2.034_1f525.svg/1200px-Noto_Emoji_v2.034_1f525.svg.png" },
-    { id: "money", name: "Money", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Twemoji2_1f4b0.svg/1200px-Twemoji2_1f4b0.svg.png" },
-    { id: "moon", name: "Moon", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Twemoji12_1f315.svg/1200px-Twemoji12_1f315.svg.png" },
-    { id: "clover", name: "Clover", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Clover_symbol.svg/1200px-Clover_symbol.svg.png" },
-    { id: "thumbsup", name: "Thumbs Up", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Twemoji_1f44d.svg/1200px-Twemoji_1f44d.svg.png" },
-    { id: "skull", name: "Skull", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Twemoji_1f480.svg/1200px-Twemoji_1f480.svg.png" },
-    { id: "crown", name: "Crown", category: "brand", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Twemoji2_1f451.svg/1200px-Twemoji2_1f451.svg.png" },
+    { id: "rocket", name: "Rocket", category: "crypto", url: "https://em-content.zobj.net/thumbs/240/twitter/322/rocket_1f680.png" },
+    { id: "fire", name: "Fire", category: "crypto", url: "https://em-content.zobj.net/thumbs/240/twitter/322/fire_1f525.png" },
+    { id: "money", name: "Money", category: "crypto", url: "https://em-content.zobj.net/thumbs/240/twitter/322/money-bag_1f4b0.png" },
+    { id: "moon", name: "Moon", category: "crypto", url: "https://em-content.zobj.net/thumbs/240/twitter/322/full-moon_1f315.png" },
+    { id: "clover", name: "Clover", category: "brand", url: "https://em-content.zobj.net/thumbs/240/twitter/322/four-leaf-clover_1f340.png" },
+    { id: "thumbsup", name: "Thumbs Up", category: "brand", url: "https://em-content.zobj.net/thumbs/240/twitter/322/thumbs-up_1f44d.png" },
+    { id: "skull", name: "Skull", category: "brand", url: "https://em-content.zobj.net/thumbs/240/twitter/322/skull_1f480.png" },
+    { id: "crown", name: "Crown", category: "brand", url: "https://em-content.zobj.net/thumbs/240/twitter/322/crown_1f451.png" },
   ];
 
   const stickerCache = new Map<string, { data: Buffer; contentType: string; fetchedAt: number }>();

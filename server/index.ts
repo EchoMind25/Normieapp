@@ -83,6 +83,7 @@ async function seedAdminAccount() {
       passwordHash,
       role: "admin",
       walletAddress: process.env.ADMIN_WALLET_ADDRESS || null,
+      passwordChanged: false,
     });
 
     log(`Admin account "${ADMIN_USERNAME}" created successfully`, "seed");
