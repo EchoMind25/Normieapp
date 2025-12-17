@@ -13,14 +13,19 @@ export function useWebSocket() {
 
   const fetchMetrics = useCallback(async () => {
     try {
+      console.log("[NORMIE] Fetching metrics...");
       const response = await fetch("/api/metrics", {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       });
-      if (response.status === 304) return;
+      if (response.status === 304) {
+        console.log("[NORMIE] 304 response, skipping");
+        return;
+      }
       if (!response.ok) throw new Error("Failed to fetch metrics");
       
       const data = await response.json();
+      console.log("[NORMIE] Got metrics:", data.price, data.marketCap, data.lastUpdated);
       if (mountedRef.current) {
         hasReceivedDataRef.current = true;
         setMetrics(data);
@@ -28,7 +33,7 @@ export function useWebSocket() {
         setIsLoading(false);
       }
     } catch (error) {
-      console.error("[Polling] Metrics fetch error:", error);
+      console.error("[NORMIE] Metrics fetch error:", error);
       if (mountedRef.current) {
         setIsConnected(false);
       }
