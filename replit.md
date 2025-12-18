@@ -60,6 +60,15 @@ Preferred communication style: Simple, everyday language.
 - **Development**: `npm run dev` - Vite dev server with Express backend
 - **Production Build**: `npm run build` - Compiles client with Vite, bundles server with esbuild
 - **Database Migrations**: Drizzle Kit with `npm run db:push`
+- **Health Check**: `GET /api/health` - Validates database connectivity, tables, polls, and admin user
+
+### Production Hardening (December 2025)
+- **Database Connection**: Retry logic with 3 attempts, environment-aware logging (DEVELOPMENT/PRODUCTION mode)
+- **Startup Verification**: Checks all 18 required tables exist before accepting requests
+- **Error Handling**: Request-scoped logging with correlation IDs for poll and database operations
+- **Sticker Proxy**: 2-retry bounded retries, 5MB size guards, in-memory caching, detailed error diagnostics
+- **Seed Data**: 6 sample community polls seeded automatically (idempotent execution)
+- **Admin Account**: Default password "NormieAdmin2024!" unless NORMIE_ADMIN_PASSWORD env var is set
 
 ## External Dependencies
 
