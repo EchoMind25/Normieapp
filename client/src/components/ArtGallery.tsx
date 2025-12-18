@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/use-upload";
 import { 
   Image, 
   Upload, 
@@ -121,8 +122,8 @@ function UploadForm({ onSuccess }: UploadFormProps) {
   const [creatorName, setCreatorName] = useState("");
   const [tags, setTags] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const { uploadFile, isUploading } = useUpload();
 
   const uploadMutation = useMutation({
     mutationFn: async (data: { title: string; description: string; imageUrl: string; creatorName: string; tags: string[] }) => {
@@ -173,26 +174,16 @@ function UploadForm({ onSuccess }: UploadFormProps) {
     let finalImageUrl = imageUrl;
 
     if (selectedFile) {
-      setIsUploading(true);
       try {
-        const formData = new FormData();
-        formData.append("image", selectedFile);
-        const response = await fetch("/api/gallery/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Upload failed");
+        const result = await uploadFile(selectedFile);
+        if (!result) {
+          throw new Error("Upload failed");
         }
-        const result = await response.json();
-        finalImageUrl = result.url;
+        finalImageUrl = result.objectPath;
       } catch (error: any) {
         toast({ title: "Upload Error", description: error.message || "Failed to upload image.", variant: "destructive" });
-        setIsUploading(false);
         return;
       }
-      setIsUploading(false);
     }
 
     uploadMutation.mutate({

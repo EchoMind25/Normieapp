@@ -674,7 +674,10 @@ export async function registerRoutes(
     }
   });
 
+  // DEPRECATED: Legacy multer upload - files don't persist across deployments
+  // Use /api/uploads/request-url for Object Storage uploads instead
   app.post("/api/gallery/upload", galleryUpload.single("image"), (req: Request, res: Response) => {
+    console.warn("[Gallery] DEPRECATED: Using legacy upload. Files will NOT persist. Use Object Storage instead.");
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });
