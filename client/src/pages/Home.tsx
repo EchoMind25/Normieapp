@@ -13,7 +13,13 @@ export default function Home() {
   const { isDark, toggleTheme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground relative">
+      <div className="ambient-background" aria-hidden="true">
+        <div className="ambient-glow-orb ambient-glow-orb-1" />
+        <div className="ambient-glow-orb ambient-glow-orb-2" />
+      </div>
+      <div className="scanline-overlay" aria-hidden="true" />
+      
       <Header
         metrics={metrics}
         isDark={isDark}

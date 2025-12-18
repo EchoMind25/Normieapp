@@ -336,6 +336,11 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       axis: "x" as const,
       intersect: false,
     },
+    events: ["mousemove", "mouseout", "click", "touchstart", "touchmove", "touchend"],
+    hover: {
+      mode: "nearest" as const,
+      intersect: false,
+    },
   };
 
   const totalRemoved = metrics
@@ -541,7 +546,13 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
                   <Skeleton className="w-full h-full" />
                 </div>
               ) : chartData.length > 0 ? (
-                <Line data={priceChartData} options={priceChartOptions} />
+                <div 
+                  className="h-full w-full" 
+                  style={{ touchAction: "none" }}
+                  data-testid="chart-touch-container"
+                >
+                  <Line data={priceChartData} options={priceChartOptions} />
+                </div>
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground font-mono text-sm">
                   <Clock className="h-4 w-4 mr-2" />
