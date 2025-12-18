@@ -5,7 +5,7 @@ import type { TokenMetrics, PricePoint, DevBuy, ActivityItem } from "@shared/sch
 const RPC_ENDPOINT = "https://solana-rpc.publicnode.com";
 const DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens";
 const TOKEN_ADDRESS = NORMIE_TOKEN.address;
-const DEV_WALLET = "FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump";
+const DEV_WALLET = "8eQ8axmX7hwWdMxpq5KcqnTwMZyxjAzo7fc5sEdvj2EB";
 const BURN_ADDRESS = "1nc1nerator11111111111111111111111111111111";
 
 // Per dev (@NormieCEO) on X: OVER 527 million burned/locked total
