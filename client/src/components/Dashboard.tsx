@@ -194,8 +194,9 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
     return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   };
 
-  const devBuyPoints = (() => {
+  const { devBuyPoints, devBuyAmounts } = (() => {
     const result: (number | null)[] = new Array(chartData.length).fill(null);
+    const amounts: Record<number, number> = {};
     
     const getToleranceMs = () => {
       switch (timeRange) {
@@ -231,10 +232,11 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       
       if (closestIndex !== -1 && closestDiff < toleranceMs) {
         result[closestIndex] = buy.price;
+        amounts[closestIndex] = buy.amount;
       }
     });
     
-    return result;
+    return { devBuyPoints: result, devBuyAmounts: amounts };
   })();
 
   const priceChartData = {
@@ -287,6 +289,24 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
         borderWidth: 1,
         titleFont: { family: "JetBrains Mono, monospace" },
         bodyFont: { family: "JetBrains Mono, monospace" },
+        callbacks: {
+          label: function (context: any) {
+            const label = context.dataset.label || "";
+            if (label === "Dev Buys") {
+              const amount = devBuyAmounts[context.dataIndex];
+              if (amount !== undefined) {
+                const formattedAmount = amount >= 1000000
+                  ? `${(amount / 1000000).toFixed(2)}M`
+                  : amount >= 1000
+                  ? `${(amount / 1000).toFixed(1)}K`
+                  : amount.toLocaleString();
+                return `Dev Buy: ${formattedAmount} $NORMIE`;
+              }
+              return null;
+            }
+            return `${label}: ${formatPrice(context.raw)}`;
+          },
+        },
       },
     },
     scales: {
