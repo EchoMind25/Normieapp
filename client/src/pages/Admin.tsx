@@ -12,9 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowLeft, Users, Shield, Activity, Settings, Plus, Trash2, TrendingUp, Calendar,
-  Image, Check, X, Star, Eye, MessageSquare, Loader2
+  Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3
 } from "lucide-react";
-import type { GalleryItem } from "@shared/schema";
+import type { GalleryItem, Poll } from "@shared/schema";
 
 interface ManualDevBuy {
   id: string;
@@ -35,6 +35,10 @@ export default function Admin() {
   const [price, setPrice] = useState("");
   const [label, setLabel] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [pollDuration, setPollDuration] = useState("24");
 
   const { data: manualDevBuys = [], isLoading: loadingBuys } = useQuery<ManualDevBuy[]>({
     queryKey: ["/api/admin/dev-buys"],
@@ -48,6 +52,11 @@ export default function Admin() {
 
   const { data: allGallery = [], refetch: refetchGallery } = useQuery<GalleryItem[]>({
     queryKey: ["/api/gallery"],
+    enabled: isAuthenticated && user?.role === "admin",
+  });
+
+  const { data: polls = [], refetch: refetchPolls } = useQuery<Poll[]>({
+    queryKey: ["/api/polls"],
     enabled: isAuthenticated && user?.role === "admin",
   });
 
@@ -133,6 +142,25 @@ export default function Admin() {
     },
   });
 
+  const createPollMutation = useMutation({
+    mutationFn: async (data: { question: string; options: string[]; durationHours: number }) => {
+      const res = await apiRequest("POST", "/api/admin/polls", data);
+      if (!res.ok) throw new Error("Failed to create poll");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/polls"] });
+      refetchPolls();
+      toast({ title: "Poll created!", description: "The poll is now live" });
+      setPollQuestion("");
+      setPollOptions(["", ""]);
+      setPollDuration("24");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create poll", variant: "destructive" });
+    },
+  });
+
   const handleAddDevBuy = (e: React.FormEvent) => {
     e.preventDefault();
     if (!timestamp || !amount || !price) {
@@ -145,6 +173,42 @@ export default function Admin() {
       price: parseFloat(price),
       label: label || undefined,
     });
+  };
+
+  const handleCreatePoll = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validOptions = pollOptions.filter(opt => opt.trim() !== "");
+    if (!pollQuestion.trim()) {
+      toast({ title: "Error", description: "Please enter a question", variant: "destructive" });
+      return;
+    }
+    if (validOptions.length < 2) {
+      toast({ title: "Error", description: "Please add at least 2 options", variant: "destructive" });
+      return;
+    }
+    createPollMutation.mutate({
+      question: pollQuestion.trim(),
+      options: validOptions,
+      durationHours: parseInt(pollDuration),
+    });
+  };
+
+  const addPollOption = () => {
+    if (pollOptions.length < 6) {
+      setPollOptions([...pollOptions, ""]);
+    }
+  };
+
+  const removePollOption = (index: number) => {
+    if (pollOptions.length > 2) {
+      setPollOptions(pollOptions.filter((_, i) => i !== index));
+    }
+  };
+
+  const updatePollOption = (index: number, value: string) => {
+    const newOptions = [...pollOptions];
+    newOptions[index] = value;
+    setPollOptions(newOptions);
   };
 
   if (isLoading) {
@@ -194,6 +258,10 @@ export default function Admin() {
             <TabsTrigger value="chart" data-testid="tab-admin-chart">
               <TrendingUp className="w-4 h-4 mr-2" />
               Chart Markers
+            </TabsTrigger>
+            <TabsTrigger value="polls" data-testid="tab-admin-polls">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Polls
             </TabsTrigger>
             <TabsTrigger value="settings" data-testid="tab-admin-settings">
               <Settings className="w-4 h-4 mr-2" />
@@ -516,6 +584,143 @@ export default function Admin() {
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="polls">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Community Polls
+                </CardTitle>
+                <CardDescription>
+                  Create and manage community polls that appear in the Community Hub
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreatePoll} className="space-y-4 mb-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="poll-question">Poll Question *</Label>
+                    <Input
+                      id="poll-question"
+                      placeholder="What should we build next?"
+                      value={pollQuestion}
+                      onChange={(e) => setPollQuestion(e.target.value)}
+                      data-testid="input-poll-question"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Options (min 2, max 6)</Label>
+                    {pollOptions.map((option, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          placeholder={`Option ${index + 1}`}
+                          value={option}
+                          onChange={(e) => updatePollOption(index, e.target.value)}
+                          data-testid={`input-poll-option-${index}`}
+                        />
+                        {pollOptions.length > 2 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removePollOption(index)}
+                            data-testid={`button-remove-option-${index}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    {pollOptions.length < 6 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addPollOption}
+                        data-testid="button-add-option"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Option
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="poll-duration">Duration</Label>
+                    <select
+                      id="poll-duration"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
+                      value={pollDuration}
+                      onChange={(e) => setPollDuration(e.target.value)}
+                      data-testid="select-poll-duration"
+                    >
+                      <option value="1">1 hour</option>
+                      <option value="6">6 hours</option>
+                      <option value="12">12 hours</option>
+                      <option value="24">24 hours</option>
+                      <option value="48">2 days</option>
+                      <option value="168">1 week</option>
+                    </select>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    disabled={createPollMutation.isPending}
+                    data-testid="button-create-poll"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {createPollMutation.isPending ? "Creating..." : "Create Poll"}
+                  </Button>
+                </form>
+
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Active Polls ({polls.length})
+                  </h4>
+                  {polls.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">
+                      No active polls. Create one above!
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {polls.map((poll) => (
+                        <div
+                          key={poll.id}
+                          className="p-4 border rounded-md"
+                          data-testid={`poll-${poll.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <h5 className="font-medium">{poll.question}</h5>
+                            <Badge variant={poll.isActive ? "default" : "secondary"}>
+                              {poll.isActive ? "Live" : "Ended"}
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            {poll.options.map((option) => (
+                              <div key={option.id} className="flex items-center justify-between text-sm">
+                                <span>{option.text}</span>
+                                <span className="text-muted-foreground">{option.votes} votes</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 text-xs text-muted-foreground">
+                            Total: {poll.totalVotes} votes
+                            {poll.endsAt && (
+                              <span className="ml-2">
+                                Ends: {new Date(poll.endsAt).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

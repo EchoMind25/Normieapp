@@ -137,7 +137,7 @@ export function MemeGenerator() {
   
   const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
   const [prevBgUrl, setPrevBgUrl] = useState<string | null>(null);
-  const [backgroundColor, setBackgroundColor] = useState("#1a1a1a");
+  const [backgroundColor, setBackgroundColor] = useState("#2c2c2c");
   const [gradientColors, setGradientColors] = useState<string[] | null>(null);
   const [textElements, setTextElements] = useState<TextElement[]>([]);
   const [stickerElements, setStickerElements] = useState<StickerElement[]>([]);
@@ -157,9 +157,9 @@ export function MemeGenerator() {
   const [draggedElement, setDraggedElement] = useState<{ type: "text" | "sticker"; id: string } | null>(null);
   const [selectedElement, setSelectedElement] = useState<{ type: "text" | "sticker"; id: string } | null>(null);
   const [stickerCategory, setStickerCategory] = useState<"normie" | "crypto" | "brand">("normie");
-  const [bgMode, setBgMode] = useState<"solid" | "gradient" | "pattern">("solid");
+  const [bgMode, setBgMode] = useState<"solid" | "gradient" | "pattern">("pattern");
   const [textAlign, setTextAlign] = useState<"left" | "center" | "right">("center");
-  const [patternId, setPatternId] = useState<string | null>(null);
+  const [patternId, setPatternId] = useState<string | null>("grid");
   
   const [history, setHistory] = useState<CanvasState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -791,11 +791,38 @@ export function MemeGenerator() {
     link.click();
   };
 
-  const shareToX = () => {
-    const text = encodeURIComponent(
-      "Check out my $NORMIE meme! Normies unite! @NormieCEO #NORMIE #Solana"
-    );
-    window.open(`https://x.com/intent/tweet?text=${text}`, "_blank");
+  const shareToX = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    try {
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/png");
+      });
+      
+      if (blob) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob })
+        ]);
+        toast({
+          title: "Meme copied to clipboard!",
+          description: "Now paste it in your X post",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Please download the meme and upload it manually",
+        variant: "destructive",
+      });
+    }
+
+    setTimeout(() => {
+      const text = encodeURIComponent(
+        "Check out my $NORMIE meme! Normies unite! @NormieCEO #NORMIE #Solana"
+      );
+      window.open(`https://x.com/intent/tweet?text=${text}`, "_blank");
+    }, 500);
   };
 
   const shareToTelegram = () => {
