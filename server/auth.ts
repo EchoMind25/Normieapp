@@ -160,6 +160,9 @@ export function isReservedUsername(username: string): boolean {
 export const ADMIN_USERNAME = "Normie";
 export const ADMIN_EMAIL = "admin@normienation.com";
 
+export const ADMIN2_USERNAME = "Echo_Dev";
+export const ADMIN2_EMAIL = "echodev@normienation.com";
+
 export async function authMiddleware(
   req: AuthRequest,
   res: Response,

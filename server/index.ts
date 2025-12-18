@@ -4,7 +4,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { hashPassword, ADMIN_USERNAME, ADMIN_EMAIL } from "./auth";
+import { hashPassword, ADMIN_USERNAME, ADMIN_EMAIL, ADMIN2_USERNAME, ADMIN2_EMAIL } from "./auth";
 import { verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
 
 const app = express();
@@ -143,28 +143,55 @@ async function seedAdminAccount() {
     const existingAdmin = await storage.getUserByUsername(ADMIN_USERNAME);
     if (existingAdmin) {
       log(`Admin account "${ADMIN_USERNAME}" already exists (id: ${existingAdmin.id})`, "seed");
-      return;
+    } else {
+      // Create admin account with password from environment or default
+      const adminPassword = process.env.NORMIE_ADMIN_PASSWORD || "NormieAdmin2024!";
+      const passwordHash = await hashPassword(adminPassword);
+
+      const newAdmin = await storage.createUser({
+        username: ADMIN_USERNAME,
+        email: ADMIN_EMAIL,
+        passwordHash,
+        role: "admin",
+        walletAddress: process.env.ADMIN_WALLET_ADDRESS || null,
+        passwordChanged: false,
+      });
+
+      log(`Admin account "${ADMIN_USERNAME}" created successfully (id: ${newAdmin.id})`, "seed");
+      log(`Admin email: ${ADMIN_EMAIL}`, "seed");
+      log(`Password changed flag: false (will require password reset on first login)`, "seed");
+      
+      if (!process.env.NORMIE_ADMIN_PASSWORD) {
+        log("WARNING: Using default admin password. Set NORMIE_ADMIN_PASSWORD in production!", "seed");
+      }
     }
 
-    // Create admin account with password from environment or default
-    const adminPassword = process.env.NORMIE_ADMIN_PASSWORD || "NormieAdmin2024!";
-    const passwordHash = await hashPassword(adminPassword);
-
-    const newAdmin = await storage.createUser({
-      username: ADMIN_USERNAME,
-      email: ADMIN_EMAIL,
-      passwordHash,
-      role: "admin",
-      walletAddress: process.env.ADMIN_WALLET_ADDRESS || null,
-      passwordChanged: false,
-    });
-
-    log(`Admin account "${ADMIN_USERNAME}" created successfully (id: ${newAdmin.id})`, "seed");
-    log(`Admin email: ${ADMIN_EMAIL}`, "seed");
-    log(`Password changed flag: false (will require password reset on first login)`, "seed");
+    // Seed second admin account (Echo_Dev)
+    log(`Checking for admin account "${ADMIN2_USERNAME}"...`, "seed");
     
-    if (!process.env.NORMIE_ADMIN_PASSWORD) {
-      log("WARNING: Using default admin password. Set NORMIE_ADMIN_PASSWORD in production!", "seed");
+    const existingAdmin2 = await storage.getUserByUsername(ADMIN2_USERNAME);
+    if (existingAdmin2) {
+      log(`Admin account "${ADMIN2_USERNAME}" already exists (id: ${existingAdmin2.id})`, "seed");
+    } else {
+      const admin2Password = process.env.ECHO_DEV_ADMIN_PASSWORD || "EchoDev2024!";
+      const passwordHash2 = await hashPassword(admin2Password);
+
+      const newAdmin2 = await storage.createUser({
+        username: ADMIN2_USERNAME,
+        email: ADMIN2_EMAIL,
+        passwordHash: passwordHash2,
+        role: "admin",
+        walletAddress: null,
+        passwordChanged: false,
+      });
+
+      log(`Admin account "${ADMIN2_USERNAME}" created successfully (id: ${newAdmin2.id})`, "seed");
+      log(`Admin email: ${ADMIN2_EMAIL}`, "seed");
+      log(`Password changed flag: false (will require password reset on first login)`, "seed");
+      
+      if (!process.env.ECHO_DEV_ADMIN_PASSWORD) {
+        log("WARNING: Using default Echo_Dev admin password. Set ECHO_DEV_ADMIN_PASSWORD in production!", "seed");
+      }
     }
   } catch (error: any) {
     log(`CRITICAL: Failed to seed admin account: ${error.message}`, "seed");
