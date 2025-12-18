@@ -27,10 +27,6 @@ function log(message: string, source = "database") {
 }
 
 function getConnectionString(): string {
-  if (isProductionEnvironment() && process.env.PROD_DATABASE_URL) {
-    return process.env.PROD_DATABASE_URL;
-  }
-  
   return process.env.DATABASE_URL || "";
 }
 
