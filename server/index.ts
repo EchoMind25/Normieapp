@@ -207,13 +207,14 @@ export function isDatabaseConnected() { return databaseConnected; }
   // Log environment and verify database connection
   log(`Starting server in ${getEnvironmentName()} mode`, "startup");
   
-  // Try to connect to database but don't block startup
+  // Database connection is REQUIRED - fail fast if not available
   const dbConnected = await verifyDatabaseConnection();
   databaseConnected = dbConnected;
   
   if (!dbConnected) {
-    log("WARNING: Database connection failed. Server will start but database features will be unavailable.", "startup");
-    log("The server will retry database connection when requests are made.", "startup");
+    log("CRITICAL: Database connection failed. Cannot start server without database.", "startup");
+    log("Please check DATABASE_URL environment variable and database availability.", "startup");
+    process.exit(1);
   } else {
     // Only run migrations and seeds if database is connected
     // Check if all required tables exist
