@@ -47,7 +47,7 @@ function GalleryCard({ item, onVote, onViewDetails }: GalleryCardProps) {
   
   return (
     <Card 
-      className="overflow-hidden hover-elevate cursor-pointer group"
+      className="overflow-hidden hover-elevate cursor-pointer group card-press"
       onClick={() => onViewDetails(item)}
       data-testid={`card-gallery-${item.id}`}
     >

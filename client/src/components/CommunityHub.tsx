@@ -351,7 +351,7 @@ export function CommunityHub() {
               Join The Nation
             </h3>
             
-            <Card className="p-6 bg-gradient-to-br from-[#0088cc]/10 to-transparent border-[#0088cc]/30">
+            <Card className="p-6 bg-gradient-to-br from-[#0088cc]/10 to-transparent border-[#0088cc]/30 card-press">
               <div className="flex items-center gap-4 mb-4">
                 <div className="h-12 w-12 rounded-full bg-[#0088cc] flex items-center justify-center">
                   <SiTelegram className="h-6 w-6 text-white" />
@@ -377,7 +377,7 @@ export function CommunityHub() {
               </a>
             </Card>
 
-            <Card className="p-6 bg-gradient-to-br from-foreground/5 to-transparent">
+            <Card className="p-6 bg-gradient-to-br from-foreground/5 to-transparent card-press">
               <div className="flex items-center gap-4 mb-4">
                 <div className="h-12 w-12 rounded-full bg-foreground flex items-center justify-center">
                   <SiX className="h-6 w-6 text-background" />

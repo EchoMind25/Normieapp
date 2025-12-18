@@ -212,8 +212,8 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
       <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} />
 
       <div className="overflow-hidden border-t border-border">
-        <div className="animate-ticker whitespace-nowrap py-1 px-4">
-          <span className="inline-flex items-center gap-8 font-mono text-xs text-muted-foreground">
+        <div className="animate-ticker whitespace-nowrap py-1.5 px-4">
+          <span className="inline-flex items-center gap-4 sm:gap-8 font-mono text-xs text-muted-foreground">
             {metrics && (
               <>
                 <span>PRICE: {formatPrice(metrics.price)}</span>

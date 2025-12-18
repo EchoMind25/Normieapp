@@ -37,8 +37,8 @@ export default function Home() {
         
         <MemeGenerator />
         
-        <section className="max-w-7xl mx-auto px-4 py-8">
-          <div className="grid gap-6 lg:grid-cols-2">
+        <section className="max-w-7xl mx-auto px-4 py-6 sm:py-8 lg:py-12">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
             <ArtGallery />
             <LiveChat />
           </div>

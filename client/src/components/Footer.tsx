@@ -20,9 +20,9 @@ export function Footer() {
   };
 
   return (
-    <footer className="border-t border-border bg-card/50 py-12 px-4 lg:px-8">
+    <footer className="border-t border-border bg-card/50 py-8 sm:py-12 px-4 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-6 sm:mb-8">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Terminal className="h-6 w-6 text-primary" />
@@ -157,8 +157,8 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-border pt-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="border-t border-border pt-6 sm:pt-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
             <p className="text-xs text-muted-foreground text-center md:text-left">
               This is a community-built companion app. Not financial advice. DYOR. Ape responsibly.
             </p>

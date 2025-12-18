@@ -66,7 +66,7 @@ function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
         <span className="text-xs text-muted-foreground">{timeStr}</span>
       </div>
       <div 
-        className={`max-w-[85%] px-3 py-1.5 rounded-lg text-sm ${
+        className={`max-w-[85%] px-3 py-1.5 rounded-lg text-sm touch-press ${
           isOwnMessage 
             ? "bg-primary text-primary-foreground" 
             : "bg-muted"
