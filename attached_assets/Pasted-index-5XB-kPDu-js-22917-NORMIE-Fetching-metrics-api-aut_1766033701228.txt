@@ -1,0 +1,50 @@
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+/api/auth/me:1  Failed to load resource: the server responded with a status of 401 ()
+/api/polls:1  Failed to load resource: the server responded with a status of 500 ()
+index-5XB-kPDu.js:22919 [SW] Service Worker registered: https://normienation.replit.app/
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.000396 380895 2025-12-18T04:53:48.914Z
+(index):1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.000396 380895 2025-12-18T04:53:53.873Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.000396 380895 2025-12-18T04:53:59.713Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.000396 380895 2025-12-18T04:54:04.012Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.000396 380895 2025-12-18T04:54:09.212Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:14.413Z
+index-5XB-kPDu.js:22917  GET https://normienation.replit.app/api/polls 500 (Internal Server Error)
+(anonymous) @ index-5XB-kPDu.js:22917
+onClick @ index-5XB-kPDu.js:22917
+qce @ index-5XB-kPDu.js:37
+Xce @ index-5XB-kPDu.js:37
+eue @ index-5XB-kPDu.js:37
+eP @ index-5XB-kPDu.js:37
+K8 @ index-5XB-kPDu.js:37
+(anonymous) @ index-5XB-kPDu.js:37
+Z3 @ index-5XB-kPDu.js:40
+x8 @ index-5XB-kPDu.js:37
+NT @ index-5XB-kPDu.js:37
+C3 @ index-5XB-kPDu.js:37
+gue @ index-5XB-kPDu.js:37
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:19.071Z
+index-5XB-kPDu.js:22917  GET https://normienation.replit.app/api/polls 500 (Internal Server Error)
+(anonymous) @ index-5XB-kPDu.js:22917
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:24.812Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:29.612Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:34.467Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:39.712Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:44.813Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917  GET https://normienation.replit.app/api/polls 500 (Internal Server Error)
+(anonymous) @ index-5XB-kPDu.js:22917
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:49.912Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003966 381452 2025-12-18T04:54:55.112Z
