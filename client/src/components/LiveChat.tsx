@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,7 +83,6 @@ export function LiveChat() {
   const [userName, setUserName] = useState(getVisitorName());
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(userName);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const { data: messages = [], isLoading, refetch } = useQuery<ChatMessage[]>({
@@ -106,16 +105,6 @@ export function LiveChat() {
       toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
     },
   });
-
-  const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,10 +175,7 @@ export function LiveChat() {
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col overflow-hidden p-3">
-        <ScrollArea 
-          className="flex-1 pr-2" 
-          ref={scrollRef as any}
-        >
+        <ScrollArea className="flex-1 pr-2">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
