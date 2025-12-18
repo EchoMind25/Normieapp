@@ -142,7 +142,7 @@ async function seedAdminAccount() {
     
     const existingAdmin = await storage.getUserByUsername(ADMIN_USERNAME);
     if (existingAdmin) {
-      log(`Admin account "${ADMIN_USERNAME}" already exists (id: ${existingAdmin.id})`, "seed");
+      log(`Admin account "${ADMIN_USERNAME}" already exists (id: ${existingAdmin.id}) - SKIPPING (password NOT modified)`, "seed");
     } else {
       // Create admin account with password from environment or default
       const adminPassword = process.env.NORMIE_ADMIN_PASSWORD || "NormieAdmin2024!";
@@ -171,7 +171,7 @@ async function seedAdminAccount() {
     
     const existingAdmin2 = await storage.getUserByUsername(ADMIN2_USERNAME);
     if (existingAdmin2) {
-      log(`Admin account "${ADMIN2_USERNAME}" already exists (id: ${existingAdmin2.id})`, "seed");
+      log(`Admin account "${ADMIN2_USERNAME}" already exists (id: ${existingAdmin2.id}) - SKIPPING (password NOT modified)`, "seed");
     } else {
       const admin2Password = process.env.ECHO_DEV_ADMIN_PASSWORD || "EchoDev2024!";
       const passwordHash2 = await hashPassword(admin2Password);

@@ -489,11 +489,18 @@ router.post(
       }
 
       const newPasswordHash = await hashPassword(newPassword);
-      await storage.updateUser(req.user.id, {
+      const updatedUser = await storage.updateUser(req.user.id, {
         passwordHash: newPasswordHash,
         passwordChanged: true,
       });
 
+      if (!updatedUser) {
+        console.error(`[Auth] Force password change FAILED for user ${req.user.id} - updateUser returned undefined`);
+        res.status(500).json({ error: "Failed to save password change" });
+        return;
+      }
+      
+      console.log(`[Auth] Force password change successful for user ${req.user.id} (${req.user.username})`);
       res.json({ message: "Password changed successfully" });
     } catch (error) {
       console.error("[Auth] Force change password error:", error);
@@ -642,8 +649,15 @@ router.post(
       }
 
       const newPasswordHash = await hashPassword(newPassword);
-      await storage.updateUser(req.user.id, { passwordHash: newPasswordHash });
-
+      const updatedUser = await storage.updateUser(req.user.id, { passwordHash: newPasswordHash, passwordChanged: true });
+      
+      if (!updatedUser) {
+        console.error(`[Auth] Password change FAILED for user ${req.user.id} - updateUser returned undefined`);
+        res.status(500).json({ error: "Failed to save password change" });
+        return;
+      }
+      
+      console.log(`[Auth] Password changed successfully for user ${req.user.id} (${req.user.username})`);
       res.json({ message: "Password changed successfully" });
     } catch (error) {
       console.error("[Auth] Password change error:", error);
