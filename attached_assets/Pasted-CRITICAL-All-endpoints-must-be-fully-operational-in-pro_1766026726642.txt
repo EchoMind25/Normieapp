@@ -1,0 +1,139 @@
+CRITICAL: All endpoints must be fully operational in production. No partial fixes, no workarounds, no "graceful degradation." Every feature must work exactly as designed.
+
+PRODUCTION DATABASE FAILURES - IMMEDIATE FIX REQUIRED:
+
+1. /api/polls ENDPOINT - 500 INTERNAL SERVER ERROR
+   ACTION REQUIRED:
+   - Root cause the exact line causing the 500 error
+   - Check if polls table exists in production database
+   - Verify database schema matches expectations (columns, types, constraints)
+   - Add comprehensive error handling with specific error messages
+   - Fix the underlying database query/connection issue
+   - Ensure endpoint returns valid poll data with 200 status
+   
+   VALIDATION: /api/polls must return 200 with valid JSON array of polls
+
+2. /api/auth/me ENDPOINT - 401 UNAUTHORIZED
+   ACTION REQUIRED:
+   - Create "Normie" admin user in production database immediately
+   - Verify user record includes: username, email, hashed password, role=admin, requirePasswordReset=true
+   - Ensure authentication middleware correctly reads from production DB
+   - Verify session/JWT configuration works in production environment
+   
+   VALIDATION: /api/auth/me must return 200 with admin user object after login
+
+3. /api/sticker-proxy/* ENDPOINTS - 502 BAD GATEWAY
+   ACTION REQUIRED:
+   - Debug proxy configuration - upstream URLs may be incorrect
+   - Verify external sticker service is accessible from production environment
+   - Check timeout settings (increase if needed)
+   - Fix any CORS or header forwarding issues
+   - Ensure proxy middleware is correctly configured in production
+   - If using third-party API, verify API keys are set in production environment variables
+   
+   VALIDATION: All sticker endpoints must return 200 with image data
+
+DATABASE SEEDING - REQUIRED FOR PRODUCTION:
+
+4. CREATE PRODUCTION DATABASE SEED SCRIPT
+   REQUIREMENTS:
+   - Run automatically on deployment or via manual trigger
+   - Check if production DB is already seeded (idempotent operation)
+   - Seed test polls: minimum 5 polls with realistic questions
+     Example polls:
+     * "Which exchange should list $NORMIE next?"
+     * "Best meme of the week?"
+     * "What feature should we prioritize?"
+     * "Rate the latest community event"
+     * "Favorite Solana memecoin besides $NORMIE?"
+   - Each poll needs: id, question, options (array), votes (array or object), createdAt, isActive=true
+   - Verify all foreign key relationships are satisfied
+   
+   VALIDATION: Production database must have 5+ active polls queryable via /api/polls
+
+5. ADMIN USER CREATION
+   REQUIREMENTS:
+   - Username: "Normie"
+   - Email: admin@normienation.com
+   - Generate secure initial password
+   - Set requirePasswordReset: true
+   - Role: admin with full permissions
+   - Create in BOTH dev and production databases
+   - On first login, force password reset flow
+   
+   VALIDATION: Admin can log in and is prompted to reset password
+
+ENVIRONMENT CONFIGURATION:
+
+6. DATABASE CONNECTION MANAGEMENT
+   REQUIREMENTS:
+   - Use environment variable to switch between dev/production databases
+   - Verify production DATABASE_URL is correctly set in Replit secrets
+   - Add startup logging: "Connected to [dev/production] database"
+   - Ensure connection pooling is configured for production load
+   - Add connection retry logic with exponential backoff
+   
+   VALIDATION: Console logs confirm correct database connection on startup
+
+7. MIGRATION AND DEPLOYMENT SCRIPT
+   REQUIREMENTS:
+   - Create or update migration script that runs on every deployment
+   - Migration must:
+     a. Verify all tables exist (users, polls, votes, sessions, etc.)
+     b. Create missing tables with correct schema
+     c. Seed production data if database is empty
+     d. Create admin user if missing
+     e. Run any pending schema migrations
+   - Log each migration step for debugging
+   - Exit with clear error message if migration fails
+   
+   VALIDATION: Deployment succeeds with no database errors
+
+ERROR HANDLING AND LOGGING:
+
+8. COMPREHENSIVE ERROR LOGGING
+   REQUIREMENTS:
+   - Wrap all database queries in try-catch blocks
+   - Log full error stack traces server-side (not to client)
+   - Return user-friendly error messages to client
+   - Add request ID to all API responses for tracking
+   - Log environment (dev/prod), timestamp, endpoint, and error details
+   
+   VALIDATION: Server logs show detailed error information for debugging
+
+TESTING CHECKLIST - ALL MUST PASS:
+
+Production deployment must verify:
+□ /api/auth/me returns 200 after admin login
+□ /api/polls returns 200 with array of 5+ polls
+□ Polls display correctly on home page
+□ Each poll shows question, options, and current vote counts
+□ Admin "Normie" user can log in successfully
+□ Password reset prompt appears on first admin login
+□ /api/sticker-proxy/diamond returns 200 with image
+□ /api/sticker-proxy/pepe-smug returns 200 with image
+□ All stickers render correctly on UI
+□ Zero 401/500/502 errors in browser console
+□ Zero server errors in Replit logs
+□ Metrics continue updating every 5 seconds without errors
+□ Service worker registers successfully
+□ All features work identically in dev and production
+
+EXECUTION PRIORITY:
+1. Fix /api/polls 500 error (blocking)
+2. Seed production database with polls
+3. Fix /api/auth/me 401 error (create admin user)
+4. Fix /api/sticker-proxy 502 errors
+5. Verify all features operational
+6. Deploy and validate production
+
+DELIVERABLES:
+- Working /api/polls endpoint returning real data
+- Working /api/auth/me endpoint with admin user
+- Working /api/sticker-proxy endpoints with images
+- Production database fully seeded
+- Admin user created in both databases
+- Zero errors in console logs
+- All features functional and tested
+
+Begin with the /api/polls 500 error - identify the exact failure point, fix the root cause, then proceed systematically through the remaining issues. Do not move to the next issue until the current one is completely resolved and validated.
