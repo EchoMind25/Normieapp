@@ -7,9 +7,9 @@ import path from "path";
 import fs from "fs";
 import { fetchTokenMetrics, getMetrics, getPriceHistory, addPricePoint, fetchDevBuys, getDevBuys, getConnectionStatus, fetchHistoricalPrices, fetchRecentTokenActivity, getActivityCache } from "./solana";
 import authRoutes from "./authRoutes";
-import { db } from "./db";
+import { db, verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
 import { manualDevBuys, users, sessions } from "@shared/schema";
-import { eq, desc, and, gt } from "drizzle-orm";
+import { eq, desc, and, gt, sql } from "drizzle-orm";
 import { verifyJWT, isReservedUsername } from "./auth";
 import { z } from "zod";
 import { storage } from "./storage";
@@ -111,6 +111,88 @@ export async function registerRoutes(
   app.use("/api/auth", authLimiter, authRoutes);
   
   app.use("/api", apiLimiter);
+
+  // Health check endpoint - validates database connectivity and table existence
+  app.get("/api/health", async (_req, res) => {
+    const startTime = Date.now();
+    const checks: Record<string, { status: string; message?: string; duration?: number }> = {};
+
+    try {
+      // Check database connection
+      const dbStart = Date.now();
+      const dbConnected = await verifyDatabaseConnection();
+      checks.database = {
+        status: dbConnected ? "healthy" : "unhealthy",
+        message: dbConnected ? "Connected" : "Connection failed",
+        duration: Date.now() - dbStart,
+      };
+
+      // Check tables exist
+      const tableStart = Date.now();
+      const tableCheck = await checkTablesExist();
+      checks.tables = {
+        status: tableCheck.exists ? "healthy" : "unhealthy",
+        message: tableCheck.exists 
+          ? "All tables present" 
+          : `Missing: ${tableCheck.missing.join(", ")}`,
+        duration: Date.now() - tableStart,
+      };
+
+      // Check polls endpoint
+      const pollsStart = Date.now();
+      try {
+        const polls = await storage.getActivePolls();
+        checks.polls = {
+          status: "healthy",
+          message: `${polls.length} active polls`,
+          duration: Date.now() - pollsStart,
+        };
+      } catch (pollError: any) {
+        checks.polls = {
+          status: "unhealthy",
+          message: pollError.message,
+          duration: Date.now() - pollsStart,
+        };
+      }
+
+      // Check admin user exists
+      const adminStart = Date.now();
+      try {
+        const admin = await storage.getUserByUsername("Normie");
+        checks.adminUser = {
+          status: admin ? "healthy" : "warning",
+          message: admin ? "Admin user exists" : "Admin user missing",
+          duration: Date.now() - adminStart,
+        };
+      } catch (adminError: any) {
+        checks.adminUser = {
+          status: "unhealthy",
+          message: adminError.message,
+          duration: Date.now() - adminStart,
+        };
+      }
+
+      const allHealthy = Object.values(checks).every(c => c.status === "healthy");
+      const hasWarnings = Object.values(checks).some(c => c.status === "warning");
+
+      res.status(allHealthy || hasWarnings ? 200 : 503).json({
+        status: allHealthy ? "healthy" : hasWarnings ? "warning" : "unhealthy",
+        environment: getEnvironmentName(),
+        timestamp: new Date().toISOString(),
+        totalDuration: Date.now() - startTime,
+        checks,
+      });
+    } catch (error: any) {
+      console.error("[Health] Health check failed:", error.message);
+      res.status(503).json({
+        status: "unhealthy",
+        environment: getEnvironmentName(),
+        timestamp: new Date().toISOString(),
+        error: error.message,
+        checks,
+      });
+    }
+  });
   
   const updateMetrics = async () => {
     try {
@@ -286,8 +368,14 @@ export async function registerRoutes(
   // =====================================================
   
   app.get("/api/polls", async (_req, res) => {
+    const requestId = `polls-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     try {
+      console.log(`[Polls:${requestId}] Fetching active polls from database...`);
+      
       const activePolls = await storage.getActivePolls();
+      
+      console.log(`[Polls:${requestId}] Found ${activePolls.length} active polls`);
+      
       const pollsFormatted = activePolls.map(poll => ({
         id: poll.id,
         question: poll.question,
@@ -301,9 +389,15 @@ export async function registerRoutes(
         endsAt: poll.endsAt?.toISOString(),
       }));
       res.json(pollsFormatted);
-    } catch (error) {
-      console.error("[Polls] Unexpected error fetching polls:", error);
-      res.status(500).json({ error: "Failed to fetch polls" });
+    } catch (error: any) {
+      console.error(`[Polls:${requestId}] ERROR fetching polls:`, error.message);
+      console.error(`[Polls:${requestId}] Stack trace:`, error.stack);
+      console.error(`[Polls:${requestId}] Environment: ${getEnvironmentName()}`);
+      res.status(500).json({ 
+        error: "Failed to fetch polls",
+        requestId,
+        environment: getEnvironmentName()
+      });
     }
   });
 
@@ -773,7 +867,7 @@ export async function registerRoutes(
 
   const STICKER_MANIFEST = [
     { id: "pepe-classic", name: "Classic Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/017/618/pepefroggie.jpg" },
-    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/028/180/cover6.jpg" },
+    { id: "pepe-smug", name: "Smug Pepe", category: "normie", url: "https://em-content.zobj.net/thumbs/240/twitter/322/smirking-face_1f60f.png" },
     { id: "wojak-sad", name: "Sad Wojak", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/031/671/cover1.jpg" },
     { id: "wojak-chad", name: "GigaChad", category: "normie", url: "https://i.kym-cdn.com/photos/images/newsfeed/001/562/308/87f.jpg" },
     { id: "doge", name: "Doge", category: "normie", url: "https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg" },
@@ -783,7 +877,7 @@ export async function registerRoutes(
     { id: "bitcoin", name: "Bitcoin", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/1200px-Bitcoin.svg.png" },
     { id: "ethereum", name: "Ethereum", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Ethereum-icon-purple.svg/1200px-Ethereum-icon-purple.svg.png" },
     { id: "solana", name: "Solana", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png" },
-    { id: "diamond", name: "Diamond", category: "crypto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Diamond_font_awesome.svg/1200px-Diamond_font_awesome.svg.png" },
+    { id: "diamond", name: "Diamond", category: "crypto", url: "https://em-content.zobj.net/thumbs/240/twitter/322/gem-stone_1f48e.png" },
     { id: "rocket", name: "Rocket", category: "crypto", url: "https://em-content.zobj.net/thumbs/240/twitter/322/rocket_1f680.png" },
     { id: "fire", name: "Fire", category: "crypto", url: "https://em-content.zobj.net/thumbs/240/twitter/322/fire_1f525.png" },
     { id: "money", name: "Money", category: "crypto", url: "https://em-content.zobj.net/thumbs/240/twitter/322/money-bag_1f4b0.png" },
@@ -802,14 +896,18 @@ export async function registerRoutes(
   });
 
   app.get("/api/sticker-proxy/:stickerId", async (req, res) => {
+    const { stickerId } = req.params;
+    const maxRetries = 2;
+    const timeout = 10000; // 10 second timeout
+    
     try {
-      const { stickerId } = req.params;
       const sticker = STICKER_MANIFEST.find(s => s.id === stickerId);
       
       if (!sticker) {
         return res.status(404).json({ error: "Sticker not found" });
       }
 
+      // Check cache first
       const cached = stickerCache.get(stickerId);
       if (cached && Date.now() - cached.fetchedAt < STICKER_CACHE_TTL) {
         res.set({
@@ -820,35 +918,72 @@ export async function registerRoutes(
         return res.send(cached.data);
       }
 
-      const response = await fetch(sticker.url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Accept": "image/png,image/*,*/*",
-        },
-      });
+      // Fetch with retry logic and timeout
+      let lastError: any = null;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-      if (!response.ok) {
-        console.error(`[Sticker] Failed to fetch ${stickerId}: ${response.status}`);
-        return res.status(502).json({ error: "Failed to fetch sticker" });
+          const response = await fetch(sticker.url, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "image/png,image/jpeg,image/gif,image/*,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.5",
+              "Referer": sticker.url,
+            },
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const contentType = response.headers.get("content-type") || "image/png";
+          const buffer = Buffer.from(await response.arrayBuffer());
+
+          if (buffer.length > 5 * 1024 * 1024) {
+            return res.status(413).json({ error: "Sticker too large" });
+          }
+
+          if (buffer.length < 100) {
+            throw new Error("Response too small, likely an error page");
+          }
+
+          // Cache successful response
+          stickerCache.set(stickerId, { data: buffer, contentType, fetchedAt: Date.now() });
+
+          res.set({
+            "Content-Type": contentType,
+            "Cache-Control": "public, max-age=86400",
+            "Access-Control-Allow-Origin": "*",
+          });
+          return res.send(buffer);
+
+        } catch (fetchError: any) {
+          lastError = fetchError;
+          console.error(`[Sticker] Attempt ${attempt}/${maxRetries} failed for ${stickerId}: ${fetchError.message}`);
+          
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+          }
+        }
       }
 
-      const contentType = response.headers.get("content-type") || "image/png";
-      const buffer = Buffer.from(await response.arrayBuffer());
-
-      if (buffer.length > 5 * 1024 * 1024) {
-        return res.status(413).json({ error: "Sticker too large" });
-      }
-
-      stickerCache.set(stickerId, { data: buffer, contentType, fetchedAt: Date.now() });
-
-      res.set({
-        "Content-Type": contentType,
-        "Cache-Control": "public, max-age=86400",
-        "Access-Control-Allow-Origin": "*",
+      // All retries failed
+      console.error(`[Sticker] All retries failed for ${stickerId}. URL: ${sticker.url}`);
+      console.error(`[Sticker] Last error: ${lastError?.message}`);
+      
+      return res.status(502).json({ 
+        error: "Failed to fetch sticker after retries",
+        stickerId,
+        details: lastError?.message || "Unknown error"
       });
-      res.send(buffer);
-    } catch (error) {
-      console.error("[Sticker] Proxy error:", error);
+
+    } catch (error: any) {
+      console.error(`[Sticker] Unexpected proxy error for ${stickerId}:`, error.message);
       res.status(500).json({ error: "Failed to proxy sticker" });
     }
   });

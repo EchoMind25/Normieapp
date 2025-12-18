@@ -5,6 +5,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
 import { hashPassword, ADMIN_USERNAME, ADMIN_EMAIL } from "./auth";
+import { verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -64,32 +65,84 @@ app.use((req, res, next) => {
   next();
 });
 
-// Seed demo poll on startup
-async function seedDemoPoll() {
+// Sample polls for seeding - minimum 5 as required
+const SAMPLE_POLLS = [
+  {
+    question: "What should be the next community focus for $NORMIE?",
+    options: ["More token burns", "New partnerships", "Community contests", "Developer transparency reports"]
+  },
+  {
+    question: "Which exchange should list $NORMIE next?",
+    options: ["Binance", "Coinbase", "Kraken", "KuCoin", "Gate.io"]
+  },
+  {
+    question: "Best meme of the week?",
+    options: ["Diamond Hands Pepe", "Moon Wojak", "Gigachad Holder", "Doge to Mars"]
+  },
+  {
+    question: "What feature should we prioritize next?",
+    options: ["NFT marketplace", "Staking rewards", "Mobile app", "DAO governance"]
+  },
+  {
+    question: "Rate the latest community event",
+    options: ["Amazing - 5 stars", "Great - 4 stars", "Good - 3 stars", "Needs improvement"]
+  },
+  {
+    question: "Favorite Solana memecoin besides $NORMIE?",
+    options: ["BONK", "WIF", "POPCAT", "MEW", "Other"]
+  }
+];
+
+// Seed demo polls on startup (idempotent - checks existing polls)
+async function seedDemoPolls() {
   try {
     const existingPolls = await storage.getActivePolls();
-    if (existingPolls.length > 0) {
-      log(`Demo poll already exists (${existingPolls.length} active polls)`, "seed");
+    
+    if (existingPolls.length >= 5) {
+      log(`Sufficient polls already exist (${existingPolls.length} active polls)`, "seed");
       return;
     }
 
-    await storage.createPoll(
-      { question: "What should be the next community focus for $NORMIE?", isActive: true },
-      ["More token burns", "New partnerships", "Community contests", "Developer transparency reports"]
-    );
+    // Get questions of existing polls to avoid duplicates
+    const existingQuestions = new Set(existingPolls.map(p => p.question));
+    let created = 0;
 
-    log("Demo poll created successfully", "seed");
-  } catch (error) {
-    log(`Failed to seed demo poll: ${error}`, "seed");
+    for (const poll of SAMPLE_POLLS) {
+      if (existingQuestions.has(poll.question)) {
+        continue;
+      }
+
+      try {
+        await storage.createPoll(
+          { question: poll.question, isActive: true },
+          poll.options
+        );
+        created++;
+        log(`Created poll: "${poll.question.substring(0, 40)}..."`, "seed");
+      } catch (pollError: any) {
+        log(`Failed to create poll "${poll.question}": ${pollError.message}`, "seed");
+      }
+    }
+
+    if (created > 0) {
+      log(`Seeded ${created} new polls successfully`, "seed");
+    } else {
+      log("No new polls needed to be created", "seed");
+    }
+  } catch (error: any) {
+    log(`Failed to seed demo polls: ${error.message}`, "seed");
+    log(`Stack trace: ${error.stack}`, "seed");
   }
 }
 
 // Seed admin account on startup
 async function seedAdminAccount() {
   try {
+    log(`Checking for admin account "${ADMIN_USERNAME}"...`, "seed");
+    
     const existingAdmin = await storage.getUserByUsername(ADMIN_USERNAME);
     if (existingAdmin) {
-      log(`Admin account "${ADMIN_USERNAME}" already exists`, "seed");
+      log(`Admin account "${ADMIN_USERNAME}" already exists (id: ${existingAdmin.id})`, "seed");
       return;
     }
 
@@ -97,7 +150,7 @@ async function seedAdminAccount() {
     const adminPassword = process.env.NORMIE_ADMIN_PASSWORD || "NormieAdmin2024!";
     const passwordHash = await hashPassword(adminPassword);
 
-    await storage.createUser({
+    const newAdmin = await storage.createUser({
       username: ADMIN_USERNAME,
       email: ADMIN_EMAIL,
       passwordHash,
@@ -106,19 +159,39 @@ async function seedAdminAccount() {
       passwordChanged: false,
     });
 
-    log(`Admin account "${ADMIN_USERNAME}" created successfully`, "seed");
+    log(`Admin account "${ADMIN_USERNAME}" created successfully (id: ${newAdmin.id})`, "seed");
+    log(`Admin email: ${ADMIN_EMAIL}`, "seed");
+    log(`Password changed flag: false (will require password reset on first login)`, "seed");
+    
     if (!process.env.NORMIE_ADMIN_PASSWORD) {
       log("WARNING: Using default admin password. Set NORMIE_ADMIN_PASSWORD in production!", "seed");
     }
-  } catch (error) {
-    log(`Failed to seed admin account: ${error}`, "seed");
+  } catch (error: any) {
+    log(`CRITICAL: Failed to seed admin account: ${error.message}`, "seed");
+    log(`Stack trace: ${error.stack}`, "seed");
   }
 }
 
 (async () => {
+  // Log environment and verify database connection
+  log(`Starting server in ${getEnvironmentName()} mode`, "startup");
+  
+  const dbConnected = await verifyDatabaseConnection();
+  if (!dbConnected) {
+    log("CRITICAL: Cannot start without database connection. Exiting.", "startup");
+    process.exit(1);
+  }
+
+  // Check if all required tables exist
+  const tableCheck = await checkTablesExist();
+  if (!tableCheck.exists) {
+    log(`WARNING: Some database tables may be missing. Run migrations with: npm run db:push`, "startup");
+  }
+
   // Seed data on startup
+  log("Seeding database...", "startup");
   await seedAdminAccount();
-  await seedDemoPoll();
+  await seedDemoPolls();
   
   await registerRoutes(httpServer, app);
 
