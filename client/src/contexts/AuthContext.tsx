@@ -70,9 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [refetch, toast]);
 
-  const loginWithEmail = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const loginWithEmail = useCallback(async (identifier: string, password: string): Promise<boolean> => {
     try {
-      const res = await apiRequest("POST", "/api/auth/login", { email, password });
+      const res = await apiRequest("POST", "/api/auth/login", { identifier, password });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);

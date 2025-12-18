@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAvailableWallets } from "@/lib/wallet";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  identifier: z.string().min(1, "Username or email is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -58,7 +58,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { identifier: "", password: "" },
   });
 
   const registerForm = useForm<RegisterFormData>({
@@ -88,7 +88,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const handleLogin = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      const success = await loginWithEmail(data.email, data.password);
+      const success = await loginWithEmail(data.identifier, data.password);
       if (success) {
         onOpenChange(false);
         loginForm.reset();
@@ -141,31 +141,27 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                className="flex-1 font-mono"
-                onClick={() => handleWalletConnect("phantom")}
-                disabled={isLoading}
+                className="flex-1 font-mono opacity-50 cursor-not-allowed"
+                disabled
                 data-testid="button-connect-phantom"
               >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Wallet className="h-4 w-4 mr-2" />
-                )}
-                Phantom
+                <Wallet className="h-4 w-4 mr-2" />
+                <div className="flex flex-col items-start">
+                  <span>Phantom</span>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Coming Soon</span>
+                </div>
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 font-mono"
-                onClick={() => handleWalletConnect("solflare")}
-                disabled={isLoading}
+                className="flex-1 font-mono opacity-50 cursor-not-allowed"
+                disabled
                 data-testid="button-connect-solflare"
               >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Wallet className="h-4 w-4 mr-2" />
-                )}
-                Solflare
+                <Wallet className="h-4 w-4 mr-2" />
+                <div className="flex flex-col items-start">
+                  <span>Solflare</span>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Coming Soon</span>
+                </div>
               </Button>
             </div>
           </div>
@@ -194,20 +190,20 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             <TabsContent value="login" className="space-y-4">
               <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-3">
                 <div className="space-y-1">
-                  <Label htmlFor="login-email" className="font-mono text-xs">Email</Label>
+                  <Label htmlFor="login-identifier" className="font-mono text-xs">Username or Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="login-email"
-                      type="email"
+                      id="login-identifier"
+                      type="text"
                       className="pl-9 font-mono"
-                      placeholder="anon@normie.com"
-                      {...loginForm.register("email")}
-                      data-testid="input-login-email"
+                      placeholder="Normie or anon@normie.com"
+                      {...loginForm.register("identifier")}
+                      data-testid="input-login-identifier"
                     />
                   </div>
-                  {loginForm.formState.errors.email && (
-                    <p className="text-xs text-destructive">{loginForm.formState.errors.email.message}</p>
+                  {loginForm.formState.errors.identifier && (
+                    <p className="text-xs text-destructive">{loginForm.formState.errors.identifier.message}</p>
                   )}
                 </div>
 
