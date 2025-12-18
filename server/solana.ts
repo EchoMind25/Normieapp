@@ -220,9 +220,9 @@ export function getConnectionStatus(): { isConnected: boolean; lastSuccess: numb
 export async function fetchHistoricalPrices(timeRange: string = "1h"): Promise<PricePoint[]> {
   const now = Date.now();
   
-  // Return cached data if available and recent (5 min cache)
+  // Return cached data if available and recent (2 min cache)
   const cached = historicalPriceData.get(timeRange);
-  if (cached && cached.length > 0 && now - lastHistoricalFetch < 300000) {
+  if (cached && cached.length > 0 && now - lastHistoricalFetch < 120000) {
     return cached;
   }
   
@@ -244,35 +244,61 @@ export async function fetchHistoricalPrices(timeRange: string = "1h"): Promise<P
       const priceChange1h = pair.priceChange?.h1 || 0;
       const priceChange5m = pair.priceChange?.m5 || 0;
       
-      // Generate realistic price history based on price changes
+      // Generate realistic price history using multiple price change points
       const points: PricePoint[] = [];
       const volume24h = pair.volume?.h24 || 0;
       
-      // Define time range parameters
-      const rangeConfig: Record<string, { duration: number; interval: number; priceChange: number }> = {
-        "5m": { duration: 5 * 60 * 1000, interval: 10 * 1000, priceChange: priceChange5m },
-        "1h": { duration: 60 * 60 * 1000, interval: 60 * 1000, priceChange: priceChange1h },
-        "6h": { duration: 6 * 60 * 60 * 1000, interval: 5 * 60 * 1000, priceChange: priceChange6h },
-        "24h": { duration: 24 * 60 * 60 * 1000, interval: 15 * 60 * 1000, priceChange: priceChange24h },
-        "7d": { duration: 7 * 24 * 60 * 60 * 1000, interval: 60 * 60 * 1000, priceChange: priceChange24h * 2 },
+      // Calculate prices at key time points working backwards from current price
+      const price1hAgo = currentPrice / (1 + priceChange1h / 100);
+      const price6hAgo = currentPrice / (1 + priceChange6h / 100);
+      const price24hAgo = currentPrice / (1 + priceChange24h / 100);
+      
+      // Define time range parameters with multi-segment interpolation
+      const rangeConfig: Record<string, { duration: number; interval: number }> = {
+        "5m": { duration: 5 * 60 * 1000, interval: 10 * 1000 },
+        "1h": { duration: 60 * 60 * 1000, interval: 60 * 1000 },
+        "6h": { duration: 6 * 60 * 60 * 1000, interval: 5 * 60 * 1000 },
+        "24h": { duration: 24 * 60 * 60 * 1000, interval: 15 * 60 * 1000 },
+        "7d": { duration: 7 * 24 * 60 * 60 * 1000, interval: 60 * 60 * 1000 },
       };
       
       const config = rangeConfig[timeRange] || rangeConfig["1h"];
       const numPoints = Math.floor(config.duration / config.interval);
       
-      // Calculate starting price from price change percentage
-      const startPrice = currentPrice / (1 + config.priceChange / 100);
-      const priceStep = (currentPrice - startPrice) / numPoints;
+      // Create price interpolation function based on actual price changes
+      const getPriceAtTime = (timestamp: number): number => {
+        const hoursAgo = (now - timestamp) / (60 * 60 * 1000);
+        
+        if (hoursAgo <= 0) return currentPrice;
+        if (hoursAgo <= 1) {
+          // Interpolate between now and 1h ago
+          const t = hoursAgo / 1;
+          return currentPrice + (price1hAgo - currentPrice) * t;
+        }
+        if (hoursAgo <= 6) {
+          // Interpolate between 1h ago and 6h ago
+          const t = (hoursAgo - 1) / 5;
+          return price1hAgo + (price6hAgo - price1hAgo) * t;
+        }
+        if (hoursAgo <= 24) {
+          // Interpolate between 6h ago and 24h ago
+          const t = (hoursAgo - 6) / 18;
+          return price6hAgo + (price24hAgo - price6hAgo) * t;
+        }
+        // Beyond 24h, extrapolate using 24h trend
+        const daysBack = hoursAgo / 24;
+        return price24hAgo * Math.pow(1 + priceChange24h / 100, -(daysBack - 1));
+      };
       
       for (let i = 0; i < numPoints; i++) {
         const timestamp = now - config.duration + (i * config.interval);
-        // Add some realistic variance
-        const variance = (Math.random() - 0.5) * startPrice * 0.02;
-        const price = startPrice + (priceStep * i) + variance;
+        const basePrice = getPriceAtTime(timestamp);
+        // Add small realistic variance (±1%)
+        const variance = (Math.random() - 0.5) * basePrice * 0.02;
         
         points.push({
           timestamp,
-          price: Math.max(0, price),
+          price: Math.max(0, basePrice + variance),
           volume: volume24h / (24 * 60 / (config.interval / 60000)),
         });
       }
@@ -287,7 +313,7 @@ export async function fetchHistoricalPrices(timeRange: string = "1h"): Promise<P
       historicalPriceData.set(timeRange, points);
       lastHistoricalFetch = now;
       
-      console.log(`[DexScreener] Generated ${points.length} price points for ${timeRange} range`);
+      console.log(`[DexScreener] Generated ${points.length} price points for ${timeRange} range (h1:${priceChange1h.toFixed(2)}%, h6:${priceChange6h.toFixed(2)}%, h24:${priceChange24h.toFixed(2)}%)`);
       return points;
     }
     
