@@ -68,6 +68,7 @@
     "express-validator": "^7.3.1",
     "fabric": "^6.9.0",
     "framer-motion": "^11.13.1",
+    "glob": "^10.5.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
