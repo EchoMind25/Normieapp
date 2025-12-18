@@ -11,6 +11,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.18.0",
     "@hookform/resolvers": "^3.10.0",
     "@imgly/background-removal": "^1.7.0",
     "@jridgewell/trace-mapping": "^0.3.25",
@@ -47,6 +48,10 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/multer": "^2.0.0",
+    "@uppy/aws-s3": "^5.1.0",
+    "@uppy/core": "^5.2.0",
+    "@uppy/dashboard": "^5.1.0",
+    "@uppy/react": "^5.1.1",
     "base-x": "^5.0.1",
     "bcryptjs": "^3.0.3",
     "bs58": "^6.0.0",
@@ -69,6 +74,7 @@
     "fabric": "^6.9.0",
     "framer-motion": "^11.13.1",
     "glob": "^10.5.0",
+    "google-auth-library": "^10.5.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",

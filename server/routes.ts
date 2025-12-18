@@ -13,6 +13,7 @@ import { eq, desc, and, gt, sql } from "drizzle-orm";
 import { verifyJWT, isReservedUsername } from "./auth";
 import { z } from "zod";
 import { storage } from "./storage";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -111,6 +112,8 @@ export async function registerRoutes(
   app.use("/api/auth", authLimiter, authRoutes);
   
   app.use("/api", apiLimiter);
+
+  registerObjectStorageRoutes(app);
 
   // Health check endpoint - validates database connectivity and table existence
   // Simple ping endpoint for basic health checks - always returns 200
@@ -706,6 +709,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Title and image URL are required" });
       }
       
+      // Validate imageUrl is from our uploads directory or object storage for security
+      if (!imageUrl.startsWith("/uploads/") && !imageUrl.startsWith("/objects/")) {
+        return res.status(400).json({ error: "Image must be uploaded through the file upload endpoint first" });
+      }
+      
       const item = await storage.createGalleryItem({
         title,
         description,
@@ -814,8 +822,8 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Image URL is required" });
       }
       
-      // Validate imageUrl is from our uploads directory for security
-      if (!imageUrl.startsWith("/uploads/")) {
+      // Validate imageUrl is from our uploads directory or object storage for security
+      if (!imageUrl.startsWith("/uploads/") && !imageUrl.startsWith("/objects/")) {
         return res.status(400).json({ error: "Image must be uploaded through the file upload endpoint first" });
       }
       
@@ -948,7 +956,7 @@ export async function registerRoutes(
 
   app.post("/api/chat/rooms", async (req, res) => {
     try {
-      const { name, description } = req.body;
+      const { name } = req.body;
       
       if (!name) {
         return res.status(400).json({ error: "Room name is required" });
@@ -956,9 +964,8 @@ export async function registerRoutes(
       
       const room = await storage.createChatRoom({
         name,
-        description,
         type: "public",
-        createdById: null,
+        creatorId: null,
       });
       
       res.json(room);

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/use-upload";
 import { 
   ArrowLeft, Users, Shield, Activity, Settings, Plus, Trash2, TrendingUp, Calendar,
   Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3
@@ -44,7 +45,8 @@ export default function Admin() {
   const [adminArtDescription, setAdminArtDescription] = useState("");
   const [adminArtFile, setAdminArtFile] = useState<File | null>(null);
   const [adminArtTags, setAdminArtTags] = useState("");
-  const [isUploadingAdminArt, setIsUploadingAdminArt] = useState(false);
+
+  const { uploadFile, isUploading: isUploadingAdminArt } = useUpload();
 
   const { data: manualDevBuys = [], isLoading: loadingBuys } = useQuery<ManualDevBuy[]>({
     queryKey: ["/api/admin/dev-buys"],
@@ -265,29 +267,21 @@ export default function Admin() {
       return;
     }
 
-    setIsUploadingAdminArt(true);
     try {
-      const formData = new FormData();
-      formData.append("image", adminArtFile);
-      const uploadRes = await fetch("/api/gallery/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-      if (!uploadRes.ok) throw new Error("Failed to upload image");
-      const { url } = await uploadRes.json();
+      const response = await uploadFile(adminArtFile);
+      if (!response) {
+        throw new Error("Failed to upload image");
+      }
 
       const tags = adminArtTags.split(",").map(t => t.trim()).filter(t => t);
       adminUploadArtworkMutation.mutate({
         title: adminArtTitle.trim(),
         description: adminArtDescription.trim(),
-        imageUrl: url,
+        imageUrl: response.objectPath,
         tags,
       });
     } catch (error) {
       toast({ title: "Error", description: "Failed to upload artwork", variant: "destructive" });
-    } finally {
-      setIsUploadingAdminArt(false);
     }
   };
 
