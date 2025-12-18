@@ -272,6 +272,7 @@ export default function Admin() {
       const uploadRes = await fetch("/api/gallery/upload", {
         method: "POST",
         body: formData,
+        credentials: "include",
       });
       if (!uploadRes.ok) throw new Error("Failed to upload image");
       const { url } = await uploadRes.json();

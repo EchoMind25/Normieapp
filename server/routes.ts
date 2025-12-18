@@ -55,7 +55,7 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith("Bearer ") 
       ? authHeader.substring(7) 
-      : req.cookies?.token;
+      : req.cookies?.authToken;
     
     if (!token) {
       return res.status(401).json({ error: "Authentication required" });
