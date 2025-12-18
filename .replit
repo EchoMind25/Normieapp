@@ -40,3 +40,8 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_websocket:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+BIRDEYE_API_KEY = "3fba1219ed0c45479213a92bbf0bd04a"

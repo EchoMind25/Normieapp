@@ -4,9 +4,11 @@ import type { TokenMetrics, PricePoint, DevBuy, ActivityItem } from "@shared/sch
 
 const RPC_ENDPOINT = "https://solana-rpc.publicnode.com";
 const DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens";
+const BIRDEYE_API = "https://public-api.birdeye.so";
 const TOKEN_ADDRESS = NORMIE_TOKEN.address;
 const DEV_WALLET = "8eQ8axmX7hwWdMxpq5KcqnTwMZyxjAzo7fc5sEdvj2EB";
 const BURN_ADDRESS = "1nc1nerator11111111111111111111111111111111";
+const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || "";
 
 // Per dev (@NormieCEO) on X: OVER 527 million burned/locked total
 // Burned + Locked combined = 527M+ (shown as "Supply Stranglehold")
@@ -217,6 +219,146 @@ export function getConnectionStatus(): { isConnected: boolean; lastSuccess: numb
   };
 }
 
+// Fetch real OHLCV data from Birdeye API
+async function fetchBirdeyeOHLCV(timeRange: string): Promise<PricePoint[] | null> {
+  if (!BIRDEYE_API_KEY) {
+    console.log("[Birdeye] No API key configured");
+    return null;
+  }
+  
+  const now = Math.floor(Date.now() / 1000);
+  
+  // Map time ranges to Birdeye interval types and durations
+  const rangeConfig: Record<string, { type: string; duration: number }> = {
+    "5m": { type: "1m", duration: 5 * 60 },
+    "1h": { type: "1m", duration: 60 * 60 },
+    "6h": { type: "5m", duration: 6 * 60 * 60 },
+    "24h": { type: "15m", duration: 24 * 60 * 60 },
+    "7d": { type: "1H", duration: 7 * 24 * 60 * 60 },
+  };
+  
+  const config = rangeConfig[timeRange] || rangeConfig["1h"];
+  const timeFrom = now - config.duration;
+  
+  try {
+    const url = `${BIRDEYE_API}/defi/ohlcv?address=${TOKEN_ADDRESS}&type=${config.type}&time_from=${timeFrom}&time_to=${now}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json",
+        "X-API-KEY": BIRDEYE_API_KEY,
+      },
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Birdeye] API error ${response.status}: ${errorText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success || !data.data?.items || data.data.items.length === 0) {
+      console.log("[Birdeye] No OHLCV data returned");
+      return null;
+    }
+    
+    const points: PricePoint[] = data.data.items.map((item: any) => ({
+      timestamp: item.unixTime * 1000,
+      price: item.c || item.close || 0, // Close price
+      volume: item.v || item.volume || 0,
+    }));
+    
+    console.log(`[Birdeye] Fetched ${points.length} real OHLCV points for ${timeRange} range`);
+    return points;
+  } catch (error) {
+    console.error("[Birdeye] Error fetching OHLCV:", error);
+    return null;
+  }
+}
+
+// Fallback: Generate simulated prices from DexScreener price changes
+async function fetchDexScreenerSimulatedPrices(timeRange: string): Promise<PricePoint[]> {
+  const now = Date.now();
+  
+  const response = await fetch(`${DEXSCREENER_API}/${TOKEN_ADDRESS}`);
+  
+  if (!response.ok) {
+    throw new Error(`DexScreener API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  
+  if (!data.pairs || data.pairs.length === 0) {
+    throw new Error("No pairs found");
+  }
+  
+  const pair = data.pairs[0];
+  const currentPrice = parseFloat(pair.priceUsd) || 0;
+  const priceChange24h = pair.priceChange?.h24 || 0;
+  const priceChange6h = pair.priceChange?.h6 || 0;
+  const priceChange1h = pair.priceChange?.h1 || 0;
+  
+  const points: PricePoint[] = [];
+  const volume24h = pair.volume?.h24 || 0;
+  
+  const price1hAgo = currentPrice / (1 + priceChange1h / 100);
+  const price6hAgo = currentPrice / (1 + priceChange6h / 100);
+  const price24hAgo = currentPrice / (1 + priceChange24h / 100);
+  
+  const rangeConfig: Record<string, { duration: number; interval: number }> = {
+    "5m": { duration: 5 * 60 * 1000, interval: 10 * 1000 },
+    "1h": { duration: 60 * 60 * 1000, interval: 60 * 1000 },
+    "6h": { duration: 6 * 60 * 60 * 1000, interval: 5 * 60 * 1000 },
+    "24h": { duration: 24 * 60 * 60 * 1000, interval: 15 * 60 * 1000 },
+    "7d": { duration: 7 * 24 * 60 * 60 * 1000, interval: 60 * 60 * 1000 },
+  };
+  
+  const config = rangeConfig[timeRange] || rangeConfig["1h"];
+  const numPoints = Math.floor(config.duration / config.interval);
+  
+  const getPriceAtTime = (timestamp: number): number => {
+    const hoursAgo = (now - timestamp) / (60 * 60 * 1000);
+    
+    if (hoursAgo <= 0) return currentPrice;
+    if (hoursAgo <= 1) {
+      const t = hoursAgo / 1;
+      return currentPrice + (price1hAgo - currentPrice) * t;
+    }
+    if (hoursAgo <= 6) {
+      const t = (hoursAgo - 1) / 5;
+      return price1hAgo + (price6hAgo - price1hAgo) * t;
+    }
+    if (hoursAgo <= 24) {
+      const t = (hoursAgo - 6) / 18;
+      return price6hAgo + (price24hAgo - price6hAgo) * t;
+    }
+    const daysBack = hoursAgo / 24;
+    return price24hAgo * Math.pow(1 + priceChange24h / 100, -(daysBack - 1));
+  };
+  
+  for (let i = 0; i < numPoints; i++) {
+    const timestamp = now - config.duration + (i * config.interval);
+    const basePrice = getPriceAtTime(timestamp);
+    const variance = (Math.random() - 0.5) * basePrice * 0.02;
+    
+    points.push({
+      timestamp,
+      price: Math.max(0, basePrice + variance),
+      volume: volume24h / (24 * 60 / (config.interval / 60000)),
+    });
+  }
+  
+  points.push({
+    timestamp: now,
+    price: currentPrice,
+    volume: volume24h / 24,
+  });
+  
+  console.log(`[DexScreener] Generated ${points.length} simulated price points for ${timeRange} (fallback)`);
+  return points;
+}
+
 export async function fetchHistoricalPrices(timeRange: string = "1h"): Promise<PricePoint[]> {
   const now = Date.now();
   
@@ -227,100 +369,22 @@ export async function fetchHistoricalPrices(timeRange: string = "1h"): Promise<P
   }
   
   try {
-    // Use DexScreener pairs endpoint for price history
-    const response = await fetch(`${DEXSCREENER_API}/${TOKEN_ADDRESS}`);
+    // Try Birdeye API first for real OHLCV data
+    const birdeyeData = await fetchBirdeyeOHLCV(timeRange);
     
-    if (!response.ok) {
-      throw new Error(`DexScreener API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.pairs && data.pairs.length > 0) {
-      const pair = data.pairs[0];
-      const currentPrice = parseFloat(pair.priceUsd) || 0;
-      const priceChange24h = pair.priceChange?.h24 || 0;
-      const priceChange6h = pair.priceChange?.h6 || 0;
-      const priceChange1h = pair.priceChange?.h1 || 0;
-      const priceChange5m = pair.priceChange?.m5 || 0;
-      
-      // Generate realistic price history using multiple price change points
-      const points: PricePoint[] = [];
-      const volume24h = pair.volume?.h24 || 0;
-      
-      // Calculate prices at key time points working backwards from current price
-      const price1hAgo = currentPrice / (1 + priceChange1h / 100);
-      const price6hAgo = currentPrice / (1 + priceChange6h / 100);
-      const price24hAgo = currentPrice / (1 + priceChange24h / 100);
-      
-      // Define time range parameters with multi-segment interpolation
-      const rangeConfig: Record<string, { duration: number; interval: number }> = {
-        "5m": { duration: 5 * 60 * 1000, interval: 10 * 1000 },
-        "1h": { duration: 60 * 60 * 1000, interval: 60 * 1000 },
-        "6h": { duration: 6 * 60 * 60 * 1000, interval: 5 * 60 * 1000 },
-        "24h": { duration: 24 * 60 * 60 * 1000, interval: 15 * 60 * 1000 },
-        "7d": { duration: 7 * 24 * 60 * 60 * 1000, interval: 60 * 60 * 1000 },
-      };
-      
-      const config = rangeConfig[timeRange] || rangeConfig["1h"];
-      const numPoints = Math.floor(config.duration / config.interval);
-      
-      // Create price interpolation function based on actual price changes
-      const getPriceAtTime = (timestamp: number): number => {
-        const hoursAgo = (now - timestamp) / (60 * 60 * 1000);
-        
-        if (hoursAgo <= 0) return currentPrice;
-        if (hoursAgo <= 1) {
-          // Interpolate between now and 1h ago
-          const t = hoursAgo / 1;
-          return currentPrice + (price1hAgo - currentPrice) * t;
-        }
-        if (hoursAgo <= 6) {
-          // Interpolate between 1h ago and 6h ago
-          const t = (hoursAgo - 1) / 5;
-          return price1hAgo + (price6hAgo - price1hAgo) * t;
-        }
-        if (hoursAgo <= 24) {
-          // Interpolate between 6h ago and 24h ago
-          const t = (hoursAgo - 6) / 18;
-          return price6hAgo + (price24hAgo - price6hAgo) * t;
-        }
-        // Beyond 24h, extrapolate using 24h trend
-        const daysBack = hoursAgo / 24;
-        return price24hAgo * Math.pow(1 + priceChange24h / 100, -(daysBack - 1));
-      };
-      
-      for (let i = 0; i < numPoints; i++) {
-        const timestamp = now - config.duration + (i * config.interval);
-        const basePrice = getPriceAtTime(timestamp);
-        // Add small realistic variance (±1%)
-        const variance = (Math.random() - 0.5) * basePrice * 0.02;
-        
-        points.push({
-          timestamp,
-          price: Math.max(0, basePrice + variance),
-          volume: volume24h / (24 * 60 / (config.interval / 60000)),
-        });
-      }
-      
-      // Add current price as last point
-      points.push({
-        timestamp: now,
-        price: currentPrice,
-        volume: volume24h / 24,
-      });
-      
-      historicalPriceData.set(timeRange, points);
+    if (birdeyeData && birdeyeData.length > 0) {
+      historicalPriceData.set(timeRange, birdeyeData);
       lastHistoricalFetch = now;
-      
-      console.log(`[DexScreener] Generated ${points.length} price points for ${timeRange} range (h1:${priceChange1h.toFixed(2)}%, h6:${priceChange6h.toFixed(2)}%, h24:${priceChange24h.toFixed(2)}%)`);
-      return points;
+      return birdeyeData;
     }
     
-    throw new Error("No pairs found");
+    // Fallback to DexScreener simulated data
+    const dexScreenerData = await fetchDexScreenerSimulatedPrices(timeRange);
+    historicalPriceData.set(timeRange, dexScreenerData);
+    lastHistoricalFetch = now;
+    return dexScreenerData;
   } catch (error) {
-    console.error("[DexScreener] Error fetching historical prices:", error);
-    // Return live price history as fallback
+    console.error("[Historical] Error fetching prices:", error);
     return priceHistory;
   }
 }
