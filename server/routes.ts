@@ -674,20 +674,13 @@ export async function registerRoutes(
     }
   });
 
-  // DEPRECATED: Legacy multer upload - files don't persist across deployments
-  // Use /api/uploads/request-url for Object Storage uploads instead
-  app.post("/api/gallery/upload", galleryUpload.single("image"), (req: Request, res: Response) => {
-    console.warn("[Gallery] DEPRECATED: Using legacy upload. Files will NOT persist. Use Object Storage instead.");
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No image file provided" });
-      }
-      const imageUrl = `/uploads/${req.file.filename}`;
-      res.json({ url: imageUrl, filename: req.file.filename });
-    } catch (error) {
-      console.error("[Gallery] Error uploading image:", error);
-      res.status(500).json({ error: "Failed to upload image" });
-    }
+  // DISABLED: Legacy multer upload - use Object Storage instead
+  // This endpoint is kept to return a helpful error for any old clients
+  app.post("/api/gallery/upload", (_req: Request, res: Response) => {
+    res.status(410).json({ 
+      error: "This upload method is no longer available. Please use the new upload system.",
+      hint: "Refresh the page to use the updated uploader."
+    });
   });
 
   app.get("/api/gallery/:id", async (req, res) => {
