@@ -4,10 +4,16 @@ import { sql } from "drizzle-orm";
 
 const { Pool } = pg;
 
+function isProductionEnvironment(): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.REPLIT_ENVIRONMENT === "production" ||
+    !!process.env.REPLIT_DEPLOYMENT
+  );
+}
+
 function getEnvironmentName(): string {
-  if (process.env.NODE_ENV === "production") return "PRODUCTION";
-  if (process.env.REPLIT_DEPLOYMENT) return "PRODUCTION";
-  return "DEVELOPMENT";
+  return isProductionEnvironment() ? "PRODUCTION" : "DEVELOPMENT";
 }
 
 function log(message: string, source = "database") {
@@ -21,9 +27,7 @@ function log(message: string, source = "database") {
 }
 
 function getConnectionString(): string {
-  const isProduction = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT;
-  
-  if (isProduction && process.env.PROD_DATABASE_URL) {
+  if (isProductionEnvironment() && process.env.PROD_DATABASE_URL) {
     return process.env.PROD_DATABASE_URL;
   }
   
