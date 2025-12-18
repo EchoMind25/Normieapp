@@ -144,15 +144,31 @@ function UploadForm({ onSuccess }: UploadFormProps) {
     },
   });
 
+  const ALLOWED_TYPES = [
+    "image/jpeg",
+    "image/png", 
+    "image/svg+xml",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+  ];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!["image/jpeg", "image/png"].includes(file.type)) {
-        toast({ title: "Error", description: "Only JPG and PNG images are allowed.", variant: "destructive" });
-        return;
+      // Check file type - also accept files without type (some mobile browsers)
+      if (file.type && !ALLOWED_TYPES.includes(file.type)) {
+        // Check by extension as fallback for mobile
+        const ext = file.name.toLowerCase().split('.').pop();
+        const allowedExts = ['jpg', 'jpeg', 'png', 'svg', 'webp', 'heic', 'heif'];
+        if (!ext || !allowedExts.includes(ext)) {
+          toast({ title: "Error", description: "Supported formats: JPG, PNG, SVG, WEBP, HEIC", variant: "destructive" });
+          return;
+        }
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: "Error", description: "File size must be under 5MB.", variant: "destructive" });
+      if (file.size > MAX_FILE_SIZE) {
+        toast({ title: "Error", description: "File size must be under 10MB.", variant: "destructive" });
         return;
       }
       setSelectedFile(file);
@@ -211,44 +227,60 @@ function UploadForm({ onSuccess }: UploadFormProps) {
         />
       </div>
       <div>
-        <Label htmlFor="imageFile">Upload Image</Label>
+        <Label htmlFor="imageFile">Upload Image *</Label>
         <Input
           id="imageFile"
           type="file"
-          accept="image/jpeg,image/png"
+          accept="image/jpeg,image/jpg,image/png,image/svg+xml,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.svg,.webp,.heic,.heif"
+          capture="environment"
           onChange={handleFileChange}
           className="font-mono cursor-pointer"
           data-testid="input-gallery-file"
         />
         {selectedFile && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Selected: {selectedFile.name}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-xs text-primary flex-1">
+              Selected: {selectedFile.name}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedFile(null)}
+              className="h-6 px-2 text-xs"
+              data-testid="button-clear-file"
+            >
+              Clear
+            </Button>
+          </div>
         )}
         <p className="text-xs text-muted-foreground mt-1">
-          JPG or PNG, max 5MB
+          JPG, PNG, SVG, WEBP, or HEIC - max 10MB
         </p>
       </div>
-      <div className="flex items-center gap-2">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">OR</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-      <div>
-        <Label htmlFor="imageUrl">Image URL</Label>
-        <Input
-          id="imageUrl"
-          value={imageUrl}
-          onChange={(e) => { setImageUrl(e.target.value); setSelectedFile(null); }}
-          placeholder="https://example.com/image.png"
-          className="font-mono"
-          disabled={!!selectedFile}
-          data-testid="input-gallery-image-url"
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Or paste a direct link to your meme image
-        </p>
-      </div>
+      {!selectedFile && (
+        <>
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">OR</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <div>
+            <Label htmlFor="imageUrl">Image URL (optional)</Label>
+            <Input
+              id="imageUrl"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://example.com/image.png"
+              className="font-mono"
+              data-testid="input-gallery-image-url"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Paste a direct link if you can't upload
+            </p>
+          </div>
+        </>
+      )}
       <div>
         <Label htmlFor="creatorName">Your Name</Label>
         <Input

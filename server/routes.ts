@@ -712,9 +712,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Title and image URL are required" });
       }
       
-      // Validate imageUrl is from our uploads directory or object storage for security
-      if (!imageUrl.startsWith("/uploads/") && !imageUrl.startsWith("/objects/")) {
-        return res.status(400).json({ error: "Image must be uploaded through the file upload endpoint first" });
+      // Validate imageUrl is from our uploads directory, object storage, or external URL
+      const isInternalPath = imageUrl.startsWith("/uploads/") || imageUrl.startsWith("/objects/");
+      const isExternalUrl = imageUrl.startsWith("http://") || imageUrl.startsWith("https://");
+      if (!isInternalPath && !isExternalUrl) {
+        return res.status(400).json({ error: "Please upload an image or provide a valid URL" });
       }
       
       const item = await storage.createGalleryItem({
@@ -825,9 +827,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Image URL is required" });
       }
       
-      // Validate imageUrl is from our uploads directory or object storage for security
-      if (!imageUrl.startsWith("/uploads/") && !imageUrl.startsWith("/objects/")) {
-        return res.status(400).json({ error: "Image must be uploaded through the file upload endpoint first" });
+      // Validate imageUrl is from our uploads directory, object storage, or external URL
+      const isInternalPath = imageUrl.startsWith("/uploads/") || imageUrl.startsWith("/objects/");
+      const isExternalUrl = imageUrl.startsWith("http://") || imageUrl.startsWith("https://");
+      if (!isInternalPath && !isExternalUrl) {
+        return res.status(400).json({ error: "Please upload an image or provide a valid URL" });
       }
       
       const item = await storage.createGalleryItem({
