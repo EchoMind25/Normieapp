@@ -64,6 +64,26 @@ app.use((req, res, next) => {
   next();
 });
 
+// Seed demo poll on startup
+async function seedDemoPoll() {
+  try {
+    const existingPolls = await storage.getActivePolls();
+    if (existingPolls.length > 0) {
+      log(`Demo poll already exists (${existingPolls.length} active polls)`, "seed");
+      return;
+    }
+
+    await storage.createPoll(
+      { question: "What should be the next community focus for $NORMIE?", isActive: true },
+      ["More token burns", "New partnerships", "Community contests", "Developer transparency reports"]
+    );
+
+    log("Demo poll created successfully", "seed");
+  } catch (error) {
+    log(`Failed to seed demo poll: ${error}`, "seed");
+  }
+}
+
 // Seed admin account on startup
 async function seedAdminAccount() {
   try {
@@ -96,8 +116,9 @@ async function seedAdminAccount() {
 }
 
 (async () => {
-  // Seed admin account first
+  // Seed data on startup
   await seedAdminAccount();
+  await seedDemoPoll();
   
   await registerRoutes(httpServer, app);
 
