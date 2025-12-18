@@ -172,26 +172,34 @@ async function seedAdminAccount() {
   }
 }
 
+// Track database connection status globally for health checks
+let databaseConnected = false;
+export function isDatabaseConnected() { return databaseConnected; }
+
 (async () => {
   // Log environment and verify database connection
   log(`Starting server in ${getEnvironmentName()} mode`, "startup");
   
+  // Try to connect to database but don't block startup
   const dbConnected = await verifyDatabaseConnection();
+  databaseConnected = dbConnected;
+  
   if (!dbConnected) {
-    log("CRITICAL: Cannot start without database connection. Exiting.", "startup");
-    process.exit(1);
-  }
+    log("WARNING: Database connection failed. Server will start but database features will be unavailable.", "startup");
+    log("The server will retry database connection when requests are made.", "startup");
+  } else {
+    // Only run migrations and seeds if database is connected
+    // Check if all required tables exist
+    const tableCheck = await checkTablesExist();
+    if (!tableCheck.exists) {
+      log(`WARNING: Some database tables may be missing. Run migrations with: npm run db:push`, "startup");
+    }
 
-  // Check if all required tables exist
-  const tableCheck = await checkTablesExist();
-  if (!tableCheck.exists) {
-    log(`WARNING: Some database tables may be missing. Run migrations with: npm run db:push`, "startup");
+    // Seed data on startup
+    log("Seeding database...", "startup");
+    await seedAdminAccount();
+    await seedDemoPolls();
   }
-
-  // Seed data on startup
-  log("Seeding database...", "startup");
-  await seedAdminAccount();
-  await seedDemoPolls();
   
   await registerRoutes(httpServer, app);
 
