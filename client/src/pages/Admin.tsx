@@ -39,6 +39,12 @@ export default function Admin() {
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollDuration, setPollDuration] = useState("24");
+  
+  const [adminArtTitle, setAdminArtTitle] = useState("");
+  const [adminArtDescription, setAdminArtDescription] = useState("");
+  const [adminArtFile, setAdminArtFile] = useState<File | null>(null);
+  const [adminArtTags, setAdminArtTags] = useState("");
+  const [isUploadingAdminArt, setIsUploadingAdminArt] = useState(false);
 
   const { data: manualDevBuys = [], isLoading: loadingBuys } = useQuery<ManualDevBuy[]>({
     queryKey: ["/api/admin/dev-buys"],
@@ -56,7 +62,7 @@ export default function Admin() {
   });
 
   const { data: polls = [], refetch: refetchPolls } = useQuery<Poll[]>({
-    queryKey: ["/api/polls"],
+    queryKey: ["/api/admin/polls"],
     enabled: isAuthenticated && user?.role === "admin",
   });
 
@@ -149,6 +155,7 @@ export default function Admin() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/polls"] });
       queryClient.invalidateQueries({ queryKey: ["/api/polls"] });
       refetchPolls();
       toast({ title: "Poll created!", description: "The poll is now live" });
@@ -158,6 +165,42 @@ export default function Admin() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to create poll", variant: "destructive" });
+    },
+  });
+
+  const deletePollMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/polls/${id}`);
+      if (!res.ok) throw new Error("Failed to delete poll");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/polls"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/polls"] });
+      refetchPolls();
+      toast({ title: "Poll deleted" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete poll", variant: "destructive" });
+    },
+  });
+
+  const adminUploadArtworkMutation = useMutation({
+    mutationFn: async (data: { title: string; description: string; imageUrl: string; tags: string[] }) => {
+      const res = await apiRequest("POST", "/api/admin/gallery/upload", data);
+      if (!res.ok) throw new Error("Failed to upload artwork");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchGallery();
+      toast({ title: "Artwork Published", description: "The artwork has been directly published to the gallery" });
+      setAdminArtTitle("");
+      setAdminArtDescription("");
+      setAdminArtFile(null);
+      setAdminArtTags("");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to upload artwork", variant: "destructive" });
     },
   });
 
@@ -209,6 +252,42 @@ export default function Admin() {
     const newOptions = [...pollOptions];
     newOptions[index] = value;
     setPollOptions(newOptions);
+  };
+
+  const handleAdminArtUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminArtTitle.trim()) {
+      toast({ title: "Error", description: "Please enter a title", variant: "destructive" });
+      return;
+    }
+    if (!adminArtFile) {
+      toast({ title: "Error", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    setIsUploadingAdminArt(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", adminArtFile);
+      const uploadRes = await fetch("/api/gallery/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!uploadRes.ok) throw new Error("Failed to upload image");
+      const { url } = await uploadRes.json();
+
+      const tags = adminArtTags.split(",").map(t => t.trim()).filter(t => t);
+      adminUploadArtworkMutation.mutate({
+        title: adminArtTitle.trim(),
+        description: adminArtDescription.trim(),
+        imageUrl: url,
+        tags,
+      });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to upload artwork", variant: "destructive" });
+    } finally {
+      setIsUploadingAdminArt(false);
+    }
   };
 
   if (isLoading) {
@@ -415,6 +494,65 @@ export default function Admin() {
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  <div className="border-t pt-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Direct Upload (Skip Approval)
+                    </h3>
+                    <form onSubmit={handleAdminArtUpload} className="space-y-4 mb-6">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="admin-art-title">Title *</Label>
+                          <Input
+                            id="admin-art-title"
+                            placeholder="Artwork title"
+                            value={adminArtTitle}
+                            onChange={(e) => setAdminArtTitle(e.target.value)}
+                            data-testid="input-admin-art-title"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="admin-art-tags">Tags (comma separated)</Label>
+                          <Input
+                            id="admin-art-tags"
+                            placeholder="art, meme, normie"
+                            value={adminArtTags}
+                            onChange={(e) => setAdminArtTags(e.target.value)}
+                            data-testid="input-admin-art-tags"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-art-description">Description</Label>
+                        <Input
+                          id="admin-art-description"
+                          placeholder="Optional description"
+                          value={adminArtDescription}
+                          onChange={(e) => setAdminArtDescription(e.target.value)}
+                          data-testid="input-admin-art-description"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-art-file">Image File (JPEG/PNG, max 5MB) *</Label>
+                        <Input
+                          id="admin-art-file"
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          onChange={(e) => setAdminArtFile(e.target.files?.[0] || null)}
+                          data-testid="input-admin-art-file"
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        disabled={isUploadingAdminArt || adminUploadArtworkMutation.isPending}
+                        data-testid="button-admin-upload-art"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        {isUploadingAdminArt || adminUploadArtworkMutation.isPending ? "Uploading..." : "Upload & Publish"}
+                      </Button>
+                    </form>
                   </div>
 
                   <div className="border-t pt-6">
@@ -685,11 +823,11 @@ export default function Admin() {
                 <div className="border-t pt-4">
                   <h4 className="font-medium mb-4 flex items-center gap-2">
                     <BarChart3 className="h-4 w-4" />
-                    Active Polls ({polls.length})
+                    All Polls ({polls.length})
                   </h4>
                   {polls.length === 0 ? (
                     <p className="text-muted-foreground text-sm text-center py-4">
-                      No active polls. Create one above!
+                      No polls yet. Create one above!
                     </p>
                   ) : (
                     <div className="space-y-4">
@@ -700,10 +838,21 @@ export default function Admin() {
                           data-testid={`poll-${poll.id}`}
                         >
                           <div className="flex items-start justify-between gap-2 mb-3">
-                            <h5 className="font-medium">{poll.question}</h5>
-                            <Badge variant={poll.isActive ? "default" : "secondary"}>
-                              {poll.isActive ? "Live" : "Ended"}
-                            </Badge>
+                            <h5 className="font-medium flex-1">{poll.question}</h5>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={poll.isActive ? "default" : "secondary"}>
+                                {poll.isActive ? "Live" : "Ended"}
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => deletePollMutation.mutate(poll.id)}
+                                disabled={deletePollMutation.isPending}
+                                data-testid={`button-delete-poll-${poll.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
                           <div className="space-y-2">
                             {poll.options.map((option) => (

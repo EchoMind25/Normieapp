@@ -483,17 +483,46 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Get all polls (including inactive)
+  app.get("/api/admin/polls", requireAdmin, async (_req, res) => {
+    try {
+      const allPolls = await storage.getAllPolls();
+      const pollsFormatted = allPolls.map(poll => ({
+        id: poll.id,
+        question: poll.question,
+        options: poll.options.map(opt => ({
+          id: opt.id,
+          text: opt.text,
+          votes: opt.votes || 0,
+        })),
+        totalVotes: poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0),
+        isActive: poll.isActive,
+        endsAt: poll.endsAt?.toISOString(),
+        createdAt: poll.createdAt?.toISOString(),
+      }));
+      res.json(pollsFormatted);
+    } catch (error) {
+      console.error("[Admin] Error fetching all polls:", error);
+      res.status(500).json({ error: "Failed to fetch polls" });
+    }
+  });
+
   // Admin: Create poll
   app.post("/api/admin/polls", requireAdmin, async (req, res) => {
     try {
-      const { question, options } = req.body;
+      const { question, options, durationHours } = req.body;
       
       if (!question || !options || !Array.isArray(options) || options.length < 2) {
         return res.status(400).json({ error: "Question and at least 2 options are required" });
       }
       
+      // Calculate endsAt based on duration
+      const endsAt = durationHours 
+        ? new Date(Date.now() + parseInt(durationHours) * 60 * 60 * 1000)
+        : undefined;
+      
       const poll = await storage.createPoll(
-        { question, isActive: true, createdBy: (req as any).userId },
+        { question, isActive: true, createdBy: (req as any).userId, endsAt },
         options
       );
       
@@ -501,6 +530,18 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error creating poll:", error);
       res.status(500).json({ error: "Failed to create poll" });
+    }
+  });
+
+  // Admin: Delete poll
+  app.delete("/api/admin/polls/:pollId", requireAdmin, async (req, res) => {
+    try {
+      const { pollId } = req.params;
+      await storage.deletePoll(pollId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Admin] Error deleting poll:", error);
+      res.status(500).json({ error: "Failed to delete poll" });
     }
   });
 
@@ -757,6 +798,41 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error fetching pending gallery:", error);
       res.status(500).json({ error: "Failed to fetch pending items" });
+    }
+  });
+
+  // Admin: Direct upload artwork (skips approval)
+  app.post("/api/admin/gallery/upload", requireAdmin, async (req, res) => {
+    try {
+      const { title, description, imageUrl, tags } = req.body;
+      
+      if (!title || typeof title !== "string" || title.trim().length === 0) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+      
+      if (!imageUrl || typeof imageUrl !== "string") {
+        return res.status(400).json({ error: "Image URL is required" });
+      }
+      
+      // Validate imageUrl is from our uploads directory for security
+      if (!imageUrl.startsWith("/uploads/")) {
+        return res.status(400).json({ error: "Image must be uploaded through the file upload endpoint first" });
+      }
+      
+      const item = await storage.createGalleryItem({
+        title: title.trim(),
+        description: typeof description === "string" ? description.trim() : "",
+        imageUrl,
+        tags: Array.isArray(tags) ? tags.filter(t => typeof t === "string") : [],
+        creatorName: "Admin",
+        creatorId: (req as any).userId,
+        status: "approved",
+      });
+      
+      res.json(item);
+    } catch (error) {
+      console.error("[Admin] Error uploading gallery item:", error);
+      res.status(500).json({ error: "Failed to upload item" });
     }
   });
 

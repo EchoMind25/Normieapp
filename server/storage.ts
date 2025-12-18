@@ -113,8 +113,10 @@ export interface IStorage {
   
   // Polls
   getActivePolls(): Promise<Array<PollDb & { options: PollOption[] }>>;
+  getAllPolls(): Promise<Array<PollDb & { options: PollOption[] }>>;
   getPoll(id: string): Promise<(PollDb & { options: PollOption[] }) | undefined>;
   createPoll(poll: InsertPollDb, options: string[]): Promise<PollDb>;
+  deletePoll(id: string): Promise<void>;
   hasVoted(pollId: string, visitorId: string): Promise<boolean>;
   vote(pollId: string, optionId: string, visitorId: string): Promise<void>;
   
@@ -417,6 +419,29 @@ export class DatabaseStorage implements IStorage {
       .update(pollOptions)
       .set({ votes: sql`${pollOptions.votes} + 1` })
       .where(eq(pollOptions.id, optionId));
+  }
+
+  async getAllPolls(): Promise<Array<PollDb & { options: PollOption[] }>> {
+    const allPollsList = await db
+      .select()
+      .from(polls)
+      .orderBy(desc(polls.createdAt));
+    
+    const pollsWithOptions = await Promise.all(
+      allPollsList.map(async (poll) => {
+        const options = await db
+          .select()
+          .from(pollOptions)
+          .where(eq(pollOptions.pollId, poll.id));
+        return { ...poll, options };
+      })
+    );
+    
+    return pollsWithOptions;
+  }
+
+  async deletePoll(id: string): Promise<void> {
+    await db.delete(polls).where(eq(polls.id, id));
   }
 
   // Activity Feed
