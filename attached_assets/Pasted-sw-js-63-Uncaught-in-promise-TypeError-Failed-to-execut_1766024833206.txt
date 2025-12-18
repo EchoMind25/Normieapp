@@ -1,0 +1,136 @@
+sw.js:63 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at sw.js:63:54
+(anonymous) @ sw.js:63
+Promise.then
+(anonymous) @ sw.js:62
+Promise.then
+(anonymous) @ sw.js:60
+Promise.then
+(anonymous) @ sw.js:48
+sw.js:63 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at sw.js:63:54
+(anonymous) @ sw.js:63
+Promise.then
+(anonymous) @ sw.js:62
+Promise.then
+(anonymous) @ sw.js:60
+Promise.then
+(anonymous) @ sw.js:48
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:48  GET https://normienation.replit.app/api/auth/me 401 (Unauthorized)
+(anonymous) @ index-5XB-kPDu.js:48
+i @ index-5XB-kPDu.js:48
+m @ index-5XB-kPDu.js:48
+start @ index-5XB-kPDu.js:48
+fetch @ index-5XB-kPDu.js:48
+x0 @ index-5XB-kPDu.js:48
+onSubscribe @ index-5XB-kPDu.js:48
+subscribe @ index-5XB-kPDu.js:48
+(anonymous) @ index-5XB-kPDu.js:48
+dG @ index-5XB-kPDu.js:38
+LS @ index-5XB-kPDu.js:40
+zh @ index-5XB-kPDu.js:40
+LP @ index-5XB-kPDu.js:40
+$u @ index-5XB-kPDu.js:38
+Dfe @ index-5XB-kPDu.js:40
+rf @ index-5XB-kPDu.js:40
+WG @ index-5XB-kPDu.js:40
+S @ index-5XB-kPDu.js:25
+A @ index-5XB-kPDu.js:25
+index-5XB-kPDu.js:22917  GET https://normienation.replit.app/api/polls 500 (Internal Server Error)
+(anonymous) @ index-5XB-kPDu.js:22917
+(anonymous) @ index-5XB-kPDu.js:22917
+LS @ index-5XB-kPDu.js:40
+zh @ index-5XB-kPDu.js:40
+LP @ index-5XB-kPDu.js:40
+$u @ index-5XB-kPDu.js:38
+Dfe @ index-5XB-kPDu.js:40
+rf @ index-5XB-kPDu.js:40
+WG @ index-5XB-kPDu.js:40
+S @ index-5XB-kPDu.js:25
+A @ index-5XB-kPDu.js:25
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003842 369503 2025-12-18T02:26:33.941Z
+/api/sticker-proxy/diamond:1  GET https://normienation.replit.app/api/sticker-proxy/diamond 502 (Bad Gateway)
+Image
+(anonymous) @ index-5XB-kPDu.js:22917
+(anonymous) @ index-5XB-kPDu.js:22917
+LS @ index-5XB-kPDu.js:40
+zh @ index-5XB-kPDu.js:40
+Dfe @ index-5XB-kPDu.js:40
+rf @ index-5XB-kPDu.js:40
+LP @ index-5XB-kPDu.js:40
+$u @ index-5XB-kPDu.js:38
+(anonymous) @ index-5XB-kPDu.js:40
+setTimeout
+r @ index-5XB-kPDu.js:48
+a @ index-5XB-kPDu.js:48
+batch @ index-5XB-kPDu.js:48
+Sl @ index-5XB-kPDu.js:48
+setData @ index-5XB-kPDu.js:48
+onSuccess @ index-5XB-kPDu.js:48
+f @ index-5XB-kPDu.js:48
+Promise.then
+m @ index-5XB-kPDu.js:48
+start @ index-5XB-kPDu.js:48
+fetch @ index-5XB-kPDu.js:48
+x0 @ index-5XB-kPDu.js:48
+onSubscribe @ index-5XB-kPDu.js:48
+subscribe @ index-5XB-kPDu.js:48
+(anonymous) @ index-5XB-kPDu.js:48
+dG @ index-5XB-kPDu.js:38
+LS @ index-5XB-kPDu.js:40
+zh @ index-5XB-kPDu.js:40
+LP @ index-5XB-kPDu.js:40
+$u @ index-5XB-kPDu.js:38
+Dfe @ index-5XB-kPDu.js:40
+rf @ index-5XB-kPDu.js:40
+WG @ index-5XB-kPDu.js:40
+S @ index-5XB-kPDu.js:25
+A @ index-5XB-kPDu.js:25
+index-5XB-kPDu.js:22917 Failed to load sticker: Diamond
+ge.onerror @ index-5XB-kPDu.js:22917
+index-5XB-kPDu.js:22917 Failed to load sticker: Diamond
+ge.onerror @ index-5XB-kPDu.js:22917
+pepe-smug:1  GET https://normienation.replit.app/api/sticker-proxy/pepe-smug 502 (Bad Gateway)
+Image
+(anonymous) @ index-5XB-kPDu.js:22917
+(anonymous) @ index-5XB-kPDu.js:22917
+LS @ index-5XB-kPDu.js:40
+zh @ index-5XB-kPDu.js:40
+Dfe @ index-5XB-kPDu.js:40
+rf @ index-5XB-kPDu.js:40
+LP @ index-5XB-kPDu.js:40
+$u @ index-5XB-kPDu.js:38
+(anonymous) @ index-5XB-kPDu.js:40
+setTimeout
+r @ index-5XB-kPDu.js:48
+a @ index-5XB-kPDu.js:48
+batch @ index-5XB-kPDu.js:48
+Sl @ index-5XB-kPDu.js:48
+setData @ index-5XB-kPDu.js:48
+onSuccess @ index-5XB-kPDu.js:48
+f @ index-5XB-kPDu.js:48
+Promise.then
+m @ index-5XB-kPDu.js:48
+start @ index-5XB-kPDu.js:48
+fetch @ index-5XB-kPDu.js:48
+x0 @ index-5XB-kPDu.js:48
+onSubscribe @ index-5XB-kPDu.js:48
+subscribe @ index-5XB-kPDu.js:48
+(anonymous) @ index-5XB-kPDu.js:48
+dG @ index-5XB-kPDu.js:38
+LS @ index-5XB-kPDu.js:40
+zh @ index-5XB-kPDu.js:40
+LP @ index-5XB-kPDu.js:40
+$u @ index-5XB-kPDu.js:38
+Dfe @ index-5XB-kPDu.js:40
+rf @ index-5XB-kPDu.js:40
+WG @ index-5XB-kPDu.js:40
+S @ index-5XB-kPDu.js:25
+A @ index-5XB-kPDu.js:25
+index-5XB-kPDu.js:22917 Failed to load sticker: Smug Pepe
+ge.onerror @ index-5XB-kPDu.js:22917
+index-5XB-kPDu.js:22917 Failed to load sticker: Smug Pepe
+ge.onerror @ index-5XB-kPDu.js:22917
+index-5XB-kPDu.js:22919 [SW] Service Worker registered: https://normienation.replit.app/
+(index):1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
