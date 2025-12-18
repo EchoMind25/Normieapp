@@ -1,4 +1,4 @@
-const CACHE_NAME = 'normie-nation-v1';
+const CACHE_NAME = 'normie-nation-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -46,25 +46,19 @@ self.addEventListener('fetch', (event) => {
   
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse.ok) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse.clone());
-            });
-          }
-        });
-        return cachedResponse;
-      }
-      
-      return fetch(event.request).then((networkResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (networkResponse.ok && url.origin === self.location.origin) {
+          const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
+            cache.put(event.request, responseToCache);
           });
         }
         return networkResponse;
+      }).catch(() => {
+        return cachedResponse;
       });
+      
+      return cachedResponse || fetchPromise;
     })
   );
 });

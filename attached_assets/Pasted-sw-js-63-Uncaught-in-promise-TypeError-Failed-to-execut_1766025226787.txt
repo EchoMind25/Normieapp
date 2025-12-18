@@ -1,0 +1,45 @@
+sw.js:63 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at sw.js:63:54
+(anonymous) @ sw.js:63
+sw.js:63 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at sw.js:63:54
+(anonymous) @ sw.js:63
+sw.js:63 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at sw.js:63:54
+sw.js:63 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at sw.js:63:54
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+/api/polls:1  Failed to load resource: the server responded with a status of 500 ()
+/api/auth/me:1  Failed to load resource: the server responded with a status of 401 ()
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003842 369503 2025-12-18T02:33:07.402Z
+index-5XB-kPDu.js:22919 [SW] Service Worker registered: https://normienation.replit.app/
+(index):1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+/api/sticker-proxy/diamond:1  Failed to load resource: the server responded with a status of 502 ()
+index-5XB-kPDu.js:22917 Failed to load sticker: Diamond
+ge.onerror @ index-5XB-kPDu.js:22917
+index-5XB-kPDu.js:22917 Failed to load sticker: Diamond
+ge.onerror @ index-5XB-kPDu.js:22917
+/api/sticker-proxy/pepe-smug:1  Failed to load resource: the server responded with a status of 502 ()
+index-5XB-kPDu.js:22917 Failed to load sticker: Smug Pepe
+ge.onerror @ index-5XB-kPDu.js:22917
+index-5XB-kPDu.js:22917 Failed to load sticker: Smug Pepe
+ge.onerror @ index-5XB-kPDu.js:22917
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003842 369503 2025-12-18T02:33:13.062Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003842 369503 2025-12-18T02:33:13.062Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003842 369503 2025-12-18T02:33:22.979Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003842 369503 2025-12-18T02:33:28.306Z
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003842 369503 2025-12-18T02:33:28.306Z
+sw.js:63 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at sw.js:63:54
+(anonymous) @ sw.js:63
+Promise.then
+(anonymous) @ sw.js:62
+index-5XB-kPDu.js:22917 [NORMIE] Fetching metrics...
+index-5XB-kPDu.js:22917 [NORMIE] Got metrics: 0.0003842 369503 2025-12-18T02:33:37.720Z
+index-5XB-kPDu.js:22917  GET https://normienation.replit.app/api/polls 500 (Internal Server Error)
+(anonymous) @ index-5XB-kPDu.js:22917
