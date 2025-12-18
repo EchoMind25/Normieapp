@@ -150,6 +150,22 @@ export default function Admin() {
     },
   });
 
+  const deleteGalleryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/gallery/${id}`);
+      if (!res.ok) throw new Error("Failed to delete");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchPending();
+      refetchGallery();
+      toast({ title: "Artwork Deleted" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete artwork", variant: "destructive" });
+    },
+  });
+
   const createPollMutation = useMutation({
     mutationFn: async (data: { question: string; options: string[]; durationHours: number }) => {
       const res = await apiRequest("POST", "/api/admin/polls", data);
@@ -484,6 +500,21 @@ export default function Admin() {
                                   Reject
                                 </Button>
                               </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="w-full mt-2 text-destructive"
+                                onClick={() => {
+                                  if (confirm("Permanently delete this artwork?")) {
+                                    deleteGalleryMutation.mutate(item.id);
+                                  }
+                                }}
+                                disabled={deleteGalleryMutation.isPending}
+                                data-testid={`button-delete-pending-${item.id}`}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Delete
+                              </Button>
                             </CardContent>
                           </Card>
                         ))}
@@ -591,6 +622,20 @@ export default function Admin() {
                                 >
                                   <Star className="w-3 h-3 mr-1" />
                                   {item.featured ? "Featured" : "Feature"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-xs text-destructive"
+                                  onClick={() => {
+                                    if (confirm("Permanently delete this artwork?")) {
+                                      deleteGalleryMutation.mutate(item.id);
+                                    }
+                                  }}
+                                  disabled={deleteGalleryMutation.isPending}
+                                  data-testid={`button-delete-approved-${item.id}`}
+                                >
+                                  <Trash2 className="w-3 h-3" />
                                 </Button>
                               </div>
                             </CardContent>

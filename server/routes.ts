@@ -882,6 +882,16 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/admin/gallery/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteGalleryItem(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Admin] Error deleting gallery item:", error);
+      res.status(500).json({ error: "Failed to delete item" });
+    }
+  });
+
   app.delete("/api/admin/gallery/comments/:id", requireAdmin, async (req, res) => {
     try {
       await storage.deleteGalleryComment(req.params.id);

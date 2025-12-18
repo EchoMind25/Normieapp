@@ -133,6 +133,7 @@ export interface IStorage {
   updateGalleryItem(id: string, data: Partial<InsertGalleryItem>): Promise<GalleryItem | undefined>;
   approveGalleryItem(id: string): Promise<void>;
   rejectGalleryItem(id: string): Promise<void>;
+  deleteGalleryItem(id: string): Promise<void>;
   featureGalleryItem(id: string, featured: boolean): Promise<void>;
   hasGalleryVoted(itemId: string, visitorId: string): Promise<GalleryVote | undefined>;
   voteGalleryItem(itemId: string, visitorId: string, voteType: "up" | "down"): Promise<void>;
@@ -509,6 +510,12 @@ export class DatabaseStorage implements IStorage {
 
   async rejectGalleryItem(id: string): Promise<void> {
     await db.update(galleryItems).set({ status: "rejected" }).where(eq(galleryItems.id, id));
+  }
+
+  async deleteGalleryItem(id: string): Promise<void> {
+    await db.delete(galleryVotes).where(eq(galleryVotes.galleryItemId, id));
+    await db.delete(galleryComments).where(eq(galleryComments.galleryItemId, id));
+    await db.delete(galleryItems).where(eq(galleryItems.id, id));
   }
 
   async featureGalleryItem(id: string, featured: boolean): Promise<void> {
