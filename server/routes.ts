@@ -167,30 +167,48 @@ export async function registerRoutes(
       res.set("Cache-Control", "no-store, no-cache, must-revalidate");
       res.set("Pragma", "no-cache");
       
-      const apiDevBuys = getDevBuys();
+      let apiDevBuys: ReturnType<typeof getDevBuys> = [];
+      try {
+        apiDevBuys = getDevBuys();
+      } catch (err) {
+        console.error("[DevBuys] Error fetching API dev buys:", err);
+      }
       
-      const manualBuys = await db.select().from(manualDevBuys);
-      const manualDevBuysFormatted = manualBuys
-        .filter(b => b.amount && b.price && b.timestamp)
-        .map(b => {
-          const amount = parseFloat(b.amount);
-          const price = parseFloat(b.price);
-          if (isNaN(amount) || isNaN(price)) return null;
-          return {
-            signature: `manual-${b.id}`,
-            timestamp: new Date(b.timestamp).getTime(),
-            amount,
-            price,
-            label: b.label,
-            isManual: true,
-          };
-        })
-        .filter((b): b is NonNullable<typeof b> => b !== null);
+      let manualDevBuysFormatted: Array<{
+        signature: string;
+        timestamp: number;
+        amount: number;
+        price: number;
+        label: string | null;
+        isManual: boolean;
+      }> = [];
+      
+      try {
+        const manualBuys = await db.select().from(manualDevBuys);
+        manualDevBuysFormatted = manualBuys
+          .filter(b => b.amount && b.price && b.timestamp)
+          .map(b => {
+            const amount = parseFloat(b.amount);
+            const price = parseFloat(b.price);
+            if (isNaN(amount) || isNaN(price)) return null;
+            return {
+              signature: `manual-${b.id}`,
+              timestamp: new Date(b.timestamp).getTime(),
+              amount,
+              price,
+              label: b.label,
+              isManual: true,
+            };
+          })
+          .filter((b): b is NonNullable<typeof b> => b !== null);
+      } catch (err) {
+        console.error("[DevBuys] Error fetching manual dev buys from DB:", err);
+      }
       
       const allBuys = [...apiDevBuys, ...manualDevBuysFormatted].sort((a, b) => b.timestamp - a.timestamp);
       res.json(allBuys);
     } catch (error) {
-      console.error("[DevBuys] Error:", error);
+      console.error("[DevBuys] Unexpected error:", error);
       res.status(500).json({ error: "Failed to fetch dev buys" });
     }
   });
@@ -284,7 +302,7 @@ export async function registerRoutes(
       }));
       res.json(pollsFormatted);
     } catch (error) {
-      console.error("[Polls] Error fetching polls:", error);
+      console.error("[Polls] Unexpected error fetching polls:", error);
       res.status(500).json({ error: "Failed to fetch polls" });
     }
   });
@@ -371,14 +389,25 @@ export async function registerRoutes(
   
   app.get("/api/activity", async (_req, res) => {
     try {
-      // Fetch all activity sources in parallel
+      // Fetch all activity sources in parallel with error resilience
       const [dbActivity, tokenActivity] = await Promise.all([
-        storage.getRecentActivity(20),
-        fetchRecentTokenActivity(),
+        storage.getRecentActivity(20).catch(err => {
+          console.error("[Activity] DB activity fetch failed:", err);
+          return [];
+        }),
+        fetchRecentTokenActivity().catch(err => {
+          console.error("[Activity] Token activity fetch failed:", err);
+          return [];
+        }),
       ]);
       
-      // Get dev buys and format them
-      const devBuys = getDevBuys().slice(0, 10);
+      // Get dev buys and format them (with fallback)
+      let devBuys: ReturnType<typeof getDevBuys> = [];
+      try {
+        devBuys = getDevBuys().slice(0, 10);
+      } catch (err) {
+        console.error("[Activity] Dev buys fetch failed:", err);
+      }
       const devBuyActivity = devBuys.map((buy) => ({
         id: `devbuy-${buy.signature.slice(0, 12)}`,
         type: "trade" as const,
@@ -418,7 +447,7 @@ export async function registerRoutes(
       
       res.json(sortedActivity);
     } catch (error) {
-      console.error("[Activity] Error fetching activity:", error);
+      console.error("[Activity] Unexpected error fetching activity:", error);
       res.status(500).json({ error: "Failed to fetch activity" });
     }
   });
@@ -453,22 +482,29 @@ export async function registerRoutes(
   app.get("/api/gallery", async (req, res) => {
     try {
       const featured = req.query.featured === "true";
-      const items = featured 
-        ? await storage.getFeaturedGalleryItems()
-        : await storage.getApprovedGalleryItems(50);
+      const items = await (featured 
+        ? storage.getFeaturedGalleryItems()
+        : storage.getApprovedGalleryItems(50)
+      ).catch(err => {
+        console.error("[Gallery] Database error fetching gallery:", err);
+        return [];
+      });
       res.json(items);
     } catch (error) {
-      console.error("[Gallery] Error fetching gallery:", error);
+      console.error("[Gallery] Unexpected error fetching gallery:", error);
       res.status(500).json({ error: "Failed to fetch gallery" });
     }
   });
 
   app.get("/api/gallery/featured", async (req, res) => {
     try {
-      const items = await storage.getFeaturedGalleryItems();
+      const items = await storage.getFeaturedGalleryItems().catch(err => {
+        console.error("[Gallery] Database error fetching featured:", err);
+        return [];
+      });
       res.json(items.length > 0 ? items[0] : null);
     } catch (error) {
-      console.error("[Gallery] Error fetching featured item:", error);
+      console.error("[Gallery] Unexpected error fetching featured item:", error);
       res.status(500).json({ error: "Failed to fetch featured item" });
     }
   });
@@ -660,10 +696,13 @@ export async function registerRoutes(
 
   app.get("/api/chat/rooms/:roomId/messages", async (req, res) => {
     try {
-      const messages = await storage.getChatMessages(req.params.roomId, 100);
+      const messages = await storage.getChatMessages(req.params.roomId, 100).catch(err => {
+        console.error("[Chat] Database error fetching messages:", err);
+        return [];
+      });
       res.json(messages.reverse());
     } catch (error) {
-      console.error("[Chat] Error fetching messages:", error);
+      console.error("[Chat] Unexpected error fetching messages:", error);
       res.status(500).json({ error: "Failed to fetch messages" });
     }
   });

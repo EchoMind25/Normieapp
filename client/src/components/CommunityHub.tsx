@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,7 @@ export function CommunityHub() {
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
   const [isVoting, setIsVoting] = useState<string | null>(null);
   const { toast } = useToast();
+  const activityEndRef = useRef<HTMLDivElement>(null);
 
   const fetchPolls = useCallback(async (showLoading = false) => {
     if (showLoading) setIsLoadingPolls(true);
@@ -122,6 +123,12 @@ export function CommunityHub() {
       clearInterval(activityInterval);
     };
   }, [fetchPolls, fetchActivity]);
+
+  useEffect(() => {
+    if (activity.length > 0 && activityEndRef.current) {
+      activityEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [activity]);
 
   const handleVote = async (pollId: string, optionId: string) => {
     if (votedPolls.has(pollId) || isVoting) return;
@@ -318,7 +325,7 @@ export function CommunityHub() {
                       <p className="text-xs mt-1">Watch for burns, trades, and milestones</p>
                     </div>
                   ) : (
-                    activity.map((item) => (
+                    [...activity].reverse().map((item) => (
                       <div
                         key={item.id}
                         className="flex items-start gap-3 p-2 rounded-md bg-muted/30"
@@ -335,7 +342,7 @@ export function CommunityHub() {
                       </div>
                     ))
                   )}
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div ref={activityEndRef} className="flex items-center gap-2 text-muted-foreground">
                     <span className="animate-blink">_</span>
                     <span className="text-xs">Awaiting next event...</span>
                   </div>
