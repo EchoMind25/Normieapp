@@ -20,8 +20,32 @@ function log(message: string, source = "database") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+function getConnectionString(): string {
+  const isProduction = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT;
+  
+  if (isProduction && process.env.PROD_DATABASE_URL) {
+    return process.env.PROD_DATABASE_URL;
+  }
+  
+  return process.env.DATABASE_URL || "";
+}
+
+function getDatabaseHost(): string {
+  const url = getConnectionString();
+  if (!url) return "NO_DATABASE_URL";
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname;
+  } catch {
+    return "INVALID_URL";
+  }
+}
+
+const connectionString = getConnectionString();
+log(`Initializing database pool for ${getEnvironmentName()} - Host: ${getDatabaseHost()}`, "database");
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   max: 20,
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
