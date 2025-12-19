@@ -126,6 +126,10 @@ export interface IStorage {
   getRecentActivity(limit?: number): Promise<ActivityItemDb[]>;
   createActivityItem(item: InsertActivityItemDb): Promise<ActivityItemDb>;
   
+  // Leaderboard
+  getTopMemeCreators(limit?: number): Promise<{ userId: string; username: string; avatarUrl?: string; score: number; rank: number }[]>;
+  getTopChatters(limit?: number): Promise<{ userId: string; username: string; avatarUrl?: string; score: number; rank: number }[]>;
+  
   // Gallery
   getApprovedGalleryItems(limit?: number): Promise<GalleryItem[]>;
   getPendingGalleryItems(): Promise<GalleryItem[]>;
@@ -580,6 +584,61 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGalleryComment(id: string): Promise<void> {
     await db.update(galleryComments).set({ isDeleted: true }).where(eq(galleryComments.id, id));
+  }
+
+  // Leaderboard
+  async getTopMemeCreators(limit: number = 10): Promise<{ userId: string; username: string; avatarUrl?: string; score: number; rank: number }[]> {
+    const results = await db
+      .select({
+        userId: users.id,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+        totalUpvotes: sql<number>`COALESCE(SUM(${galleryItems.upvotes}), 0)::int`,
+      })
+      .from(users)
+      .leftJoin(galleryItems, and(
+        eq(galleryItems.creatorId, users.id),
+        eq(galleryItems.status, "approved")
+      ))
+      .groupBy(users.id, users.username, users.avatarUrl)
+      .having(sql`COALESCE(SUM(${galleryItems.upvotes}), 0) > 0`)
+      .orderBy(sql`COALESCE(SUM(${galleryItems.upvotes}), 0) DESC`)
+      .limit(limit);
+    
+    return results.map((r, i) => ({
+      userId: r.userId,
+      username: r.username,
+      avatarUrl: r.avatarUrl || undefined,
+      score: r.totalUpvotes,
+      rank: i + 1,
+    }));
+  }
+
+  async getTopChatters(limit: number = 10): Promise<{ userId: string; username: string; avatarUrl?: string; score: number; rank: number }[]> {
+    const results = await db
+      .select({
+        userId: users.id,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+        messageCount: sql<number>`COUNT(${chatMessages.id})::int`,
+      })
+      .from(users)
+      .leftJoin(chatMessages, and(
+        eq(chatMessages.senderId, users.id),
+        eq(chatMessages.isDeleted, false)
+      ))
+      .groupBy(users.id, users.username, users.avatarUrl)
+      .having(sql`COUNT(${chatMessages.id}) > 0`)
+      .orderBy(sql`COUNT(${chatMessages.id}) DESC`)
+      .limit(limit);
+    
+    return results.map((r, i) => ({
+      userId: r.userId,
+      username: r.username,
+      avatarUrl: r.avatarUrl || undefined,
+      score: r.messageCount,
+      rank: i + 1,
+    }));
   }
 }
 

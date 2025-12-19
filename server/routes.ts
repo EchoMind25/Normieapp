@@ -641,6 +641,24 @@ export async function registerRoutes(
   });
 
   // =====================================================
+  // Leaderboard Routes
+  // =====================================================
+
+  app.get("/api/leaderboard", async (_req, res) => {
+    try {
+      const [topCreators, topChatters] = await Promise.all([
+        storage.getTopMemeCreators(10),
+        storage.getTopChatters(10),
+      ]);
+      
+      res.json({ topCreators, topChatters });
+    } catch (error) {
+      console.error("[Leaderboard] Error fetching leaderboard:", error);
+      res.json({ topCreators: [], topChatters: [] });
+    }
+  });
+
+  // =====================================================
   // Art Gallery Routes
   // =====================================================
 

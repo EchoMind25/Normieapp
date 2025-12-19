@@ -1,3 +1,4 @@
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Dashboard } from "@/components/Dashboard";
 import { MemeGenerator } from "@/components/MemeGenerator";
@@ -5,20 +6,98 @@ import { CommunityHub } from "@/components/CommunityHub";
 import { ArtGallery } from "@/components/ArtGallery";
 import { LiveChat } from "@/components/LiveChat";
 import { Footer } from "@/components/Footer";
+import { MatrixRain } from "@/components/MatrixRain";
+import { TransactionBubbles } from "@/components/TransactionBubbles";
+import { NormieMascot } from "@/components/NormieMascot";
+import { ConfettiCelebration } from "@/components/ConfettiCelebration";
+import { EasterEggs } from "@/components/EasterEggs";
+import { useSoundEffects } from "@/components/SoundEffects";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTheme } from "@/hooks/useTheme";
+
+const PRICE_MILESTONES = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1];
 
 export default function Home() {
   const { metrics, priceHistory, devBuys, isConnected, isLoading } = useWebSocket();
   const { isDark, toggleTheme } = useTheme();
+  const { playSound } = useSoundEffects();
+  
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [confettiMessage, setConfettiMessage] = useState("");
+  const [diamondHandsMode, setDiamondHandsMode] = useState(false);
+  
+  const prevPriceRef = useRef<number | null>(null);
+  const passedMilestonesRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!metrics?.price) return;
+    
+    const currentPrice = metrics.price;
+    const prevPrice = prevPriceRef.current;
+
+    if (prevPrice !== null) {
+      PRICE_MILESTONES.forEach((milestone) => {
+        if (
+          prevPrice < milestone &&
+          currentPrice >= milestone &&
+          !passedMilestonesRef.current.has(milestone)
+        ) {
+          passedMilestonesRef.current.add(milestone);
+          setConfettiMessage(`$${milestone} REACHED!`);
+          setShowConfetti(true);
+          playSound("milestone");
+        }
+      });
+
+      const changePercent = ((currentPrice - prevPrice) / prevPrice) * 100;
+      if (changePercent > 10) {
+        playSound("pump");
+      } else if (changePercent < -10) {
+        playSound("dump");
+      }
+    }
+
+    prevPriceRef.current = currentPrice;
+  }, [metrics?.price, playSound]);
+
+  const handleKonamiCode = useCallback(() => {
+    setDiamondHandsMode(true);
+    playSound("milestone");
+    setConfettiMessage("DIAMOND HANDS UNLOCKED");
+    setShowConfetti(true);
+  }, [playSound]);
+
+  const handleConfettiComplete = useCallback(() => {
+    setShowConfetti(false);
+    setConfettiMessage("");
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
+      <MatrixRain opacity={diamondHandsMode ? 0.08 : 0.03} speed={diamondHandsMode ? 1.5 : 1} />
+      
       <div className="ambient-background" aria-hidden="true">
         <div className="ambient-glow-orb ambient-glow-orb-1" />
         <div className="ambient-glow-orb ambient-glow-orb-2" />
       </div>
       <div className="scanline-overlay" aria-hidden="true" />
+      
+      <TransactionBubbles />
+      
+      <ConfettiCelebration
+        trigger={showConfetti}
+        message={confettiMessage}
+        onComplete={handleConfettiComplete}
+      />
+      
+      <EasterEggs onKonamiCode={handleKonamiCode} />
+      
+      <div className="fixed bottom-4 right-4 z-50" data-testid="mascot-container">
+        <NormieMascot
+          priceChange={metrics?.priceChange24h || 0}
+          className="w-16 h-16 sm:w-20 sm:h-20"
+        />
+      </div>
       
       <Header
         metrics={metrics}

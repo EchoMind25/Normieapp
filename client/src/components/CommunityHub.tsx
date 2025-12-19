@@ -21,6 +21,7 @@ import { SiTelegram, SiX } from "react-icons/si";
 import { NORMIE_TOKEN } from "@shared/schema";
 import type { Poll, ActivityItem } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { Leaderboard } from "./Leaderboard";
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   burn: <Flame className="h-4 w-4 text-destructive" />,
@@ -343,6 +344,8 @@ export function CommunityHub() {
                 </div>
               </ScrollArea>
             </Card>
+            
+            <Leaderboard />
           </div>
 
           <div className="space-y-4">

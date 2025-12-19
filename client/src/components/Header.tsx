@@ -9,7 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Terminal, Menu, X, Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings } from "lucide-react";
+import { Menu, X, Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings } from "lucide-react";
+import { SoundToggle } from "@/components/SoundEffects";
 import { SiTelegram, SiX } from "react-icons/si";
 import { NORMIE_TOKEN } from "@shared/schema";
 import type { TokenMetrics } from "@shared/schema";
@@ -139,6 +140,7 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
               <SiX className="h-4 w-4" />
             </Button>
           </a>
+          <SoundToggle />
           <Button
             variant="ghost"
             size="icon"
