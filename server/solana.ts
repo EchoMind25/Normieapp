@@ -10,6 +10,8 @@ const TOKEN_ADDRESS = NORMIE_TOKEN.address;
 const DEV_WALLET = "8eQ8axmX7hwWdMxpq5KcqnTwMZyxjAzo7fc5sEdvj2EB";
 const BURN_ADDRESS = "1nc1nerator11111111111111111111111111111111";
 const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || "";
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY || "";
+const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 
 // Per dev (@NormieCEO) on X: OVER 527 million burned/locked total
 // Burned + Locked combined = 527M+ (shown as "Supply Stranglehold")
@@ -31,6 +33,11 @@ let activityCache: ActivityItem[] = [];
 let lastActivityFetch = 0;
 const ACTIVITY_CACHE_TTL = 60000; // 60 seconds
 
+// Holder count cache (Helius API)
+let cachedHolderCount = 0;
+let lastHolderFetch = 0;
+const HOLDER_CACHE_TTL = 300000; // 5 minutes
+
 function getConnection(): Connection {
   if (!connection) {
     connection = new Connection(RPC_ENDPOINT, "confirmed");
@@ -51,6 +58,92 @@ function formatBurnedTokens(num: number): string {
   return num.toString();
 }
 
+// Fetch holder count from Helius API
+async function fetchHolderCount(): Promise<number> {
+  const now = Date.now();
+  
+  // Return cached value if fresh
+  if (now - lastHolderFetch < HOLDER_CACHE_TTL) {
+    return cachedHolderCount;
+  }
+  
+  if (!HELIUS_API_KEY) {
+    console.log("[Helius] No API key configured for holder count");
+    return cachedHolderCount;
+  }
+  
+  try {
+    const uniqueOwners = new Set<string>();
+    let cursor: string | undefined = undefined;
+    let requestCount = 0;
+    const maxRequests = 50; // Safety limit to prevent infinite loops
+    
+    do {
+      const params: any = {
+        limit: 1000,
+        mint: TOKEN_ADDRESS,
+      };
+      
+      if (cursor) {
+        params.cursor = cursor;
+      }
+      
+      const response = await fetch(HELIUS_RPC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "getTokenAccounts",
+          id: "helius-holders",
+          params,
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error(`[Helius] API error: ${response.status}`);
+        break;
+      }
+      
+      const data = await response.json();
+      
+      if (!data.result || !data.result.token_accounts || data.result.token_accounts.length === 0) {
+        break;
+      }
+      
+      // Count unique owners with balance > 0
+      for (const account of data.result.token_accounts) {
+        if (account.amount > 0) {
+          uniqueOwners.add(account.owner);
+        }
+      }
+      
+      // Get cursor for next page
+      cursor = data.result.cursor;
+      requestCount++;
+      
+    } while (cursor && requestCount < maxRequests);
+    
+    // Only update cache if we successfully fetched at least one page with data
+    if (requestCount > 0 && uniqueOwners.size > 0) {
+      cachedHolderCount = uniqueOwners.size;
+      console.log(`[Helius] Fetched holder count: ${cachedHolderCount} unique holders (${requestCount} requests)`);
+    } else if (requestCount > 0) {
+      // API responded but no holders found - keep previous cache value
+      console.log(`[Helius] No holders found in response, keeping cached value: ${cachedHolderCount}`);
+    }
+    
+    // Always update lastHolderFetch to respect TTL and prevent rapid retries
+    lastHolderFetch = now;
+    
+    return cachedHolderCount;
+  } catch (error) {
+    console.error("[Helius] Error fetching holder count:", error);
+    // Update lastHolderFetch to prevent rapid retries on error, but keep cached value
+    lastHolderFetch = now;
+    return cachedHolderCount;
+  }
+}
+
 export async function fetchTokenMetrics(): Promise<TokenMetrics> {
   const now = Date.now();
   
@@ -59,11 +152,12 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
   }
   
   try {
-    // Fetch DexScreener data, burned tokens, and Streamflow locked tokens in parallel
-    const [response, burnedTokens, lockedTokens] = await Promise.all([
+    // Fetch DexScreener data, burned tokens, Streamflow locked tokens, and holder count in parallel
+    const [response, burnedTokens, lockedTokens, holderCount] = await Promise.all([
       fetch(`${DEXSCREENER_API}/${TOKEN_ADDRESS}`),
       fetchBurnedTokens(),
       fetchStreamflowLockedTokens(),
+      fetchHolderCount(),
     ]);
     
     if (!response.ok) {
@@ -86,7 +180,7 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
       const totalSupply = 1000000000;
       const circulatingSupply = totalSupply - burnedTokens - lockedTokens;
       
-      console.log(`[DexScreener] Fetched real data - Price: $${price.toFixed(8)}, MCap: $${marketCap}, Burned: ${formatBurnedTokens(burnedTokens)}, Locked: ${formatBurnedTokens(lockedTokens)}`);
+      console.log(`[DexScreener] Fetched real data - Price: $${price.toFixed(8)}, MCap: $${marketCap}, Burned: ${formatBurnedTokens(burnedTokens)}, Locked: ${formatBurnedTokens(lockedTokens)}, Holders: ${holderCount}`);
       
       currentMetrics = {
         price,
@@ -99,7 +193,7 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
         circulatingSupply,
         burnedTokens,
         lockedTokens,
-        holders: 0,
+        holders: holderCount,
         lastUpdated: new Date().toISOString(),
       };
       
@@ -125,7 +219,7 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
       circulatingSupply: 1000000000,
       burnedTokens: cachedBurnedTokens,
       lockedTokens: getLockedTokens(),
-      holders: 0,
+      holders: cachedHolderCount,
       lastUpdated: new Date().toISOString(),
     };
   }
