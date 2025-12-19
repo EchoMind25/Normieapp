@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Wallet, Mail, User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
-import { SiPhantom } from "react-icons/si";
+import { Wallet, Mail, User, Lock, Eye, EyeOff, Loader2, ShieldCheck, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +15,114 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAvailableWallets } from "@/lib/wallet";
+
+interface HumanVerificationProps {
+  verified: boolean;
+  onVerify: (verified: boolean) => void;
+}
+
+function HumanVerification({ verified, onVerify }: HumanVerificationProps) {
+  const [challenge, setChallenge] = useState(() => generateChallenge());
+  const [userAnswer, setUserAnswer] = useState("");
+  const [error, setError] = useState("");
+
+  function generateChallenge() {
+    const operations = [
+      { op: "+", fn: (a: number, b: number) => a + b },
+      { op: "-", fn: (a: number, b: number) => a - b },
+    ];
+    const { op, fn } = operations[Math.floor(Math.random() * operations.length)];
+    const a = Math.floor(Math.random() * 10) + 1;
+    const b = Math.floor(Math.random() * 10) + 1;
+    const num1 = op === "-" ? Math.max(a, b) : a;
+    const num2 = op === "-" ? Math.min(a, b) : b;
+    return { num1, num2, op, answer: fn(num1, num2) };
+  }
+
+  const refreshChallenge = useCallback(() => {
+    setChallenge(generateChallenge());
+    setUserAnswer("");
+    setError("");
+    onVerify(false);
+  }, [onVerify]);
+
+  const handleVerify = useCallback(() => {
+    const parsed = parseInt(userAnswer, 10);
+    if (isNaN(parsed)) {
+      setError("Enter a number, anon");
+      return;
+    }
+    if (parsed === challenge.answer) {
+      onVerify(true);
+      setError("");
+    } else {
+      setError("Wrong answer, try again");
+      refreshChallenge();
+    }
+  }, [userAnswer, challenge.answer, onVerify, refreshChallenge]);
+
+  if (verified) {
+    return (
+      <div className="flex items-center gap-2 p-3 rounded-md border border-chart-1/30 bg-chart-1/10">
+        <ShieldCheck className="h-5 w-5 text-chart-1" />
+        <span className="font-mono text-sm text-chart-1">Verified Human</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 p-3 rounded-md border border-border bg-muted/30">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="font-mono text-xs text-muted-foreground">
+          Prove you're not a bot
+        </Label>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={refreshChallenge}
+          data-testid="button-refresh-captcha"
+        >
+          <RefreshCw className="h-3 w-3" />
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 p-2 rounded-md bg-background border border-border font-mono text-center text-lg">
+          <span className="text-chart-1">{challenge.num1}</span>
+          <span className="text-muted-foreground mx-2">{challenge.op}</span>
+          <span className="text-chart-1">{challenge.num2}</span>
+          <span className="text-muted-foreground mx-2">=</span>
+          <span className="text-foreground">?</span>
+        </div>
+        <Input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={userAnswer}
+          onChange={(e) => setUserAnswer(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+          className="w-16 font-mono text-center"
+          placeholder="?"
+          data-testid="input-captcha-answer"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleVerify}
+          className="font-mono"
+          data-testid="button-verify-captcha"
+        >
+          Check
+        </Button>
+      </div>
+      {error && (
+        <p className="text-xs text-destructive font-mono">{error}</p>
+      )}
+    </div>
+  );
+}
 
 const loginSchema = z.object({
   identifier: z.string().min(1, "Username or email is required"),
@@ -54,7 +161,15 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [activeTab, setActiveTab] = useState<"login" | "register" | "reset">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHumanVerified, setIsHumanVerified] = useState(false);
   const { loginWithWallet, loginWithEmail, register, requestPasswordReset } = useAuth();
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setIsHumanVerified(false);
+    }
+    onOpenChange(newOpen);
+  };
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -125,7 +240,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md bg-background border-border">
         <DialogHeader>
           <DialogTitle className="font-mono text-xl text-center">
@@ -232,10 +347,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                   )}
                 </div>
 
+                <HumanVerification verified={isHumanVerified} onVerify={setIsHumanVerified} />
+
                 <Button
                   type="submit"
                   className="w-full font-mono"
-                  disabled={isLoading}
+                  disabled={isLoading || !isHumanVerified}
                   data-testid="button-login"
                 >
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -333,10 +450,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                   )}
                 </div>
 
+                <HumanVerification verified={isHumanVerified} onVerify={setIsHumanVerified} />
+
                 <Button
                   type="submit"
                   className="w-full font-mono"
-                  disabled={isLoading}
+                  disabled={isLoading || !isHumanVerified}
                   data-testid="button-register"
                 >
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
