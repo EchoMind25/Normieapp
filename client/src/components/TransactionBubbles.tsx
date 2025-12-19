@@ -32,6 +32,7 @@ function formatAmount(amount: number): string {
 export function TransactionBubbles() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const { data: activity } = useQuery<ActivityItem[]>({
     queryKey: ["/api/activity"],
@@ -65,6 +66,13 @@ export function TransactionBubbles() {
   useEffect(() => {
     if (!activity || activity.length === 0) return;
 
+    if (!isInitialized) {
+      const initialIds = new Set(activity.map((item) => item.id));
+      setSeenIds(initialIds);
+      setIsInitialized(true);
+      return;
+    }
+
     const newBubbles: Bubble[] = [];
     
     activity.forEach((item) => {
@@ -81,7 +89,7 @@ export function TransactionBubbles() {
     if (newBubbles.length > 0) {
       setBubbles((prev) => [...prev, ...newBubbles].slice(-15));
     }
-  }, [activity, seenIds, createBubble]);
+  }, [activity, seenIds, createBubble, isInitialized]);
 
   useEffect(() => {
     const interval = setInterval(() => {
