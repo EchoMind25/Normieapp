@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,16 +19,36 @@ import type { TokenMetrics } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthModal } from "./AuthModal";
 
+interface IconData {
+  id: string;
+  name: string;
+  fileUrl: string;
+}
+
 interface HeaderProps {
   metrics: TokenMetrics | null;
   isDark: boolean;
   onToggleTheme: () => void;
 }
 
+const DEFAULT_FAVICON_URL = "https://res.cloudinary.com/dmt4dpsnw/image/upload/w_32,h_32,c_fill/v1765997164/Normie-Favicon_on9ov0.png";
+
 export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
   const [, setLocation] = useLocation();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
+
+  const { data: icons = [] } = useQuery<IconData[]>({
+    queryKey: ["/api/icons"],
+    enabled: isAuthenticated && !!user?.selectedIconId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const selectedIcon = user?.selectedIconId 
+    ? icons.find(icon => icon.id === user.selectedIconId) 
+    : null;
+  
+  const headerIconUrl = selectedIcon?.fileUrl || DEFAULT_FAVICON_URL;
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -59,9 +80,9 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
         <div className="flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 hover-elevate rounded-md px-1">
             <img 
-              src="https://res.cloudinary.com/dmt4dpsnw/image/upload/w_32,h_32,c_fill/v1765997164/Normie-Favicon_on9ov0.png" 
+              src={headerIconUrl} 
               alt="Normie" 
-              className="h-8 w-8"
+              className="h-8 w-8 rounded-sm"
               data-testid="img-normie-icon"
             />
             <span className="font-mono text-lg font-bold tracking-tight text-foreground">
