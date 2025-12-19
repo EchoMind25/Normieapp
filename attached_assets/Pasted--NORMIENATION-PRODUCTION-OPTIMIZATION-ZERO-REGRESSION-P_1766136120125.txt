@@ -1,0 +1,1775 @@
+# NORMIENATION PRODUCTION OPTIMIZATION - ZERO-REGRESSION PERFORMANCE AUDIT
+
+## MISSION OBJECTIVE
+Systematically optimize every aspect of NormieNation for maximum speed, reliability, and user experience WITHOUT breaking any existing functionality.
+
+## AGENT AUTHORITY LEVEL: MAXIMUM AUTONOMY WITH SAFETY GATES
+
+### You Have Full Authority To:
+- Analyze and optimize any file in the codebase
+- Refactor code for performance gains
+- Implement caching strategies
+- Optimize database queries
+- Compress and optimize assets
+- Add monitoring and error tracking
+- Make architectural improvements
+- Remove dead code and unused dependencies
+
+### Mandatory Safety Constraints:
+- Create baseline performance measurements BEFORE any changes
+- Test EVERY change immediately after implementation
+- Maintain 100% functional parity (nothing breaks)
+- Roll back immediately if tests fail
+- Commit working changes after each optimization
+- Document performance gains quantitatively
+
+---
+
+## PHASE 0: ESTABLISH BASELINE (CRITICAL - DO NOT SKIP)
+
+### Step 0.1: Performance Baseline Measurement
+
+**INSPECT AND DOCUMENT**:
+LIGHTHOUSE AUDIT (if web-accessible):
+
+Run Lighthouse audit on key pages
+Document scores: Performance, Accessibility, Best Practices, SEO
+Save report as baseline
+
+LOAD TIME METRICS:
+
+Time to First Byte (TTFB)
+First Contentful Paint (FCP)
+Largest Contentful Paint (LCP)
+Time to Interactive (TTI)
+Total Blocking Time (TBT)
+
+BUNDLE SIZE:
+
+Total JavaScript bundle size
+Total CSS bundle size
+Image assets total size
+Font files total size
+
+DATABASE PERFORMANCE:
+
+Average query execution time
+Slowest 10 queries
+Number of queries per page load
+Database connection pool usage
+
+API PERFORMANCE:
+
+Average API response time per endpoint
+Slowest endpoints
+Failed request rate
+Timeout rate
+
+BROWSER CONSOLE:
+
+Count of console errors
+Count of console warnings
+Network request failures
+Memory leaks (check DevTools Memory tab)
+
+
+**OUTPUT**: Create "BASELINE_METRICS.md" with all measurements
+
+---
+
+## PHASE 1: CRITICAL PATH OPTIMIZATION
+
+### Task 1.1: Frontend Bundle Optimization
+
+**OBJECTIVES**:
+- Reduce JavaScript bundle size by 30-50%
+- Eliminate unused dependencies
+- Implement code splitting
+- Enable tree shaking
+
+**INVESTIGATION**:
+
+Analyze bundle composition:
+
+Run: npm run build -- --analyze (if configured)
+Or use: webpack-bundle-analyzer, vite-plugin-analyzer
+Identify largest dependencies
+Find duplicate dependencies
+
+
+Check for unused code:
+
+Run: npx depcheck (finds unused dependencies)
+Scan for unused imports in components
+Identify dead code branches
+
+
+Review code splitting opportunities:
+
+Lazy load route components
+Defer non-critical features
+Split vendor bundles
+
+
+
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **Remove Unused Dependencies**
+```bash
+# Run analysis
+npx depcheck
+
+# Remove unused packages (example)
+npm uninstall [unused-package-1] [unused-package-2]
+
+# Test build after removal
+npm run build
+```
+
+2. **Implement Code Splitting**
+```javascript
+// BEFORE: Direct imports
+import HeavyChart from './HeavyChart'
+import AdminPanel from './AdminPanel'
+
+// AFTER: Lazy loading
+const HeavyChart = lazy(() => import('./HeavyChart'))
+const AdminPanel = lazy(() => import('./AdminPanel'))
+
+// Wrap in Suspense with loading state
+<Suspense fallback={<LoadingSpinner />}>
+  <HeavyChart />
+</Suspense>
+```
+
+3. **Optimize Imports**
+```javascript
+// BEFORE: Import entire library
+import _ from 'lodash'
+import * as SolanaWeb3 from '@solana/web3.js'
+
+// AFTER: Import only what you need
+import { debounce, throttle } from 'lodash'
+import { Connection, PublicKey } from '@solana/web3.js'
+```
+
+4. **Enable Tree Shaking**
+```javascript
+// vite.config.js optimization
+export default {
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'solana': ['@solana/web3.js'],
+          'vendor': ['react', 'react-dom'],
+          'charts': ['recharts', 'chart.js']
+        }
+      }
+    },
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.logs in production
+        drop_debugger: true
+      }
+    }
+  }
+}
+```
+
+**TESTING PROTOCOL**:
+✓ Run build: npm run build
+✓ Check bundle size reduction
+✓ Test all routes load correctly
+✓ Verify lazy-loaded components work
+✓ Check console for errors
+✓ Test on mobile network (throttled)
+
+**SUCCESS METRICS**:
+- Bundle size reduced by 30%+ 
+- No functional regressions
+- Faster initial page load
+
+---
+
+### Task 1.2: Image Optimization
+
+**OBJECTIVES**:
+- Reduce image file sizes by 60-80%
+- Implement responsive images
+- Enable lazy loading
+- Use modern formats (WebP, AVIF)
+
+**INVESTIGATION**:
+
+Find all images in project:
+
+Scan /public, /assets, /images directories
+Check component image imports
+List external image URLs
+
+
+Measure current image sizes:
+
+Total size of image assets
+Largest individual images
+Image format distribution (PNG, JPG, SVG)
+
+
+Identify optimization opportunities:
+
+Images >100KB (compress heavily)
+Images loaded above the fold (preload)
+Images below the fold (lazy load)
+Decorative images (remove or replace with CSS)
+
+
+
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **Compress Existing Images**
+```bash
+# Install optimization tools
+npm install -D imagemin imagemin-webp imagemin-mozjpeg imagemin-pngquant
+
+# Create optimization script
+node scripts/optimize-images.js
+```
+```javascript
+// scripts/optimize-images.js
+const imagemin = require('imagemin');
+const imageminWebp = require('imagemin-webp');
+const imageminMozjpeg = require('imagemin-mozjpeg');
+const imageminPngquant = require('imagemin-pngquant');
+
+(async () => {
+  await imagemin(['public/images/*.{jpg,png}'], {
+    destination: 'public/images/optimized',
+    plugins: [
+      imageminMozjpeg({ quality: 80 }),
+      imageminPngquant({ quality: [0.6, 0.8] }),
+      imageminWebp({ quality: 75 })
+    ]
+  });
+})();
+```
+
+2. **Implement Lazy Loading**
+```javascript
+// BEFORE: All images load immediately
+<img src="/large-image.jpg" alt="Hero" />
+
+// AFTER: Lazy load with native loading attribute
+<img 
+  src="/large-image.webp" 
+  alt="Hero"
+  loading="lazy"
+  decoding="async"
+  width="800"
+  height="600"
+/>
+```
+
+3. **Responsive Images**
+```javascript
+// Serve appropriately sized images
+<picture>
+  <source 
+    srcset="/hero-small.webp 480w, /hero-medium.webp 768w, /hero-large.webp 1200w"
+    sizes="(max-width: 768px) 100vw, 768px"
+    type="image/webp"
+  />
+  <img 
+    src="/hero-large.jpg" 
+    alt="Hero"
+    loading="lazy"
+  />
+</picture>
+```
+
+4. **Replace with CSS where possible**
+```css
+/* Instead of loading gradient image */
+.gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Instead of loading icon images, use SVG inline or icon font */
+```
+
+**TESTING PROTOCOL**:
+✓ Verify all images display correctly
+✓ Check image quality acceptable
+✓ Test lazy loading works (scroll to trigger)
+✓ Validate WebP fallback for older browsers
+✓ Measure total image size reduction
+✓ Test on slow 3G connection
+
+**SUCCESS METRICS**:
+- Image payload reduced by 70%+
+- LCP (Largest Contentful Paint) improves
+- No broken images
+
+---
+
+### Task 1.3: Database Query Optimization
+
+**OBJECTIVES**:
+- Eliminate N+1 queries
+- Add strategic indexes
+- Implement query result caching
+- Reduce query complexity
+
+**INVESTIGATION**:
+
+Enable database query logging:
+
+Log all queries with execution time
+Identify queries >100ms
+Find repeated identical queries
+Spot N+1 query patterns
+
+
+Analyze query patterns:
+
+Queries without WHERE clause (full table scans)
+Missing JOIN optimizations
+Suboptimal data fetching (SELECT *)
+Lack of pagination on large datasets
+
+
+
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **Add Database Indexes**
+```sql
+-- BEFORE: Slow query scanning entire table
+SELECT * FROM users WHERE email = 'user@example.com'; -- 500ms
+
+-- AFTER: Add index
+CREATE INDEX idx_users_email ON users(email);
+-- Query now: 5ms
+
+-- Common indexes to add:
+CREATE INDEX idx_coins_created_at ON coins(created_at);
+CREATE INDEX idx_polls_end_time ON polls(end_time);
+CREATE INDEX idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX idx_notifications_user_id_read ON notifications(user_id, is_read);
+```
+
+2. **Eliminate N+1 Queries**
+```javascript
+// BEFORE: N+1 query problem
+const users = await db.users.findAll();
+for (let user of users) {
+  user.profile = await db.profiles.findOne({ userId: user.id }); // N queries!
+}
+
+// AFTER: Use JOIN or include
+const users = await db.users.findAll({
+  include: [{ model: db.profiles }] // 1 query with JOIN
+});
+```
+
+3. **Implement Query Result Caching**
+```javascript
+// Install Redis or use in-memory cache
+import NodeCache from 'node-cache';
+const cache = new NodeCache({ stdTTL: 300 }); // 5 min cache
+
+async function getCoinData(coinId) {
+  const cacheKey = `coin:${coinId}`;
+  
+  // Check cache first
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+  
+  // Query database
+  const coin = await db.coins.findById(coinId);
+  
+  // Store in cache
+  cache.set(cacheKey, coin);
+  
+  return coin;
+}
+```
+
+4. **Optimize SELECT statements**
+```javascript
+// BEFORE: Fetching unnecessary data
+const users = await db.users.findAll(); // Returns ALL columns
+
+// AFTER: Select only needed columns
+const users = await db.users.findAll({
+  attributes: ['id', 'username', 'avatar'], // Only what UI needs
+  where: { is_active: true },
+  limit: 50 // Add pagination
+});
+```
+
+5. **Batch Database Operations**
+```javascript
+// BEFORE: Multiple individual inserts
+for (let notification of notifications) {
+  await db.notifications.create(notification); // N queries
+}
+
+// AFTER: Bulk insert
+await db.notifications.bulkCreate(notifications); // 1 query
+```
+
+**TESTING PROTOCOL**:
+✓ Run EXPLAIN ANALYZE on optimized queries
+✓ Verify query execution time reduced
+✓ Check data returned is correct
+✓ Test with production-size dataset
+✓ Validate cache invalidation works
+✓ Ensure pagination doesn't break UI
+
+**SUCCESS METRICS**:
+- Average query time reduced by 70%+
+- Eliminated all N+1 queries
+- Page load API response time <200ms
+
+---
+
+### Task 1.4: API Response Optimization
+
+**OBJECTIVES**:
+- Reduce payload size
+- Implement response compression
+- Add API response caching
+- Optimize JSON serialization
+
+**INVESTIGATION**:
+
+Analyze API responses:
+
+Check response size for each endpoint
+Find responses >100KB
+Identify unnecessary data in responses
+Check for missing compression
+
+
+Monitor API call frequency:
+
+Endpoints called multiple times unnecessarily
+Polling endpoints (can use WebSockets instead)
+Redundant data fetching
+
+
+
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **Enable Compression**
+```javascript
+// Express.js example
+import compression from 'compression';
+
+app.use(compression({
+  level: 6, // Compression level (0-9)
+  threshold: 1024, // Only compress responses > 1KB
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  }
+}));
+```
+
+2. **Reduce Response Payload**
+```javascript
+// BEFORE: Sending entire user object
+{
+  id: 1,
+  username: "normie",
+  email: "normie@example.com",
+  password_hash: "...", // NEVER send this!
+  created_at: "2024-01-01",
+  updated_at: "2024-12-19",
+  last_login: "2024-12-19",
+  preferences: { theme: "dark", ... },
+  // ... 20 more fields
+}
+
+// AFTER: Send only what frontend needs
+{
+  id: 1,
+  username: "normie",
+  avatar: "/avatars/normie.jpg"
+}
+```
+
+3. **Implement HTTP Caching Headers**
+```javascript
+// Set appropriate cache headers
+app.get('/api/coins/:id', (req, res) => {
+  const coin = getCoinData(req.params.id);
+  
+  // Cache for 5 minutes
+  res.set('Cache-Control', 'public, max-age=300');
+  res.set('ETag', generateETag(coin));
+  
+  res.json(coin);
+});
+
+// For static data (rarely changes)
+app.get('/api/market-stats', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=3600'); // 1 hour
+  res.json(stats);
+});
+```
+
+4. **Batch API Requests**
+```javascript
+// BEFORE: Multiple individual API calls
+const coin1 = await fetch('/api/coins/1');
+const coin2 = await fetch('/api/coins/2');
+const coin3 = await fetch('/api/coins/3');
+
+// AFTER: Single batch request
+const coins = await fetch('/api/coins/batch', {
+  method: 'POST',
+  body: JSON.stringify({ ids: [1, 2, 3] })
+});
+```
+
+5. **Implement GraphQL or Field Selection**
+```javascript
+// Allow frontend to specify what fields it needs
+// GET /api/users/123?fields=id,username,avatar
+app.get('/api/users/:id', (req, res) => {
+  const fields = req.query.fields?.split(',') || ['*'];
+  const user = getUserWithFields(req.params.id, fields);
+  res.json(user);
+});
+```
+
+**TESTING PROTOCOL**:
+✓ Measure response sizes before/after
+✓ Verify gzip compression active (check headers)
+✓ Test cache headers work correctly
+✓ Validate data completeness unchanged
+✓ Check network waterfall in DevTools
+✓ Test on throttled connection
+
+**SUCCESS METRICS**:
+- API response size reduced by 60%+
+- Response time under 200ms
+- Cache hit rate >70%
+
+---
+
+## PHASE 2: RENDERING PERFORMANCE OPTIMIZATION
+
+### Task 2.1: React Performance Optimization
+
+**OBJECTIVES**:
+- Eliminate unnecessary re-renders
+- Optimize component rendering
+- Implement virtualization for long lists
+- Add performance monitoring
+
+**INVESTIGATION**:
+
+Install React DevTools Profiler:
+
+Record user interactions
+Identify slow renders (>16ms)
+Find components re-rendering unnecessarily
+Check for expensive calculations in render
+
+
+Analyze component structure:
+
+Large components (>200 lines)
+Deep component trees (>10 levels)
+Props drilling (passing props >3 levels)
+Missing memoization opportunities
+
+
+
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **Memoize Expensive Components**
+```javascript
+// BEFORE: Component re-renders on every parent update
+function CoinChart({ data, config }) {
+  // Expensive chart rendering
+  return <canvas>...</canvas>;
+}
+
+// AFTER: Only re-render when props actually change
+import { memo } from 'react';
+
+const CoinChart = memo(({ data, config }) => {
+  // Expensive chart rendering
+  return <canvas>...</canvas>;
+}, (prevProps, nextProps) => {
+  // Custom comparison for complex props
+  return prevProps.data.length === nextProps.data.length &&
+         prevProps.config.theme === nextProps.config.theme;
+});
+```
+
+2. **Use useMemo for Expensive Calculations**
+```javascript
+// BEFORE: Calculation runs on every render
+function CoinList({ coins }) {
+  const sortedCoins = coins.sort((a, b) => b.volume - a.volume); // Runs every time!
+  return <div>{sortedCoins.map(...)}</div>;
+}
+
+// AFTER: Calculation only when dependencies change
+import { useMemo } from 'react';
+
+function CoinList({ coins }) {
+  const sortedCoins = useMemo(() => {
+    return coins.sort((a, b) => b.volume - a.volume);
+  }, [coins]); // Only recalculate when coins change
+  
+  return <div>{sortedCoins.map(...)}</div>;
+}
+```
+
+3. **Use useCallback for Event Handlers**
+```javascript
+// BEFORE: New function created every render
+function CoinItem({ coin, onSelect }) {
+  const handleClick = () => onSelect(coin.id); // New function each time
+  return <div onClick={handleClick}>{coin.name}</div>;
+}
+
+// AFTER: Stable function reference
+import { useCallback } from 'react';
+
+function CoinItem({ coin, onSelect }) {
+  const handleClick = useCallback(() => {
+    onSelect(coin.id);
+  }, [coin.id, onSelect]); // Only recreate if dependencies change
+  
+  return <div onClick={handleClick}>{coin.name}</div>;
+}
+```
+
+4. **Virtualize Long Lists**
+```javascript
+// BEFORE: Rendering 1000+ items (slow!)
+function CoinList({ coins }) {
+  return (
+    <div>
+      {coins.map(coin => <CoinItem key={coin.id} coin={coin} />)}
+    </div>
+  );
+}
+
+// AFTER: Only render visible items
+import { FixedSizeList } from 'react-window';
+
+function CoinList({ coins }) {
+  return (
+    <FixedSizeList
+      height={600}
+      itemCount={coins.length}
+      itemSize={80}
+      width="100%"
+    >
+      {({ index, style }) => (
+        <div style={style}>
+          <CoinItem coin={coins[index]} />
+        </div>
+      )}
+    </FixedSizeList>
+  );
+}
+```
+
+5. **Debounce/Throttle Frequent Updates**
+```javascript
+// BEFORE: Search triggers on every keystroke
+function SearchInput({ onSearch }) {
+  return <input onChange={(e) => onSearch(e.target.value)} />;
+}
+
+// AFTER: Debounce search (wait for user to stop typing)
+import { useDebouncedCallback } from 'use-debounce';
+
+function SearchInput({ onSearch }) {
+  const debouncedSearch = useDebouncedCallback(
+    (value) => onSearch(value),
+    300 // Wait 300ms after last keystroke
+  );
+  
+  return <input onChange={(e) => debouncedSearch(e.target.value)} />;
+}
+```
+
+6. **Optimize Context Usage**
+```javascript
+// BEFORE: Single context causes all consumers to re-render
+const AppContext = createContext({ user, theme, coins, polls, ... }); // Too much!
+
+// AFTER: Split into focused contexts
+const UserContext = createContext();
+const ThemeContext = createContext();
+const CoinsContext = createContext();
+
+// Components only re-render when their specific context changes
+```
+
+**TESTING PROTOCOL**:
+✓ Record Profiler trace before/after
+✓ Verify render count reduced
+✓ Check component responds to interactions
+✓ Test with production data volume
+✓ Validate memoization doesn't break updates
+✓ Measure frame rate (should be 60fps)
+
+**SUCCESS METRICS**:
+- Component render time reduced by 50%+
+- Eliminated unnecessary re-renders
+- Smooth 60fps scrolling and interactions
+
+---
+
+### Task 2.2: CSS & Animation Optimization
+
+**OBJECTIVES**:
+- Remove unused CSS
+- Optimize animations for 60fps
+- Use GPU-accelerated properties
+- Reduce CSS bundle size
+
+**INVESTIGATION**:
+
+Find unused CSS:
+
+Use PurgeCSS or similar tool
+Check for redundant selectors
+Identify heavy frameworks loaded but barely used
+
+
+Analyze animation performance:
+
+Check for layout thrashing
+Find animations causing repaints
+Identify CPU-heavy animations
+
+
+
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **Remove Unused CSS**
+```javascript
+// vite.config.js or webpack.config.js
+import { PurgeCSS } from 'purgecss';
+
+export default {
+  build: {
+    // PurgeCSS removes unused styles
+    plugins: [
+      purgecss({
+        content: ['./src/**/*.{js,jsx,ts,tsx}'],
+        safelist: ['body', 'html'] // Keep essential styles
+      })
+    ]
+  }
+}
+```
+
+2. **Use GPU-Accelerated Properties**
+```css
+/* BEFORE: Causes repaints */
+.slide-in {
+  transition: left 0.3s; /* Triggers layout */
+  left: 0;
+}
+
+/* AFTER: GPU-accelerated */
+.slide-in {
+  transition: transform 0.3s; /* Composited on GPU */
+  transform: translateX(0);
+  will-change: transform; /* Hint to browser */
+}
+```
+
+3. **Optimize Animations**
+```css
+/* Use transform and opacity only (GPU-accelerated) */
+.fade-slide {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.fade-slide.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Avoid animating: */
+/* ❌ width, height, margin, padding (causes layout) */
+/* ❌ box-shadow, border-radius (expensive) */
+/* ✅ transform, opacity (GPU-accelerated) */
+```
+
+4. **Critical CSS Inlining**
+```html
+<!-- Inline critical above-the-fold CSS -->
+<head>
+  <style>
+    /* Critical CSS for instant render */
+    .header { display: flex; ... }
+    .hero { background: ...; }
+  </style>
+  
+  <!-- Load full CSS async -->
+  <link rel="preload" href="/styles.css" as="style" onload="this.rel='stylesheet'">
+</head>
+```
+
+5. **Reduce CSS Specificity**
+```css
+/* BEFORE: High specificity (slow selector) */
+.container .sidebar .widget .title span.highlight { color: red; }
+
+/* AFTER: Low specificity (fast) */
+.widget-title-highlight { color: red; }
+```
+
+**TESTING PROTOCOL**:
+✓ Check CSS bundle size reduction
+✓ Verify all styles still apply correctly
+✓ Test animations at 60fps (DevTools Performance)
+✓ Validate GPU acceleration active (Rendering tab)
+✓ Check for visual regressions
+✓ Test on low-end devices
+
+**SUCCESS METRICS**:
+- CSS bundle reduced by 50%+
+- Animations maintain 60fps
+- No layout thrashing
+
+---
+
+## PHASE 3: NETWORK & LOADING OPTIMIZATION
+
+### Task 3.1: Resource Loading Strategy
+
+**OBJECTIVES**:
+- Implement critical resource preloading
+- Defer non-critical resources
+- Optimize font loading
+- Set up service worker caching
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **Preload Critical Resources**
+```html
+<head>
+  <!-- Preload critical fonts -->
+  <link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+  
+  <!-- Preconnect to external domains -->
+  <link rel="preconnect" href="https://api.pump.fun">
+  <link rel="dns-prefetch" href="https://mainnet.helius-rpc.com">
+  
+  <!-- Preload hero image -->
+  <link rel="preload" href="/hero.webp" as="image">
+</head>
+```
+
+2. **Lazy Load Non-Critical Resources**
+```javascript
+// Defer analytics until page interactive
+setTimeout(() => {
+  loadAnalytics();
+}, 3000);
+
+// Lazy load chat widget
+if (userScrolledToBottom) {
+  import('./ChatWidget').then(module => {
+    module.init();
+  });
+}
+```
+
+3. **Optimize Font Loading**
+```css
+/* Use font-display for faster text rendering */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter.woff2') format('woff2');
+  font-display: swap; /* Show fallback immediately, swap when loaded */
+  font-weight: 400;
+}
+
+/* Subset fonts (only include used characters) */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF; /* Latin only */
+}
+```
+
+4. **Implement Service Worker**
+```javascript
+// service-worker.js
+const CACHE_NAME = 'normienation-v1';
+const urlsToCache = [
+  '/',
+  '/styles.css',
+  '/app.js',
+  '/logo.webp'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
+  );
+});
+```
+
+5. **HTTP/2 Server Push (if supported)**
+```javascript
+// Push critical resources with initial HTML
+res.set('Link', '</styles.css>; rel=preload; as=style');
+res.set('Link', '</app.js>; rel=preload; as=script');
+```
+
+**TESTING PROTOCOL**:
+✓ Verify preload resources load early (Network tab)
+✓ Check fonts display correctly with swap
+✓ Test service worker caches resources
+✓ Validate offline functionality (if implemented)
+✓ Measure TTFB and FCP improvements
+
+**SUCCESS METRICS**:
+- TTFB (Time to First Byte) <200ms
+- FCP (First Contentful Paint) <1.5s
+- Resources cached for offline use
+
+---
+
+### Task 3.2: Solana RPC Optimization
+
+**OBJECTIVES**:
+- Implement RPC connection pooling
+- Add retry logic with exponential backoff
+- Use WebSocket subscriptions instead of polling
+- Cache frequent RPC calls
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **RPC Connection Pool**
+```javascript
+// BEFORE: New connection every request
+const connection = new Connection('https://api.mainnet-beta.solana.com');
+const balance = await connection.getBalance(pubkey);
+
+// AFTER: Reuse connection pool
+class ConnectionPool {
+  constructor(endpoints, maxConnections = 5) {
+    this.endpoints = endpoints;
+    this.connections = [];
+    this.currentIndex = 0;
+    this.initPool(maxConnections);
+  }
+  
+  initPool(max) {
+    for (let i = 0; i < max; i++) {
+      const endpoint = this.endpoints[i % this.endpoints.length];
+      this.connections.push(new Connection(endpoint));
+    }
+  }
+  
+  getConnection() {
+    const conn = this.connections[this.currentIndex];
+    this.currentIndex = (this.currentIndex + 1) % this.connections.length;
+    return conn;
+  }
+}
+
+const pool = new ConnectionPool([
+  'https://mainnet.helius-rpc.com/?api-key=XXX',
+  'https://api.mainnet-beta.solana.com',
+  'https://solana-api.projectserum.com'
+]);
+
+// Use pooled connection
+const connection = pool.getConnection();
+const balance = await connection.getBalance(pubkey);
+```
+
+2. **Retry Logic with Exponential Backoff**
+```javascript
+async function fetchWithRetry(fn, maxRetries = 3, baseDelay = 1000) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      
+      const delay = baseDelay * Math.pow(2, i); // Exponential: 1s, 2s, 4s
+      console.log(`Retry ${i + 1}/${maxRetries} after ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+// Usage
+const balance = await fetchWithRetry(() => 
+  connection.getBalance(pubkey)
+);
+```
+
+3. **WebSocket Subscriptions (instead of polling)**
+```javascript
+// BEFORE: Polling every second (wasteful)
+setInterval(async () => {
+  const balance = await connection.getBalance(pubkey);
+  updateUI(balance);
+}, 1000);
+
+// AFTER: Subscribe to account changes
+const subscriptionId = connection.onAccountChange(
+  pubkey,
+  (accountInfo) => {
+    const balance = accountInfo.lamports;
+    updateUI(balance);
+  },
+  'confirmed'
+);
+
+// Cleanup when component unmounts
+return () => connection.removeAccountChangeListener(subscriptionId);
+```
+
+4. **Cache RPC Results**
+```javascript
+import NodeCache from 'node-cache';
+const rpcCache = new NodeCache({ stdTTL: 30 }); // 30 second cache
+
+async function getCachedBalance(pubkey) {
+  const cacheKey = `balance:${pubkey.toString()}`;
+  
+  const cached = rpcCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+  
+  const balance = await connection.getBalance(pubkey);
+  rpcCache.set(cacheKey, balance);
+  
+  return balance;
+}
+```
+
+5. **Batch RPC Requests**
+```javascript
+// BEFORE: Multiple individual requests
+const balance1 = await connection.getBalance(pubkey1);
+const balance2 = await connection.getBalance(pubkey2);
+const balance3 = await connection.getBalance(pubkey3);
+
+// AFTER: Single batch request
+const [balance1, balance2, balance3] = await Promise.all([
+  connection.getBalance(pubkey1),
+  connection.getBalance(pubkey2),
+  connection.getBalance(pubkey3)
+]);
+```
+
+**TESTING PROTOCOL**:
+✓ Verify RPC calls succeed with retry logic
+✓ Test failover to backup endpoints
+✓ Check WebSocket subscriptions receive updates
+✓ Validate cache reduces redundant calls
+✓ Monitor RPC rate limits not exceeded
+✓ Test with unreliable network (simulate failures)
+
+**SUCCESS METRICS**:
+- RPC call success rate >99%
+- Average RPC response time <100ms
+- Reduced RPC call volume by 70%+
+
+---
+
+## PHASE 4: ERROR HANDLING & RELIABILITY
+
+### Task 4.1: Comprehensive Error Handling
+
+**OBJECTIVES**:
+- Catch and handle all errors gracefully
+- Add error boundaries in React
+- Implement global error tracking
+- Display user-friendly error messages
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **React Error Boundaries**
+```javascript
+// ErrorBoundary.jsx
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    // Log to error tracking service
+    console.error('Error caught:', error, errorInfo);
+    // Send to Sentry, LogRocket, etc.
+    trackError(error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="error-fallback">
+          <h2>🤦‍♂️ Oops! Something went wrong, normie</h2>
+          <p>We're on it. Try refreshing the page!</p>
+          <button onClick={() => window.location.reload()}>
+            Refresh Page 🔄
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Wrap app with error boundary
+<ErrorBoundary>
+  <App />
+</ErrorBoundary>
+```
+
+2. **Global Error Handler**
+```javascript
+// error-handler.js
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error);
+  trackError(event.error);
+  // Show user-friendly notification
+  showNotification('Whoops! Something hiccupped. We logged it. 👀');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  trackError(event.reason);
+  showNotification('Network hiccup detected. Retrying... 🔄');
+});
+```
+
+3. **Try-Catch All Async Operations**
+```javascript
+// BEFORE: Unhandled promise rejection
+async function loadCoinData(coinId) {
+  const response = await fetch(`/api/coins/${coinId}`);
+  const data = await response.json();
+  return data;
+}
+
+// AFTER: Graceful error handling
+async function loadCoinData(coinId) {
+  try {
+    const response = await fetch(`/api/coins/${coinId}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return { success: true, data };
+    
+  } catch (error) {
+    console.error('Failed to load coin data:', error);
+    trackError(error, { coinId });
+    
+    return {
+      success: false,
+      error: 'Failed to load coin data. Try again in a moment. 🙏'
+    };
+  }
+}
+```
+
+4. **User-Friendly Error Messages**
+```javascript
+// error-messages.js
+const ERROR_MESSAGES = {
+  NETWORK_ERROR: "Can't reach our servers. Check your connection! 📡",
+  RPC_TIMEOUT: "Solana RPC is being slow. Give it a sec... ⏳",
+  NOT_FOUND: "That coin doesn't exist (yet). Wrong address? 🤔",
+  UNAUTHORIZED: "You need to connect your wallet first! 👛",
+  RATE_LIMITED: "Whoa there, speed demon! Too many requests. Chill. 🛑",
+  SERVER_ERROR: "Our servers are having a moment. We're on it! 🔧",
+  UNKNOWN: "Something weird happened. We logged it. Try again? 🤷"
+};
+
+function getUserFriendlyError(error) {
+  if (error.message.includes('fetch')) return ERROR_MESSAGES.NETWORK_ERROR;
+  if (error.message.includes('timeout')) return ERROR_MESSAGES.RPC_TIMEOUT;
+  if (error.status === 404) return ERROR_MESSAGES.NOT_FOUND;
+  if (error.status === 401) return ERROR_MESSAGES.UNAUTHORIZED;
+  if (error.status === 429) return ERROR_MESSAGES.RATE_LIMITED;
+  if (error.status >= 500) return ERROR_MESSAGES.SERVER_ERROR;
+  return ERROR_MESSAGES.UNKNOWN;
+}
+```
+
+5. **Retry Failed Requests Automatically**
+```javascript
+// auto-retry-fetch.js
+async function fetchWithAutoRetry(url, options = {}, maxRetries = 2) {
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Don't retry client errors (4xx)
+      if (response.status >= 400 && response.status < 500) {
+        return response;
+      }
+      
+      // Retry server errors (5xx)
+      if (response.ok) {
+        return response;
+      }
+      
+      throw new Error(`HTTP ${response.status}`);
+      
+    } catch (error) {
+      if (i === maxRetries) throw error;
+      
+      const delay = Math.min(1000 * Math.pow(2, i), 5000);
+      console.log(`Retrying request (${i + 1}/${maxRetries}) after ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+```
+
+**TESTING PROTOCOL**:
+✓ Trigger errors intentionally (disconnect network, invalid data)
+✓ Verify error boundaries catch React errors
+✓ Check user sees friendly messages, not stack traces
+✓ Test auto-retry logic works
+✓ Validate errors are logged to tracking service
+✓ Ensure app doesn't crash on errors
+
+**SUCCESS METRICS**:
+- Zero uncaught errors in production
+- All errors logged with context
+- Users see helpful error messages
+- App remains functional after errors
+
+---
+
+### Task 4.2: Loading States & Optimistic UI
+
+**OBJECTIVES**:
+- Add loading indicators for all async operations
+- Implement skeleton screens
+- Use optimistic UI updates
+- Prevent duplicate submissions
+
+**OPTIMIZATIONS TO IMPLEMENT**:
+
+1. **Loading States**
+```javascript
+// BEFORE: No feedback while loading
+function CoinList() {
+  const [coins, setCoins] = useState([]);
+  
+  useEffect(() => {
+    fetchCoins().then(setCoins);
+  }, []);
+  
+  return <div>{coins.map(...)}</div>;
+}
+
+// AFTER: Clear loading indication
+function CoinList() {
+  const [coins, setCoins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    setLoading(true);
+    fetchCoins()
+      .then(setCoins)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, []);
+  
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} />;
+  return <div>{coins.map(...)}</div>;
+}
+```
+
+2. **Skeleton Screens (Better than Spinners)**
+```javascript
+// Skeleton.jsx
+function CoinCardSkeleton() {
+  return (
+    <div className="coin-card skeleton">
+      <div className="skeleton-avatar" />
+      <div className="skeleton-text skeleton-text-lg" />
+      <div className="skeleton-text skeleton-text-sm" />
+      <div className="skeleton-chart" />
+    </div>
+  );
+}
+
+// Usage
+function CoinList() {
+  const { data: coins, loading } = useCoins();
+  
+  if (loading) {
+    return (
+      <div>
+        <CoinCardSkeleton />
+        <CoinCardSkeleton />
+        <CoinCardSkeleton />
+      </div>
+    );
+  }
+  
+  return <div>{coins.map(coin => <CoinCard coin={coin} />)}</div>;
+}
+```
+```css
+/* Animated skeleton styles */
+.skeleton {
+  animation: pulse 1.5s ease-in-out infinite;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+```
+
+3. **Optimistic UI Updates**
+```javascript
+// BEFORE: Wait for server confirmation (feels slow)
+async function handleVote(pollId, optionId) {
+  const result = await submitVote(pollId, optionId);
+  if (result.success) {
+    updateUI(result.data);
+  }
+}
+
+// AFTER: Update UI immediately, rollback if fails
+async function handleVote(pollId, optionId) {
+  // Immediately update UI
+  const previousState = getCurrentPollState();
+  updateUIOptimistically(pollId, optionId);
+  
+  try {
+    const result = await submitVote(pollId, optionId);
+    // Sync with server response
+    updateUI(result.data);
+  } catch (error) {
+    // Rollback on failure
+    revertUI(previousState);
+    showError('Vote failed. Try again! 😢');
+  }
+}
+```
+
+4. **Prevent Double Submissions**
+```javascript
+// BEFORE: User can click submit multiple times
+function CommentForm() {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await postComment(commentText);
+  };
+  
+  return <form onSubmit={handleSubmit}>...</form>;
+}
+
+// AFTER: Disable button during submission
+function CommentForm() {
+  const [submitting, setSubmitting] = useState(false);
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (submitting) return; // Prevent double click
+    
+    setSubmitting(true);
+    try {
+      await postComment(commentText);
+      showSuccess('Comment posted! 🎉');
+    } catch (error) {
+      showError('Failed to post comment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <textarea />
+      <button disabled={submitting}>
+        {submitting ? 'Posting...' : 'Post Comment'}
+      </button>
+    </form>
+  );
+}
+```
+
+5. **Progressive Loading (Infinite Scroll)**
+```javascript
+// Load more coins as user scrolls
+function CoinList() {
+  const [coins, setCoins] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  
+  const loadMore = async () => {
+    if (loading || !hasMore) return;
+    
+    setLoading(true);
+    const newCoins = await fetchCoins(page);
+    
+    if (newCoins.length === 0) {
+      setHasMore(false);
+    } else {
+      setCoins(prev => [...prev, ...newCoins]);
+      setPage(prev => prev + 1);
+    }
+    
+    setLoading(false);
+  };
+  
+  // Trigger load more when user scrolls near bottom
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+        loadMore();
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  
+  return (
+    <div>
+      {coins.map(coin => <CoinCard key={coin.id} coin={coin} />)}
+      {loading && <LoadingSpinner />}
+      {!hasMore && <div>That's all, normie! 🎉</div>}
+    </div>
+  );
+}
+```
+
+**TESTING PROTOCOL**:
+✓ All loading states display correctly
+✓ Skeleton screens match final content layout
+✓ Optimistic updates rollback on failure
+✓ Double submission prevention works
+✓ Infinite scroll loads smoothly
+✓ Test on slow 3G connection
+
+**SUCCESS METRICS**:
+- No blank screens during loading
+- Perceived performance improved
+- Zero duplicate submissions
+
+---
+
+## PHASE 5: PRODUCTION MONITORING & OBSERVABILITY
+
+### Task 5.1: Performance Monitoring
+
+**OBJECTIVES**:
+- Track real user performance metrics
+- Monitor error rates
+- Set up alerts for issues
+- Create performance dashboard
+
+**IMPLEMENTATION**:
+
+1. **Web Vitals Tracking**
+```javascript
+// track-web-vitals.js
+import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
+
+function sendToAnalytics({ name, delta, id }) {
+  // Send to your analytics endpoint
+  fetch('/api/analytics/web-vitals', {
+    method: 'POST',
+    body: JSON.stringify({ metric: name, value: delta, id }),
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+// Track all Core Web Vitals
+getCLS(sendToAnalytics);
+getFID(sendToAnalytics);
+getFCP(sendToAnalytics);
+getLCP(sendToAnalytics);
+getTTFB(sendToAnalytics);
+```
+
+2. **Error Tracking (Sentry or similar)**
+```javascript
+// error-tracking.js
+import * as Sentry from '@sentry/react';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV,
+  tracesSampleRate: 1.0, // Adjust for production
+  beforeSend(event, hint) {
+    // Add custom context
+    event.tags = {
+      ...event.tags,
+      feature: getCurrentFeature()
+    };
+    return event;
+  }
+});
+
+// Track custom metrics
+Sentry.setContext('user', {
+  id: user.id,
+  username: user.username
+});
+```
+
+3. **Performance Marks**
+```javascript
+// Track custom performance metrics
+performance.mark('coins-fetch-start');
+const coins = await fetchCoins();
+performance.mark('coins-fetch-end');
+
+performance.measure('coins-fetch', 'coins-fetch-start', 'coins-fetch-end');
+
+const measure = performance.getEntriesByName('coins-fetch')[0];
+console.log(`Coins fetch took: ${measure.duration}ms`);
+
+// Send to analytics
+trackMetric('coins-fetch-duration', measure.duration);
+```
+
+4. **Real User Monitoring (RUM)**
+```javascript
+// Simple RUM implementation
+const rum = {
+  trackPageLoad() {
+    window.addEventListener('load', () => {
+      const timing = performance.timing;
+      const metrics = {
+        dns: timing.domainLookupEnd - timing.domainLookupStart,
+        tcp: timing.connectEnd - timing.connectStart,
+        ttfb: timing.responseStart - timing.requestStart,
+        download: timing.responseEnd - timing.responseStart,
+        domParse: timing.domInteractive - timing.domLoading,
+        domReady: timing.domContentLoadedEventEnd - timing.navigationStart,
+        loadComplete: timing.loadEventEnd - timing.navigationStart
+      };
+      
+      sendRUMMetrics(metrics);
+    });
+  },
+  
+  trackInteraction(name, duration) {
+    sendRUMMetrics({ interaction: name, duration });
+  }
+};
+
+rum.trackPageLoad();
+```
+
+**TESTING PROTOCOL**:
+✓ Verify metrics are being collected
+✓ Check error tracking captures errors
+✓ Test alerts trigger correctly
+✓ Validate dashboard displays metrics
+✓ Ensure PII is not logged
+
+---
+
+## PHASE 6: FINAL VALIDATION & LAUNCH CHECKLIST
+
+### Final Pre-Launch Audit
+
+**Run All Tests**:
+```bash
+# 1. Unit tests
+npm run test
+
+# 2. Integration tests
+npm run test:integration
+
+# 3. Build production bundle
+npm run build
+
+# 4. Check bundle size
+npm run analyze
+
+# 5. Lighthouse audit
+npm run lighthouse
+
+# 6. Security audit
+npm audit
+npm audit fix
+```
+
+**Performance Benchmarks** (Document all):
+BEFORE → AFTER Comparison:
+Bundle Size:
+
+JavaScript: ___ KB → ___ KB (-__%)
+CSS: ___ KB → ___ KB (-__%)
+Images: ___ MB → ___ MB (-__%)
+
+Load Times:
+
+TTFB: ___ ms → ___ ms (-__%)
+FCP: ___ s → ___ s (-__%)
+LCP: ___ s → ___ s (-__%)
+TTI: ___ s → ___ s (-__%)
+
+Performance Scores:
+
+Lighthouse Performance: __ → __ (+__)
+PageSpeed Insights: __ → __ (+__)
+
+Database:
+
+Avg query time: ___ ms → ___ ms (-__%)
+Slowest query: ___ ms → ___ ms (-__%)
+
+API:
+
+Avg response time: ___ ms → ___ ms (-__%)
+Error rate: __% → % (-%)
+
+React Performance:
+
+Component renders: ___ → ___ (-__%)
+Average render time: ___ ms → ___ ms (-__%)
+
+Console:
+
+Errors: ___ → 0 ✅
+Warnings: ___ → ___ (-__%)
+
+
+**Functional Testing Checklist**:
+✅ User Registration/Login
+✅ Profile picture upload
+✅ Coin chart displays correctly
+✅ Chart markers visible
+✅ PumpFun link works
+✅ Disclaimer displays
+✅ Poll voting works
+✅ Poll time limit displays
+✅ Community polls load
+✅ Admin panel accessible
+✅ Admin notifications send
+✅ Deep linking works (mobile)
+✅ WebSocket updates real-time
+✅ Error states display properly
+✅ Loading states display properly
+✅ Mobile responsive (all pages)
+✅ Offline functionality (if implemented)
+✅ Browser compatibility (Chrome, Firefox, Safari)
+
+**Security Checklist**:
+✅ No API keys in client code
+✅ Environment variables configured
+✅ Input validation on all forms
+✅ SQL injection protected
+✅ XSS vulnerabilities patched
+✅ CSRF protection enabled
+✅ Rate limiting active
+✅ HTTPS enforced
+✅ Secrets in .env only
+✅ .env in .gitignore
+
+**SEO & Accessibility**:
+✅ Meta tags present
+✅ Alt text on all images
+✅ Semantic HTML used
+✅ ARIA labels where needed
+✅ Keyboard navigation works
+✅ Color contrast sufficient (WCAG AA)
+✅ Focus indicators visible
+✅ Screen reader tested
+
+---
+
+## ROLLBACK PLAN
+
+If anything goes wrong:
+```bash
+# 1. Immediate rollback
+git reset --hard [last-working-commit]
+git push --force origin main
+
+# 2. Restore from backup branch
+git checkout pre-optimization-backup
+git push --force origin main
+
+# 3. Rollback specific optimization
+git revert [commit-hash]
+git push origin main
+```
+
+---
+
+## DOCUMENTATION
+
+Create "OPTIMIZATION_REPORT.md" with:
+
+1. **Changes Made**: List all optimizations implemented
+2. **Performance Gains**: Before/after metrics
+3. **Known Issues**: Any remaining issues or technical debt
+4. **Monitoring**: Links to dashboards and alerts
+5. **Rollback Procedures**: How to undo changes if needed
+
+---
+
+## BEGIN OPTIMIZATION
+
+Start with Phase 0 (Establish Baseline). Document all metrics before making ANY changes.
+
+Work through each phase systematically. Test after EVERY change. Commit working code immediately.
+
+Your goal: **Ship a blazing fast, error-free, production-ready NormieNation** 🚀
+
+REMEMBER:
+- Measure FIRST, optimize SECOND
+- Test EVERY change
+- One optimization at a time
+- Rollback immediately if tests fail
+- Document everything quantitatively
