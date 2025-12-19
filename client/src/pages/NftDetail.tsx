@@ -84,12 +84,46 @@ function TransactionRow({ tx }: { tx: NftTransaction }) {
 export default function NftDetail() {
   const [, params] = useRoute("/marketplace/nft/:id");
   const nftId = params?.id;
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   
   const [copied, setCopied] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerAmount, setOfferAmount] = useState("");
+
+  // Admin-only access check
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center font-mono">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4 border-destructive/50">
+          <CardContent className="pt-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+              <User className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-xl font-mono font-bold mb-2">Access Restricted</h2>
+            <p className="text-muted-foreground font-mono text-sm mb-4">
+              The NFT Marketplace is currently in beta and only available to administrators.
+            </p>
+            <Link href="/">
+              <Button variant="outline" className="font-mono" data-testid="button-back-home">
+                Return to Dashboard
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const { data, isLoading } = useQuery<NftDetailData>({
     queryKey: ["/api/nfts", nftId],

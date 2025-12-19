@@ -59,7 +59,7 @@ function NftCard({ listing }: { listing: ListingWithNft }) {
             </div>
           )}
           {isNew && (
-            <Badge className="absolute top-2 left-2 bg-green-500/90 text-white" size="sm">
+            <Badge className="absolute top-2 left-2 bg-green-500/90 text-white text-xs">
               <Sparkles className="w-3 h-3 mr-1" />
               NEW
             </Badge>
@@ -111,7 +111,7 @@ function CollectionCard({ collection }: { collection: NftCollection }) {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
           {collection.verified && (
-            <Badge className="absolute top-2 right-2 bg-blue-500/90" size="sm">
+            <Badge className="absolute top-2 right-2 bg-blue-500/90 text-xs">
               Verified
             </Badge>
           )}
@@ -180,13 +180,47 @@ function LoadingGrid({ count = 8 }: { count?: number }) {
 }
 
 export default function Marketplace() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data: config } = useQuery<MarketplaceConfig>({
     queryKey: ["/api/marketplace/config"],
   });
+
+  // Admin-only access check
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center font-mono">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4 border-destructive/50">
+          <CardContent className="pt-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+              <Wallet className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-xl font-mono font-bold mb-2">Access Restricted</h2>
+            <p className="text-muted-foreground font-mono text-sm mb-4">
+              The NFT Marketplace is currently in beta and only available to administrators.
+            </p>
+            <Link href="/">
+              <Button variant="outline" className="font-mono" data-testid="button-back-home">
+                Return to Dashboard
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const { data: listings, isLoading: listingsLoading } = useQuery<ListingWithNft[]>({
     queryKey: ["/api/marketplace/listings"],
