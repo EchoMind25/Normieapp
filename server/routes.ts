@@ -8,7 +8,7 @@ import fs from "fs";
 import { fetchTokenMetrics, getMetrics, getPriceHistory, addPricePoint, fetchDevBuys, getDevBuys, getConnectionStatus, fetchHistoricalPrices, fetchRecentTokenActivity, getActivityCache } from "./solana";
 import authRoutes from "./authRoutes";
 import { db, verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
-import { manualDevBuys, users, sessions } from "@shared/schema";
+import { manualDevBuys, users, sessions, userFeedback, insertUserFeedbackSchema } from "@shared/schema";
 import { eq, desc, and, gt, sql } from "drizzle-orm";
 import { verifyJWT, isReservedUsername, authMiddleware, AuthRequest } from "./auth";
 import { z } from "zod";
@@ -1270,6 +1270,73 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[User] Error updating notification settings:", error);
       res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+
+  // =====================================================
+  // User Feedback Routes
+  // =====================================================
+
+  // Submit feedback (public - no auth required)
+  app.post("/api/feedback", async (req: Request, res) => {
+    try {
+      const parsed = insertUserFeedbackSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid feedback data", details: parsed.error.flatten() });
+      }
+
+      const [feedback] = await db
+        .insert(userFeedback)
+        .values(parsed.data)
+        .returning();
+
+      console.log("[Feedback] New submission:", feedback.title);
+      res.status(201).json({ success: true, id: feedback.id });
+    } catch (error) {
+      console.error("[Feedback] Error submitting:", error);
+      res.status(500).json({ error: "Failed to submit feedback" });
+    }
+  });
+
+  // Get all feedback (admin only)
+  app.get("/api/admin/feedback", requireAdmin, async (_req, res) => {
+    try {
+      const feedbackList = await db
+        .select()
+        .from(userFeedback)
+        .orderBy(desc(userFeedback.createdAt));
+
+      res.json(feedbackList);
+    } catch (error) {
+      console.error("[Feedback] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch feedback" });
+    }
+  });
+
+  // Update feedback status (admin only)
+  app.patch("/api/admin/feedback/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, adminNotes } = req.body;
+
+      const updateData: Record<string, string> = {};
+      if (status) updateData.status = status;
+      if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+
+      const [updated] = await db
+        .update(userFeedback)
+        .set(updateData)
+        .where(eq(userFeedback.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: "Feedback not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("[Feedback] Error updating:", error);
+      res.status(500).json({ error: "Failed to update feedback" });
     }
   });
 
