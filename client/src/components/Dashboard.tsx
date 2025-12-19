@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -132,34 +132,84 @@ const TIME_RANGES = [
 ];
 
 export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnected }: DashboardProps) {
-  const [timeRange, setTimeRange] = useState("1h");
+  const [timeRange, setTimeRange] = useState("24h");
   const [chartData, setChartData] = useState<PricePoint[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
+  const lastFetchRef = useRef<{ range: string; timestamp: number } | null>(null);
+  const chartDataRef = useRef<PricePoint[]>([]);
+
+  const fetchChartData = useCallback(async (range: string, force = false) => {
+    if (range === "live") {
+      const sorted = [...priceHistory].sort((a, b) => a.timestamp - b.timestamp);
+      setChartData(sorted);
+      chartDataRef.current = sorted;
+      return;
+    }
+    
+    const now = Date.now();
+    const lastFetch = lastFetchRef.current;
+    
+    if (!force && lastFetch && lastFetch.range === range && now - lastFetch.timestamp < 30000) {
+      return;
+    }
+    
+    setIsLoadingChart(true);
+    try {
+      const response = await fetch(`/api/price-history?range=${range}`);
+      if (response.ok) {
+        const data: PricePoint[] = await response.json();
+        const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
+        
+        if (chartDataRef.current.length > 0 && sorted.length > 0 && chartDataRef.current.length === sorted.length) {
+          const oldFirst = chartDataRef.current[0];
+          const oldLast = chartDataRef.current[chartDataRef.current.length - 1];
+          const newFirst = sorted[0];
+          const newLast = sorted[sorted.length - 1];
+          
+          const isSame = oldFirst.timestamp === newFirst.timestamp &&
+                         oldLast.timestamp === newLast.timestamp &&
+                         oldFirst.price === newFirst.price &&
+                         oldLast.price === newLast.price;
+          
+          if (isSame) {
+            setIsLoadingChart(false);
+            return;
+          }
+        }
+        
+        chartDataRef.current = sorted;
+        setChartData(sorted);
+        lastFetchRef.current = { range, timestamp: now };
+      }
+    } catch (error) {
+      console.error("[Chart] Error fetching historical data:", error);
+      const sorted = [...priceHistory].sort((a, b) => a.timestamp - b.timestamp);
+      setChartData(sorted);
+      chartDataRef.current = sorted;
+    } finally {
+      setIsLoadingChart(false);
+    }
+  }, [priceHistory]);
 
   useEffect(() => {
-    const fetchChartData = async () => {
-      if (timeRange === "live") {
-        setChartData(priceHistory);
-        return;
-      }
-      
-      setIsLoadingChart(true);
-      try {
-        const response = await fetch(`/api/price-history?range=${timeRange}`);
-        if (response.ok) {
-          const data = await response.json();
-          setChartData(data);
-        }
-      } catch (error) {
-        console.error("[Chart] Error fetching historical data:", error);
-        setChartData(priceHistory);
-      } finally {
-        setIsLoadingChart(false);
-      }
-    };
+    fetchChartData(timeRange, true);
     
-    fetchChartData();
-  }, [timeRange, priceHistory]);
+    if (timeRange !== "live") {
+      const refreshInterval = setInterval(() => {
+        fetchChartData(timeRange, true);
+      }, 60000);
+      
+      return () => clearInterval(refreshInterval);
+    }
+  }, [timeRange, fetchChartData]);
+  
+  useEffect(() => {
+    if (timeRange === "live" && priceHistory.length > 0) {
+      const sorted = [...priceHistory].sort((a, b) => a.timestamp - b.timestamp);
+      setChartData(sorted);
+      chartDataRef.current = sorted;
+    }
+  }, [priceHistory, timeRange]);
 
   const formatPrice = (price: number) => {
     if (price < 0.00001) {
@@ -194,7 +244,11 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
     return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   };
 
-  const { devBuyPoints, devBuyAmounts } = (() => {
+  const { devBuyPoints, devBuyAmounts } = useMemo(() => {
+    if (chartData.length === 0) {
+      return { devBuyPoints: [], devBuyAmounts: {} as Record<number, number> };
+    }
+    
     const result: (number | null)[] = new Array(chartData.length).fill(null);
     const amounts: Record<number, number> = {};
     
@@ -237,9 +291,9 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
     });
     
     return { devBuyPoints: result, devBuyAmounts: amounts };
-  })();
+  }, [chartData, devBuys, timeRange]);
 
-  const priceChartData = {
+  const priceChartData = useMemo(() => ({
     labels: chartData.map((p) => formatChartLabel(p.timestamp)),
     datasets: [
       {
@@ -269,11 +323,14 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
         pointHoverBorderColor: "hsl(120 5% 90%)",
       },
     ],
-  };
+  }), [chartData, devBuyPoints, timeRange]);
 
-  const priceChartOptions = {
+  const priceChartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 0,
+    },
     plugins: {
       legend: {
         display: devBuys.length > 0,
@@ -345,7 +402,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       mode: "nearest" as const,
       intersect: false,
     },
-  };
+  }), [devBuys.length, devBuyAmounts]);
 
   const totalRemoved = metrics
     ? metrics.burnedTokens + metrics.lockedTokens
