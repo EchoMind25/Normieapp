@@ -93,50 +93,6 @@ const SAMPLE_POLLS = [
   }
 ];
 
-// Sample gallery items for seeding
-const SAMPLE_GALLERY_ITEMS = [
-  {
-    title: "Diamond Hands Normie",
-    description: "The classic diamond hands pose showing unwavering commitment to $NORMIE",
-    imageUrl: "https://pump.mypinata.cloud/ipfs/QmV49B8n6gLZUKN86VGYJvFBvvbNNxJXQcwR8Cp9hJ82Mu?img-width=256&img-dpr=2&img-onerror=redirect",
-    tags: ["diamond", "hands", "classic"],
-    creatorName: "NormieCEO",
-    featured: true
-  },
-  {
-    title: "Normie to the Moon",
-    description: "Our favorite normie reaching for the stars and beyond",
-    imageUrl: "https://pump.mypinata.cloud/ipfs/QmV49B8n6gLZUKN86VGYJvFBvvbNNxJXQcwR8Cp9hJ82Mu?img-width=256&img-dpr=2&img-onerror=redirect",
-    tags: ["moon", "rocket", "gains"],
-    creatorName: "CommunityArtist",
-    featured: true
-  },
-  {
-    title: "HODL Strong",
-    description: "When the market dips but your hands stay diamond",
-    imageUrl: "https://pump.mypinata.cloud/ipfs/QmV49B8n6gLZUKN86VGYJvFBvvbNNxJXQcwR8Cp9hJ82Mu?img-width=256&img-dpr=2&img-onerror=redirect",
-    tags: ["hodl", "strong", "meme"],
-    creatorName: "DiamondHandsAnon",
-    featured: false
-  },
-  {
-    title: "Normie Nation Flag",
-    description: "The official banner of the Normie Nation community",
-    imageUrl: "https://pump.mypinata.cloud/ipfs/QmV49B8n6gLZUKN86VGYJvFBvvbNNxJXQcwR8Cp9hJ82Mu?img-width=256&img-dpr=2&img-onerror=redirect",
-    tags: ["flag", "nation", "community"],
-    creatorName: "NormieDesigner",
-    featured: true
-  },
-  {
-    title: "Pump It Up",
-    description: "When the green candles start appearing",
-    imageUrl: "https://pump.mypinata.cloud/ipfs/QmV49B8n6gLZUKN86VGYJvFBvvbNNxJXQcwR8Cp9hJ82Mu?img-width=256&img-dpr=2&img-onerror=redirect",
-    tags: ["pump", "green", "candles"],
-    creatorName: "PumpMaster",
-    featured: false
-  }
-];
-
 // Seed default chat room on startup (idempotent)
 async function seedDefaultChatRoom() {
   const DEFAULT_ROOM_ID = "00000000-0000-0000-0000-000000000001";
@@ -258,52 +214,6 @@ async function seedAdminAccount() {
   }
 }
 
-// Seed gallery items on startup (idempotent - checks existing items)
-async function seedGalleryItems() {
-  try {
-    const existingItems = await storage.getApprovedGalleryItems(100);
-    
-    if (existingItems.length >= 3) {
-      log(`Sufficient gallery items already exist (${existingItems.length} approved items)`, "seed");
-      return;
-    }
-
-    // Get titles of existing items to avoid duplicates
-    const existingTitles = new Set(existingItems.map(i => i.title));
-    let created = 0;
-
-    for (const item of SAMPLE_GALLERY_ITEMS) {
-      if (existingTitles.has(item.title)) {
-        continue;
-      }
-
-      try {
-        await storage.createGalleryItem({
-          title: item.title,
-          description: item.description,
-          imageUrl: item.imageUrl,
-          tags: item.tags,
-          creatorName: item.creatorName,
-          status: "approved",
-          featured: item.featured,
-        });
-        created++;
-        log(`Created gallery item: "${item.title}"`, "seed");
-      } catch (itemError: any) {
-        log(`Failed to create gallery item "${item.title}": ${itemError.message}`, "seed");
-      }
-    }
-
-    if (created > 0) {
-      log(`Seeded ${created} new gallery items successfully`, "seed");
-    } else {
-      log("No new gallery items needed to be created", "seed");
-    }
-  } catch (error: any) {
-    log(`Failed to seed gallery items: ${error.message}`, "seed");
-  }
-}
-
 // Track database connection status globally for health checks
 let databaseConnected = false;
 export function isDatabaseConnected() { return databaseConnected; }
@@ -333,7 +243,6 @@ export function isDatabaseConnected() { return databaseConnected; }
     await seedAdminAccount();
     await seedDefaultChatRoom();
     await seedDemoPolls();
-    await seedGalleryItems();
   }
   
   await registerRoutes(httpServer, app);
