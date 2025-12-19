@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { TokenMetrics, PricePoint, DevBuy } from "@shared/schema";
+import type { TokenMetrics, PricePoint, DevBuy, ActivityItem } from "@shared/schema";
 
 export function useWebSocket() {
   const [metrics, setMetrics] = useState<TokenMetrics | null>(null);
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
   const [devBuys, setDevBuys] = useState<DevBuy[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -77,16 +78,36 @@ export function useWebSocket() {
     }
   }, []);
 
+  const fetchActivity = useCallback(async () => {
+    try {
+      const response = await fetch("/api/activity", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (response.status === 304) return;
+      if (!response.ok) throw new Error("Failed to fetch activity");
+      
+      const data = await response.json();
+      if (mountedRef.current && Array.isArray(data)) {
+        setActivity(data);
+      }
+    } catch (error) {
+      console.error("[Polling] Activity fetch error:", error);
+    }
+  }, []);
+
   useEffect(() => {
     mountedRef.current = true;
     
     fetchMetrics();
     fetchPriceHistory();
     fetchDevBuys();
+    fetchActivity();
     
     const metricsInterval = setInterval(fetchMetrics, 5000);
     const historyInterval = setInterval(fetchPriceHistory, 30000);
     const devBuysInterval = setInterval(fetchDevBuys, 60000);
+    const activityInterval = setInterval(fetchActivity, 15000);
     
     const fallbackTimer = setTimeout(() => {
       if (!hasReceivedDataRef.current && mountedRef.current) {
@@ -99,14 +120,16 @@ export function useWebSocket() {
       clearInterval(metricsInterval);
       clearInterval(historyInterval);
       clearInterval(devBuysInterval);
+      clearInterval(activityInterval);
       clearTimeout(fallbackTimer);
     };
-  }, [fetchMetrics, fetchPriceHistory, fetchDevBuys]);
+  }, [fetchMetrics, fetchPriceHistory, fetchDevBuys, fetchActivity]);
 
   return {
     metrics,
     priceHistory,
     devBuys,
+    activity,
     isConnected,
     isLoading,
   };

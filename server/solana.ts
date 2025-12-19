@@ -2,6 +2,11 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { NORMIE_TOKEN } from "@shared/schema";
 import type { TokenMetrics, PricePoint, DevBuy, ActivityItem } from "@shared/schema";
 import { fetchStreamflowLockedTokens, getLockedTokens } from "./streamflow";
+import { sendWhaleAlertNotification, sendJeetAlarmNotification } from "./pushNotifications";
+
+const WHALE_BUY_THRESHOLD = 2_000_000;
+const JEET_SELL_THRESHOLD = 5_000_000;
+const notifiedTransactions = new Set<string>();
 
 const RPC_ENDPOINT = "https://solana-rpc.publicnode.com";
 const DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens";
@@ -604,7 +609,15 @@ export async function fetchRecentTokenActivity(): Promise<ActivityItem[]> {
           solSpent = (preBalances[0] - postBalances[0]) / 1e9;
         }
         
-        // Look for token balance increases
+        // Look for token balance changes (both increases AND decreases)
+        let tokenSold = 0;
+        let solReceived = 0;
+        
+        // Calculate SOL received (first account is typically the signer)
+        if (postBalances[0] > preBalances[0]) {
+          solReceived = (postBalances[0] - preBalances[0]) / 1e9;
+        }
+        
         for (const postToken of postTokenBalances) {
           if (postToken.mint === TOKEN_ADDRESS) {
             const preToken = preTokenBalances.find(
@@ -615,7 +628,27 @@ export async function fetchRecentTokenActivity(): Promise<ActivityItem[]> {
             
             if (postAmount > preAmount) {
               tokenReceived = postAmount - preAmount;
-              break;
+            } else if (preAmount > postAmount) {
+              tokenSold = preAmount - postAmount;
+            }
+            break;
+          }
+        }
+        
+        // Also check preTokenBalances for sells (token account may be closed)
+        if (tokenSold === 0 && tokenReceived === 0) {
+          for (const preToken of preTokenBalances) {
+            if (preToken.mint === TOKEN_ADDRESS) {
+              const postToken = postTokenBalances.find(
+                t => t.accountIndex === preToken.accountIndex && t.mint === TOKEN_ADDRESS
+              );
+              const preAmount = preToken?.uiTokenAmount?.uiAmount || 0;
+              const postAmount = postToken?.uiTokenAmount?.uiAmount || 0;
+              
+              if (preAmount > postAmount) {
+                tokenSold = preAmount - postAmount;
+                break;
+              }
             }
           }
         }
@@ -623,8 +656,11 @@ export async function fetchRecentTokenActivity(): Promise<ActivityItem[]> {
         // Determine transaction type based on patterns
         if (tokenReceived > 0 && solSpent > 0.001) {
           // This is a buy - SOL spent and tokens received
+          const isWhaleBuy = tokenReceived >= WHALE_BUY_THRESHOLD;
           const isLargeBuy = tokenReceived >= 1000000; // 1M+ tokens
-          const message = isLargeBuy 
+          const message = isWhaleBuy
+            ? `WHALE BUY: ${formatTokenAmount(tokenReceived)} $NORMIE`
+            : isLargeBuy 
             ? `Large buy: ${formatTokenAmount(tokenReceived)} $NORMIE`
             : `Buy: ${formatTokenAmount(tokenReceived)} $NORMIE`;
           
@@ -635,6 +671,39 @@ export async function fetchRecentTokenActivity(): Promise<ActivityItem[]> {
             amount: tokenReceived,
             timestamp: new Date(sig.blockTime * 1000).toISOString(),
           });
+          
+          // Send push notification for whale buys (only once per transaction)
+          if (isWhaleBuy && !notifiedTransactions.has(sig.signature)) {
+            notifiedTransactions.add(sig.signature);
+            sendWhaleAlertNotification(tokenReceived, sig.signature).catch(err => {
+              console.error("[Push] Error sending whale alert:", err);
+            });
+          }
+        } else if (tokenSold > 0 && solReceived > 0.001) {
+          // This is a sell - tokens sold and SOL received
+          const isJeetSell = tokenSold >= JEET_SELL_THRESHOLD;
+          const isLargeSell = tokenSold >= 1000000; // 1M+ tokens
+          const message = isJeetSell
+            ? `JEET SELL: ${formatTokenAmount(tokenSold)} $NORMIE`
+            : isLargeSell
+            ? `Large sell: ${formatTokenAmount(tokenSold)} $NORMIE`
+            : `Sell: ${formatTokenAmount(tokenSold)} $NORMIE`;
+          
+          newActivity.push({
+            id: activityId,
+            type: "trade",
+            message,
+            amount: -tokenSold, // Negative to indicate sell
+            timestamp: new Date(sig.blockTime * 1000).toISOString(),
+          });
+          
+          // Send push notification for jeet sells (only once per transaction)
+          if (isJeetSell && !notifiedTransactions.has(sig.signature)) {
+            notifiedTransactions.add(sig.signature);
+            sendJeetAlarmNotification(tokenSold, sig.signature).catch(err => {
+              console.error("[Push] Error sending jeet alarm:", err);
+            });
+          }
         } else if (solSpent > 0.01) {
           // Generic trade activity
           const estimatedTokens = solSpent * (currentMetrics?.price ? 1 / currentMetrics.price : 1000000);

@@ -181,3 +181,105 @@ export async function sendStreamNotification(
   console.log(`[Push] Stream notification sent: ${sent} success, ${failed} failed`);
   return { sent, failed };
 }
+
+export async function sendWhaleAlertNotification(
+  amount: number,
+  signature: string
+): Promise<{ sent: number; failed: number }> {
+  if (!pushEnabled) {
+    console.log("[Push] Notifications disabled, skipping whale alert");
+    return { sent: 0, failed: 0 };
+  }
+
+  const subscriptions = await storage.getPushSubscriptionsForAnnouncements();
+  console.log(`[Push] Sending whale alert to ${subscriptions.length} subscribers`);
+
+  const formattedAmount = (amount / 1_000_000).toFixed(2);
+  
+  const payload: PushPayload = {
+    title: "WHALE ALERT",
+    body: `Someone just bought ${formattedAmount}M $NORMIE! Big money entering!`,
+    icon: "/normie-icon.png",
+    badge: "/normie-badge.png",
+    url: "/",
+    tag: `whale-${signature.slice(0, 8)}`,
+  };
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dhKey,
+            auth: sub.authKey,
+          },
+        },
+        JSON.stringify(payload)
+      );
+      sent++;
+    } catch (error: any) {
+      failed++;
+      if (error.statusCode === 410 || error.statusCode === 404) {
+        await storage.deletePushSubscription(sub.endpoint);
+      }
+    }
+  }
+
+  console.log(`[Push] Whale alert sent: ${sent} success, ${failed} failed`);
+  return { sent, failed };
+}
+
+export async function sendJeetAlarmNotification(
+  amount: number,
+  transactionId: string
+): Promise<{ sent: number; failed: number }> {
+  if (!pushEnabled) {
+    console.log("[Push] Notifications disabled, skipping jeet alarm");
+    return { sent: 0, failed: 0 };
+  }
+
+  const subscriptions = await storage.getPushSubscriptionsForAnnouncements();
+  console.log(`[Push] Sending jeet alarm to ${subscriptions.length} subscribers`);
+
+  const formattedAmount = (amount / 1_000_000).toFixed(2);
+  
+  const payload: PushPayload = {
+    title: "JEET ALARM",
+    body: `Paper hands detected! Someone just sold ${formattedAmount}M $NORMIE!`,
+    icon: "/normie-icon.png",
+    badge: "/normie-badge.png",
+    url: "/",
+    tag: `jeet-${transactionId.slice(0, 8)}`,
+  };
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dhKey,
+            auth: sub.authKey,
+          },
+        },
+        JSON.stringify(payload)
+      );
+      sent++;
+    } catch (error: any) {
+      failed++;
+      if (error.statusCode === 410 || error.statusCode === 404) {
+        await storage.deletePushSubscription(sub.endpoint);
+      }
+    }
+  }
+
+  console.log(`[Push] Jeet alarm sent: ${sent} success, ${failed} failed`);
+  return { sent, failed };
+}

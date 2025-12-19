@@ -6,7 +6,7 @@ import { ArtGallery } from "@/components/ArtGallery";
 import { LiveChat } from "@/components/LiveChat";
 import { Footer } from "@/components/Footer";
 import { TransactionBubbles } from "@/components/TransactionBubbles";
-import { NormieMascot } from "@/components/NormieMascot";
+import { FloatingMascot } from "@/components/FloatingMascot";
 import { ConfettiCelebration } from "@/components/ConfettiCelebration";
 import { EasterEggs } from "@/components/EasterEggs";
 import { useSoundEffects } from "@/components/SoundEffects";
@@ -36,7 +36,7 @@ function MemeGeneratorLoader() {
 const PRICE_MILESTONES = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1];
 
 export default function Home() {
-  const { metrics, priceHistory, devBuys, isConnected, isLoading } = useWebSocket();
+  const { metrics, priceHistory, devBuys, activity, isConnected, isLoading } = useWebSocket();
   const { isDark, toggleTheme } = useTheme();
   const { playSound } = useSoundEffects();
   
@@ -135,13 +135,11 @@ export default function Home() {
       
       <EasterEggs onKonamiCode={handleKonamiCode} />
       
-      <div className="fixed bottom-4 right-4 z-50" data-testid="mascot-container">
-        <NormieMascot
-          priceChange={metrics?.priceChange24h || 0}
-          className="w-16 h-16 sm:w-20 sm:h-20"
-          onClickSound={() => playSound("milestone")}
-        />
-      </div>
+      <FloatingMascot
+        priceChange={metrics?.priceChange24h || 0}
+        devBuys={devBuys}
+        activity={activity}
+      />
       
       <div className="relative z-10">
         <Header
