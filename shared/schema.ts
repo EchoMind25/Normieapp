@@ -241,6 +241,11 @@ export const insertChatRoomSchema = createInsertSchema(chatRooms).omit({
   createdAt: true,
 });
 export type InsertChatRoom = z.infer<typeof insertChatRoomSchema>;
+// Extended insert type that allows setting explicit id (for seeding)
+export const insertChatRoomWithIdSchema = createInsertSchema(chatRooms).omit({ 
+  createdAt: true,
+});
+export type InsertChatRoomWithId = z.infer<typeof insertChatRoomWithIdSchema>;
 export type ChatRoom = typeof chatRooms.$inferSelect;
 
 // Chat messages

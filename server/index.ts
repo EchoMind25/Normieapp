@@ -93,6 +93,28 @@ const SAMPLE_POLLS = [
   }
 ];
 
+// Seed default chat room on startup (idempotent)
+async function seedDefaultChatRoom() {
+  const DEFAULT_ROOM_ID = "00000000-0000-0000-0000-000000000001";
+  try {
+    const existingRoom = await storage.getChatRoom(DEFAULT_ROOM_ID);
+    if (existingRoom) {
+      log(`Default chat room already exists (id: ${DEFAULT_ROOM_ID})`, "seed");
+      return;
+    }
+    
+    await storage.createChatRoomWithId({
+      id: DEFAULT_ROOM_ID,
+      name: "General",
+      type: "public",
+      isActive: true
+    });
+    log(`Created default chat room "General" (id: ${DEFAULT_ROOM_ID})`, "seed");
+  } catch (error: any) {
+    log(`Failed to seed default chat room: ${error.message}`, "seed");
+  }
+}
+
 // Seed demo polls on startup (idempotent - checks existing polls)
 async function seedDemoPolls() {
   try {
@@ -226,6 +248,7 @@ export function isDatabaseConnected() { return databaseConnected; }
     // Seed data on startup
     log("Seeding database...", "startup");
     await seedAdminAccount();
+    await seedDefaultChatRoom();
     await seedDemoPolls();
   }
   

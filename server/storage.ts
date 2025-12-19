@@ -34,6 +34,7 @@ import {
   type InsertNftTransaction,
   type ChatRoom,
   type InsertChatRoom,
+  type InsertChatRoomWithId,
   type ChatMessage,
   type InsertChatMessage,
   type ChatRoomMember,
@@ -97,6 +98,7 @@ export interface IStorage {
   
   // Chat Rooms
   createChatRoom(room: InsertChatRoom): Promise<ChatRoom>;
+  createChatRoomWithId(room: InsertChatRoomWithId): Promise<ChatRoom>;
   getChatRoom(id: string): Promise<ChatRoom | undefined>;
   getPublicChatRooms(): Promise<ChatRoom[]>;
   
@@ -304,6 +306,11 @@ export class DatabaseStorage implements IStorage {
 
   // Chat Rooms
   async createChatRoom(room: InsertChatRoom): Promise<ChatRoom> {
+    const [created] = await db.insert(chatRooms).values(room).returning();
+    return created;
+  }
+
+  async createChatRoomWithId(room: InsertChatRoomWithId): Promise<ChatRoom> {
     const [created] = await db.insert(chatRooms).values(room).returning();
     return created;
   }
