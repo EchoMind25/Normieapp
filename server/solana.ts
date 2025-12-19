@@ -15,7 +15,7 @@ const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY
 
 // Per dev (@NormieCEO) on X: OVER 527 million burned/locked total
 // Burned + Locked combined = 527M+ (shown as "Supply Stranglehold")
-const BURNED_TOKENS: number = 297000000;  // ~297M burned
+const BURNED_TOKENS: number = 31200000;  // ~31.2M burned
 // Locked tokens now fetched from Streamflow (fallback: 230M)
 let cachedBurnedTokens: number = BURNED_TOKENS;
 
