@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, X, Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings } from "lucide-react";
+import { Menu, X, Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle } from "lucide-react";
 import { SoundToggle } from "@/components/SoundEffects";
 import { SiTelegram, SiX } from "react-icons/si";
 import { NORMIE_TOKEN } from "@shared/schema";
@@ -104,6 +104,36 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
           >
             Community
           </Button>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="opacity-60"
+              data-testid="nav-nft-marketplace"
+            >
+              <ShoppingBag className="h-4 w-4 mr-1" />
+              NFTs
+            </Button>
+            <Badge variant="secondary" className="absolute -top-1 -right-1 text-[9px] px-1 py-0">
+              Soon
+            </Badge>
+          </div>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="opacity-60"
+              data-testid="nav-private-chats"
+            >
+              <MessageCircle className="h-4 w-4 mr-1" />
+              DMs
+            </Button>
+            <Badge variant="secondary" className="absolute -top-1 -right-1 text-[9px] px-1 py-0">
+              Soon
+            </Badge>
+          </div>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -263,6 +293,30 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
             >
               Community
             </Button>
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                className="justify-start opacity-60 flex-1"
+                disabled
+                data-testid="nav-mobile-nft-marketplace"
+              >
+                <ShoppingBag className="h-4 w-4 mr-2" />
+                NFT Marketplace
+              </Button>
+              <Badge variant="secondary" className="text-[10px]">Coming Soon</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                className="justify-start opacity-60 flex-1"
+                disabled
+                data-testid="nav-mobile-private-chats"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Private Chats
+              </Button>
+              <Badge variant="secondary" className="text-[10px]">Coming Soon</Badge>
+            </div>
           </nav>
         </div>
       )}
