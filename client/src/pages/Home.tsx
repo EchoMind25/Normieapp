@@ -6,7 +6,6 @@ import { CommunityHub } from "@/components/CommunityHub";
 import { ArtGallery } from "@/components/ArtGallery";
 import { LiveChat } from "@/components/LiveChat";
 import { Footer } from "@/components/Footer";
-import { MatrixRain } from "@/components/MatrixRain";
 import { TransactionBubbles } from "@/components/TransactionBubbles";
 import { NormieMascot } from "@/components/NormieMascot";
 import { ConfettiCelebration } from "@/components/ConfettiCelebration";
@@ -74,8 +73,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
-      <MatrixRain opacity={diamondHandsMode ? 0.08 : 0.03} speed={diamondHandsMode ? 1.5 : 1} />
-      
       <div className="ambient-background" aria-hidden="true">
         <div className="ambient-glow-orb ambient-glow-orb-1" />
         <div className="ambient-glow-orb ambient-glow-orb-2" />
