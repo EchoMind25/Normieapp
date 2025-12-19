@@ -1,7 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import { Header } from "@/components/Header";
 import { Dashboard } from "@/components/Dashboard";
-import { MemeGenerator } from "@/components/MemeGenerator";
 import { CommunityHub } from "@/components/CommunityHub";
 import { ArtGallery } from "@/components/ArtGallery";
 import { LiveChat } from "@/components/LiveChat";
@@ -13,6 +12,25 @@ import { EasterEggs } from "@/components/EasterEggs";
 import { useSoundEffects } from "@/components/SoundEffects";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTheme } from "@/hooks/useTheme";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const MemeGenerator = lazy(() => import("@/components/MemeGenerator").then(m => ({ default: m.MemeGenerator })));
+
+function MemeGeneratorLoader() {
+  return (
+    <Card className="p-6 m-4">
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+        <div className="flex gap-2">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-24" />
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 const PRICE_MILESTONES = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1];
 
@@ -113,7 +131,9 @@ export default function Home() {
             isConnected={isConnected}
           />
           
-          <MemeGenerator />
+          <Suspense fallback={<MemeGeneratorLoader />}>
+            <MemeGenerator />
+          </Suspense>
           
           <section className="max-w-7xl mx-auto px-4 py-6 sm:py-8 lg:py-12">
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">

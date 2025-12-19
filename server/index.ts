@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import compression from "compression";
 import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -9,6 +10,15 @@ import { verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "
 
 const app = express();
 const httpServer = createServer(app);
+
+app.use(compression({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  }
+}));
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
