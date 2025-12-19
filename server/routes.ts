@@ -918,7 +918,18 @@ export async function registerRoutes(
 
   app.post("/api/admin/gallery/:id/approve", requireAdmin, async (req, res) => {
     try {
+      // Get item before approving to get creator info
+      const item = await storage.getGalleryItem(req.params.id);
       await storage.approveGalleryItem(req.params.id);
+      
+      // Send notification if the creator has a userId
+      if (item?.creatorId) {
+        const { sendArtworkApprovedNotification } = await import("./pushNotifications");
+        sendArtworkApprovedNotification(item.creatorId, item.title, item.id).catch(err => {
+          console.error("[Push] Error sending artwork approval notification:", err);
+        });
+      }
+      
       res.json({ success: true });
     } catch (error) {
       console.error("[Admin] Error approving gallery item:", error);
@@ -928,7 +939,17 @@ export async function registerRoutes(
 
   app.post("/api/admin/gallery/:id/reject", requireAdmin, async (req, res) => {
     try {
-      await storage.rejectGalleryItem(req.params.id);
+      const { reason } = req.body;
+      const item = await storage.rejectGalleryItem(req.params.id, reason);
+      
+      // Send notification if the creator has a userId
+      if (item?.creatorId) {
+        const { sendArtworkRejectedNotification } = await import("./pushNotifications");
+        sendArtworkRejectedNotification(item.creatorId, item.title, item.id, reason).catch(err => {
+          console.error("[Push] Error sending artwork rejection notification:", err);
+        });
+      }
+      
       res.json({ success: true });
     } catch (error) {
       console.error("[Admin] Error rejecting gallery item:", error);
@@ -1258,12 +1279,15 @@ export async function registerRoutes(
   // Update notification preferences
   app.patch("/api/user/notification-settings", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const { notifyNewPolls, notifyPollResults, notifyAnnouncements } = req.body;
+      const { notifyNewPolls, notifyPollResults, notifyAnnouncements, notifyWhaleAlerts, notifyJeetAlarms, notifyArtworkStatus } = req.body;
       
       const updateData: Record<string, boolean> = {};
       if (typeof notifyNewPolls === "boolean") updateData.notifyNewPolls = notifyNewPolls;
       if (typeof notifyPollResults === "boolean") updateData.notifyPollResults = notifyPollResults;
       if (typeof notifyAnnouncements === "boolean") updateData.notifyAnnouncements = notifyAnnouncements;
+      if (typeof notifyWhaleAlerts === "boolean") updateData.notifyWhaleAlerts = notifyWhaleAlerts;
+      if (typeof notifyJeetAlarms === "boolean") updateData.notifyJeetAlarms = notifyJeetAlarms;
+      if (typeof notifyArtworkStatus === "boolean") updateData.notifyArtworkStatus = notifyArtworkStatus;
 
       const updated = await storage.updateUser(req.user!.id, updateData);
       res.json(updated);

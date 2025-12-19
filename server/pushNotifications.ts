@@ -191,7 +191,7 @@ export async function sendWhaleAlertNotification(
     return { sent: 0, failed: 0 };
   }
 
-  const subscriptions = await storage.getPushSubscriptionsForAnnouncements();
+  const subscriptions = await storage.getPushSubscriptionsForWhaleAlerts();
   console.log(`[Push] Sending whale alert to ${subscriptions.length} subscribers`);
 
   const formattedAmount = (amount / 1_000_000).toFixed(2);
@@ -242,7 +242,7 @@ export async function sendJeetAlarmNotification(
     return { sent: 0, failed: 0 };
   }
 
-  const subscriptions = await storage.getPushSubscriptionsForAnnouncements();
+  const subscriptions = await storage.getPushSubscriptionsForJeetAlarms();
   console.log(`[Push] Sending jeet alarm to ${subscriptions.length} subscribers`);
 
   const formattedAmount = (amount / 1_000_000).toFixed(2);
@@ -282,4 +282,87 @@ export async function sendJeetAlarmNotification(
 
   console.log(`[Push] Jeet alarm sent: ${sent} success, ${failed} failed`);
   return { sent, failed };
+}
+
+export async function sendArtworkApprovedNotification(
+  userId: string,
+  artworkTitle: string,
+  artworkId: string
+): Promise<void> {
+  if (!pushEnabled) {
+    console.log("[Push] Notifications disabled, skipping artwork approval");
+    return;
+  }
+
+  // Check if user has artwork notifications enabled
+  const user = await storage.getUser(userId);
+  if (!user || user.notifyArtworkStatus === false) {
+    console.log("[Push] User has artwork notifications disabled");
+    return;
+  }
+
+  const payload: PushPayload = {
+    title: "Artwork Approved!",
+    body: `Your artwork "${artworkTitle}" has been approved and is now live in the gallery!`,
+    icon: "/normie-icon.png",
+    badge: "/normie-badge.png",
+    url: "/",
+    tag: `artwork-approved-${artworkId}`,
+  };
+
+  await sendPushToUser(userId, payload);
+
+  // Create in-app notification
+  await storage.createNotification({
+    userId,
+    type: "artwork_approved",
+    title: "Artwork Approved!",
+    message: `Your artwork "${artworkTitle}" has been approved and is now live in the gallery!`,
+    relatedId: artworkId,
+  });
+
+  console.log(`[Push] Artwork approval notification sent to user ${userId}`);
+}
+
+export async function sendArtworkRejectedNotification(
+  userId: string,
+  artworkTitle: string,
+  artworkId: string,
+  reason?: string
+): Promise<void> {
+  if (!pushEnabled) {
+    console.log("[Push] Notifications disabled, skipping artwork rejection");
+    return;
+  }
+
+  // Check if user has artwork notifications enabled
+  const user = await storage.getUser(userId);
+  if (!user || user.notifyArtworkStatus === false) {
+    console.log("[Push] User has artwork notifications disabled");
+    return;
+  }
+
+  const reasonText = reason ? ` Reason: ${reason}` : "";
+  
+  const payload: PushPayload = {
+    title: "Artwork Not Approved",
+    body: `Your artwork "${artworkTitle}" was not approved.${reasonText}`,
+    icon: "/normie-icon.png",
+    badge: "/normie-badge.png",
+    url: "/",
+    tag: `artwork-rejected-${artworkId}`,
+  };
+
+  await sendPushToUser(userId, payload);
+
+  // Create in-app notification
+  await storage.createNotification({
+    userId,
+    type: "artwork_rejected",
+    title: "Artwork Not Approved",
+    message: `Your artwork "${artworkTitle}" was not approved.${reasonText}`,
+    relatedId: artworkId,
+  });
+
+  console.log(`[Push] Artwork rejection notification sent to user ${userId}`);
 }

@@ -145,7 +145,7 @@ export interface IStorage {
   createGalleryItem(item: InsertGalleryItem): Promise<GalleryItem>;
   updateGalleryItem(id: string, data: Partial<InsertGalleryItem>): Promise<GalleryItem | undefined>;
   approveGalleryItem(id: string): Promise<void>;
-  rejectGalleryItem(id: string): Promise<void>;
+  rejectGalleryItem(id: string, reason?: string): Promise<GalleryItem | undefined>;
   deleteGalleryItem(id: string): Promise<void>;
   featureGalleryItem(id: string, featured: boolean): Promise<void>;
   hasGalleryVoted(itemId: string, visitorId: string): Promise<GalleryVote | undefined>;
@@ -170,6 +170,8 @@ export interface IStorage {
   getAllPushSubscriptions(): Promise<PushSubscription[]>;
   getPushSubscriptionsForNewPolls(): Promise<Array<PushSubscription & { user: User }>>;
   getPushSubscriptionsForAnnouncements(): Promise<Array<PushSubscription & { userId: string }>>;
+  getPushSubscriptionsForWhaleAlerts(): Promise<Array<PushSubscription & { userId: string }>>;
+  getPushSubscriptionsForJeetAlarms(): Promise<Array<PushSubscription & { userId: string }>>;
   deletePushSubscription(endpoint: string): Promise<void>;
   deletePushSubscriptionsByUser(userId: string): Promise<void>;
 }
@@ -549,8 +551,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(galleryItems).set({ status: "approved" }).where(eq(galleryItems.id, id));
   }
 
-  async rejectGalleryItem(id: string): Promise<void> {
+  async rejectGalleryItem(id: string, reason?: string): Promise<GalleryItem | undefined> {
+    const [item] = await db.select().from(galleryItems).where(eq(galleryItems.id, id));
     await db.update(galleryItems).set({ status: "rejected" }).where(eq(galleryItems.id, id));
+    return item;
   }
 
   async deleteGalleryItem(id: string): Promise<void> {
@@ -758,6 +762,32 @@ export class DatabaseStorage implements IStorage {
       .from(pushSubscriptions)
       .innerJoin(users, eq(pushSubscriptions.userId, users.id))
       .where(eq(users.notifyAnnouncements, true));
+    
+    return results.map(r => ({ ...r.subscription, userId: r.user.id }));
+  }
+
+  async getPushSubscriptionsForWhaleAlerts(): Promise<Array<PushSubscription & { userId: string }>> {
+    const results = await db
+      .select({
+        subscription: pushSubscriptions,
+        user: users,
+      })
+      .from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(eq(users.notifyWhaleAlerts, true));
+    
+    return results.map(r => ({ ...r.subscription, userId: r.user.id }));
+  }
+
+  async getPushSubscriptionsForJeetAlarms(): Promise<Array<PushSubscription & { userId: string }>> {
+    const results = await db
+      .select({
+        subscription: pushSubscriptions,
+        user: users,
+      })
+      .from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(eq(users.notifyJeetAlarms, true));
     
     return results.map(r => ({ ...r.subscription, userId: r.user.id }));
   }

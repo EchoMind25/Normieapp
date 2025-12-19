@@ -26,7 +26,7 @@ export function NotificationSettings() {
   } = usePushNotifications();
 
   const updateSettingsMutation = useMutation({
-    mutationFn: async (settings: Partial<Pick<User, "notifyNewPolls" | "notifyPollResults" | "notifyAnnouncements">>) => {
+    mutationFn: async (settings: Partial<Pick<User, "notifyNewPolls" | "notifyPollResults" | "notifyAnnouncements" | "notifyWhaleAlerts" | "notifyJeetAlarms" | "notifyArtworkStatus">>) => {
       return apiRequest("PATCH", "/api/user/notification-settings", settings);
     },
     onSuccess: () => {
@@ -176,6 +176,48 @@ export function NotificationSettings() {
               onCheckedChange={(checked) => updateSettingsMutation.mutate({ notifyAnnouncements: checked })}
               disabled={updateSettingsMutation.isPending}
               data-testid="switch-notify-announcements"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="notify-whale-alerts" className="font-mono">Whale Alerts</Label>
+              <p className="text-sm text-muted-foreground">Get notified when someone buys 2M+ tokens</p>
+            </div>
+            <Switch
+              id="notify-whale-alerts"
+              checked={(user as any)?.notifyWhaleAlerts ?? true}
+              onCheckedChange={(checked) => updateSettingsMutation.mutate({ notifyWhaleAlerts: checked })}
+              disabled={updateSettingsMutation.isPending}
+              data-testid="switch-notify-whale-alerts"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="notify-jeet-alarms" className="font-mono">Jeet Alarms</Label>
+              <p className="text-sm text-muted-foreground">Get notified when someone sells 5M+ tokens</p>
+            </div>
+            <Switch
+              id="notify-jeet-alarms"
+              checked={(user as any)?.notifyJeetAlarms ?? true}
+              onCheckedChange={(checked) => updateSettingsMutation.mutate({ notifyJeetAlarms: checked })}
+              disabled={updateSettingsMutation.isPending}
+              data-testid="switch-notify-jeet-alarms"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="notify-artwork-status" className="font-mono">Artwork Updates</Label>
+              <p className="text-sm text-muted-foreground">Get notified when your artwork is approved or rejected</p>
+            </div>
+            <Switch
+              id="notify-artwork-status"
+              checked={(user as any)?.notifyArtworkStatus ?? true}
+              onCheckedChange={(checked) => updateSettingsMutation.mutate({ notifyArtworkStatus: checked })}
+              disabled={updateSettingsMutation.isPending}
+              data-testid="switch-notify-artwork-status"
             />
           </div>
         </div>

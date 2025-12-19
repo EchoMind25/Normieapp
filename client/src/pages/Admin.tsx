@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { 
@@ -52,6 +53,8 @@ export default function Admin() {
   const [adminArtFile, setAdminArtFile] = useState<File | null>(null);
   const [adminArtTags, setAdminArtTags] = useState("");
   const [deletingPollId, setDeletingPollId] = useState<string | null>(null);
+  const [rejectingItemId, setRejectingItemId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const { uploadFile, isUploading: isUploadingAdminArt } = useUpload();
 
@@ -133,19 +136,25 @@ export default function Admin() {
   });
 
   const rejectGalleryMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest("POST", `/api/admin/gallery/${id}/reject`);
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      const res = await apiRequest("POST", `/api/admin/gallery/${id}/reject`, { reason });
       if (!res.ok) throw new Error("Failed to reject");
       return res.json();
     },
     onSuccess: () => {
       refetchPending();
-      toast({ title: "Artwork Rejected" });
+      setRejectingItemId(null);
+      setRejectReason("");
+      toast({ title: "Artwork Rejected", description: "The creator has been notified." });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to reject artwork", variant: "destructive" });
     },
   });
+
+  const handleRejectWithReason = (id: string) => {
+    rejectGalleryMutation.mutate({ id, reason: rejectReason || undefined });
+  };
 
   const featureGalleryMutation = useMutation({
     mutationFn: async ({ id, featured }: { id: string; featured: boolean }) => {
@@ -556,7 +565,10 @@ export default function Admin() {
                                   size="sm"
                                   variant="destructive"
                                   className="flex-1"
-                                  onClick={() => rejectGalleryMutation.mutate(item.id)}
+                                  onClick={() => {
+                                    setRejectingItemId(item.id);
+                                    setRejectReason("");
+                                  }}
                                   disabled={rejectGalleryMutation.isPending}
                                   data-testid={`button-reject-${item.id}`}
                                 >
@@ -1132,6 +1144,50 @@ export default function Admin() {
         onTabChange={setActiveTab}
         pendingCount={pendingGallery.length}
       />
+
+      <Dialog open={!!rejectingItemId} onOpenChange={(open) => !open && setRejectingItemId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Artwork</DialogTitle>
+            <DialogDescription>
+              Optionally provide a reason for rejection. This will be sent to the creator.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reject-reason">Reason (optional)</Label>
+              <Textarea
+                id="reject-reason"
+                placeholder="e.g., Image quality too low, Inappropriate content, etc."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="min-h-[100px]"
+                data-testid="input-reject-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectingItemId(null)}
+              data-testid="button-cancel-reject"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => rejectingItemId && handleRejectWithReason(rejectingItemId)}
+              disabled={rejectGalleryMutation.isPending}
+              data-testid="button-confirm-reject"
+            >
+              {rejectGalleryMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Reject Artwork
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
