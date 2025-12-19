@@ -15,6 +15,7 @@ export interface User {
   holdingsVisible: boolean;
   createdAt: string;
   passwordChanged?: boolean;
+  selectedIconId?: string | null;
 }
 
 interface AuthContextType {
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: userData, isLoading, refetch } = useQuery({
+  const { data: userData, isLoading, refetch } = useQuery<{ user: User } | null>({
     queryKey: ["/api/auth/me"],
     retry: false,
     staleTime: 5 * 60 * 1000,
