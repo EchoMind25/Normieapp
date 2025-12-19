@@ -16,6 +16,7 @@ import {
   Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3, Bell, Send, ExternalLink
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { AdminMobileNavbar } from "@/components/AdminMobileNavbar";
 import type { GalleryItem, Poll } from "@shared/schema";
 
 interface ManualDevBuy {
@@ -389,7 +390,7 @@ export default function Admin() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 hidden md:flex">
             <TabsTrigger value="overview" data-testid="tab-admin-overview">
               <Activity className="w-4 h-4 mr-2" />
               Overview
@@ -1121,7 +1122,16 @@ export default function Admin() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* Spacer for mobile navbar */}
+        <div className="h-20 md:hidden" />
       </div>
+      
+      <AdminMobileNavbar 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab}
+        pendingCount={pendingGallery.length}
+      />
     </div>
   );
 }

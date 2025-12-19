@@ -14,6 +14,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTheme } from "@/hooks/useTheme";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MobileNavbar } from "@/components/MobileNavbar";
 
 const MemeGenerator = lazy(() => import("@/components/MemeGenerator").then(m => ({ default: m.MemeGenerator })));
 
@@ -105,6 +106,17 @@ export default function Home() {
     setConfettiMessage("");
   }, []);
 
+  const scrollToSection = useCallback((sectionId: string) => {
+    if (sectionId === "top") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground relative">
       <div className="ambient-background" aria-hidden="true">
@@ -162,7 +174,12 @@ export default function Home() {
         </main>
         
         <Footer />
+        
+        {/* Spacer for mobile navbar */}
+        <div className="h-16 md:hidden" />
       </div>
+      
+      <MobileNavbar onNavigate={scrollToSection} />
     </div>
   );
 }

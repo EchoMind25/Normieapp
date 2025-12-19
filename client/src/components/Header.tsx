@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, X, Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle } from "lucide-react";
+import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle } from "lucide-react";
 import { SoundToggle } from "@/components/SoundEffects";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SiTelegram, SiX } from "react-icons/si";
@@ -26,7 +26,6 @@ interface HeaderProps {
 
 export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
   const [, setLocation] = useLocation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
@@ -35,7 +34,6 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
     }
-    setIsMenuOpen(false);
   };
 
   const formatPrice = (price: number) => {
@@ -226,16 +224,6 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
               <span className="hidden sm:inline">Connect</span>
             </Button>
           )}
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            data-testid="button-mobile-menu"
-          >
-            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
         </div>
       </div>
 
@@ -264,60 +252,6 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
         </div>
       </div>
 
-      {isMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background p-4">
-          <nav className="flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              className="justify-start"
-              onClick={() => scrollToSection("dashboard")}
-              data-testid="nav-mobile-dashboard"
-            >
-              Dashboard
-            </Button>
-            <Button
-              variant="ghost"
-              className="justify-start"
-              onClick={() => scrollToSection("meme-generator")}
-              data-testid="nav-mobile-memes"
-            >
-              Memes
-            </Button>
-            <Button
-              variant="ghost"
-              className="justify-start"
-              onClick={() => scrollToSection("community")}
-              data-testid="nav-mobile-community"
-            >
-              Community
-            </Button>
-            <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                className="justify-start opacity-60 flex-1"
-                disabled
-                data-testid="nav-mobile-nft-marketplace"
-              >
-                <ShoppingBag className="h-4 w-4 mr-2" />
-                NFT Marketplace
-              </Button>
-              <Badge variant="secondary" className="text-[10px]">Coming Soon</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                className="justify-start opacity-60 flex-1"
-                disabled
-                data-testid="nav-mobile-private-chats"
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Private Chats
-              </Button>
-              <Badge variant="secondary" className="text-[10px]">Coming Soon</Badge>
-            </div>
-          </nav>
-        </div>
-      )}
-    </header>
+      </header>
   );
 }
