@@ -219,37 +219,43 @@ export function CommunityHub() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="space-y-4">
-            <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Vote className="h-4 w-4" />
-              Community Polls
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => fetchPolls(true)}
-                className="h-6 w-6 ml-auto"
-                data-testid="button-refresh-polls"
-              >
-                <RefreshCw className={`h-3 w-3 ${isLoadingPolls ? "animate-spin" : ""}`} />
-              </Button>
-            </h3>
-            {isLoadingPolls ? (
-              <Card className="p-4">
-                <div className="space-y-3">
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              </Card>
-            ) : polls.length === 0 ? (
-              <Card className="p-6 text-center">
-                <Vote className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">No active polls right now</p>
-                <p className="text-xs text-muted-foreground mt-1">Check back soon for community voting!</p>
-              </Card>
-            ) : polls.map((poll) => (
+        {/* Polls Section - Full Width Grid */}
+        <div className="mb-8">
+          <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-4">
+            <Vote className="h-4 w-4" />
+            Community Polls
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => fetchPolls(true)}
+              className="h-6 w-6 ml-auto"
+              data-testid="button-refresh-polls"
+            >
+              <RefreshCw className={`h-3 w-3 ${isLoadingPolls ? "animate-spin" : ""}`} />
+            </Button>
+          </h3>
+          {isLoadingPolls ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="p-4">
+                  <div className="space-y-3">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : polls.length === 0 ? (
+            <Card className="p-6 text-center max-w-md">
+              <Vote className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">No active polls right now</p>
+              <p className="text-xs text-muted-foreground mt-1">Check back soon for community voting!</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {polls.map((poll) => (
               <Card key={poll.id} className="p-4" data-testid={`card-poll-${poll.id}`}>
                 <div className="flex items-start justify-between gap-2 mb-4">
                   <h4 className="font-mono font-medium">{poll.question}</h4>
@@ -326,10 +332,14 @@ export function CommunityHub() {
                   </a>
                 </div>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-          <div className="space-y-4">
+        {/* Activity Feed and Social Links */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
             <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Flame className="h-4 w-4" />
               Activity Feed
