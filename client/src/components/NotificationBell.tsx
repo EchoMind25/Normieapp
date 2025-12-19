@@ -31,6 +31,15 @@ export function NotificationBell() {
   }
 
   const handleClick = async () => {
+    if (permission === "denied") {
+      toast({
+        title: "Notifications blocked",
+        description: "Please enable notifications in your browser settings, then try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (isSubscribed) {
       const success = await unsubscribe();
       if (success) {
@@ -46,10 +55,10 @@ export function NotificationBell() {
           title: "Notifications enabled",
           description: "You'll now receive updates about polls and announcements.",
         });
-      } else if (permission === "denied") {
+      } else {
         toast({
-          title: "Permission blocked",
-          description: "Please enable notifications in your browser settings.",
+          title: "Could not enable notifications",
+          description: "Please check your browser settings and try again.",
           variant: "destructive",
         });
       }
@@ -86,7 +95,7 @@ export function NotificationBell() {
           variant="ghost"
           size="icon"
           onClick={handleClick}
-          disabled={isLoading || permission === "denied"}
+          disabled={isLoading}
           data-testid="button-notification-bell"
         >
           {getIcon()}
