@@ -91,7 +91,17 @@ export interface IStorage {
   
   // Icons
   getActiveIcons(): Promise<Icon[]>;
+  getAllIcons(): Promise<Icon[]>;
+  getIcon(id: string): Promise<Icon | undefined>;
   createIcon(icon: InsertIcon): Promise<Icon>;
+  updateIcon(id: string, data: Partial<InsertIcon>): Promise<Icon | undefined>;
+  deleteIcon(id: string): Promise<void>;
+  
+  // Admin User Management
+  getAllUsersWithStats(): Promise<Array<User & { messageCount: number; galleryCount: number }>>;
+  getUserChatMessages(userId: string, limit?: number): Promise<ChatMessage[]>;
+  getUserGalleryItems(userId: string): Promise<GalleryItem[]>;
+  deleteAllSessions(): Promise<number>;
   
   // NFTs
   createNft(nft: InsertNft): Promise<Nft>;
@@ -301,9 +311,73 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(icons).where(eq(icons.isActive, true));
   }
 
+  async getAllIcons(): Promise<Icon[]> {
+    return db.select().from(icons).orderBy(desc(icons.createdAt));
+  }
+
+  async getIcon(id: string): Promise<Icon | undefined> {
+    const [icon] = await db.select().from(icons).where(eq(icons.id, id));
+    return icon;
+  }
+
   async createIcon(icon: InsertIcon): Promise<Icon> {
     const [created] = await db.insert(icons).values(icon).returning();
     return created;
+  }
+
+  async updateIcon(id: string, data: Partial<InsertIcon>): Promise<Icon | undefined> {
+    const [updated] = await db
+      .update(icons)
+      .set(data)
+      .where(eq(icons.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteIcon(id: string): Promise<void> {
+    // First, unset this icon from any users using it
+    await db.update(users).set({ selectedIconId: null }).where(eq(users.selectedIconId, id));
+    await db.delete(icons).where(eq(icons.id, id));
+  }
+
+  // Admin User Management
+  async getAllUsersWithStats(): Promise<Array<User & { messageCount: number; galleryCount: number }>> {
+    const results = await db
+      .select({
+        user: users,
+        messageCount: sql<number>`(SELECT COUNT(*) FROM chat_messages WHERE sender_id = ${users.id} AND is_deleted = false)::int`,
+        galleryCount: sql<number>`(SELECT COUNT(*) FROM gallery_items WHERE creator_id = ${users.id})::int`,
+      })
+      .from(users)
+      .orderBy(desc(users.createdAt));
+    
+    return results.map(r => ({
+      ...r.user,
+      messageCount: r.messageCount || 0,
+      galleryCount: r.galleryCount || 0,
+    }));
+  }
+
+  async getUserChatMessages(userId: string, limit: number = 50): Promise<ChatMessage[]> {
+    return db
+      .select()
+      .from(chatMessages)
+      .where(and(eq(chatMessages.senderId, userId), eq(chatMessages.isDeleted, false)))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(limit);
+  }
+
+  async getUserGalleryItems(userId: string): Promise<GalleryItem[]> {
+    return db
+      .select()
+      .from(galleryItems)
+      .where(eq(galleryItems.creatorId, userId))
+      .orderBy(desc(galleryItems.createdAt));
+  }
+
+  async deleteAllSessions(): Promise<number> {
+    const result = await db.delete(sessions).returning();
+    return result.length;
   }
 
   // NFTs

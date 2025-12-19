@@ -483,6 +483,7 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
         avatarUrl: req.user.avatarUrl,
         bio: req.user.bio,
         holdingsVisible: req.user.holdingsVisible,
+        selectedIconId: req.user.selectedIconId,
         createdAt: req.user.createdAt,
         passwordChanged: req.user.passwordChanged ?? true,
       },
@@ -587,6 +588,13 @@ router.patch(
       .optional()
       .isBoolean()
       .withMessage("Holdings visibility must be true or false"),
+    body("selectedIconId")
+      .optional({ nullable: true })
+      .custom((value) => {
+        if (value === null || value === "") return true;
+        if (typeof value === "string" && value.length > 0) return true;
+        throw new Error("Must be a valid icon ID or null");
+      }),
   ],
   async (req: AuthRequest, res: Response) => {
     try {
@@ -601,7 +609,7 @@ router.patch(
         return;
       }
 
-      const { username, bio, avatarUrl, holdingsVisible } = req.body;
+      const { username, bio, avatarUrl, holdingsVisible, selectedIconId } = req.body;
       const updates: Record<string, any> = {};
 
       if (username !== undefined && username !== req.user.username) {
@@ -622,6 +630,7 @@ router.patch(
       if (bio !== undefined) updates.bio = bio === "" ? null : bio;
       if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl === "" ? null : avatarUrl;
       if (holdingsVisible !== undefined) updates.holdingsVisible = holdingsVisible;
+      if (selectedIconId !== undefined) updates.selectedIconId = selectedIconId === "" ? null : selectedIconId;
 
       if (Object.keys(updates).length === 0) {
         res.status(400).json({ error: "No valid fields to update" });
@@ -644,6 +653,7 @@ router.patch(
           avatarUrl: updatedUser.avatarUrl,
           bio: updatedUser.bio,
           holdingsVisible: updatedUser.holdingsVisible,
+          selectedIconId: updatedUser.selectedIconId,
           createdAt: updatedUser.createdAt,
         },
       });

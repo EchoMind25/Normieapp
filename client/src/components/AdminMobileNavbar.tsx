@@ -1,4 +1,4 @@
-import { Activity, Image, TrendingUp, BarChart3, Bell, Settings } from "lucide-react";
+import { Activity, Image, TrendingUp, BarChart3, Bell, Settings, Users } from "lucide-react";
 
 interface AdminMobileNavbarProps {
   activeTab: string;
@@ -9,6 +9,7 @@ interface AdminMobileNavbarProps {
 export function AdminMobileNavbar({ activeTab, onTabChange, pendingCount }: AdminMobileNavbarProps) {
   const tabs = [
     { id: "overview", icon: Activity, label: "Overview" },
+    { id: "users", icon: Users, label: "Users" },
     { id: "gallery", icon: Image, label: "Gallery", badge: pendingCount > 0 ? pendingCount : undefined },
     { id: "chart", icon: TrendingUp, label: "Chart" },
     { id: "polls", icon: BarChart3, label: "Polls" },

@@ -14,7 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { 
   ArrowLeft, Users, Shield, Activity, Settings, Plus, Trash2, TrendingUp, Calendar,
-  Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3, Bell, Send, ExternalLink
+  Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3, Bell, Send, ExternalLink,
+  Ban, Mail, LogOut, Edit3, Upload, Palette, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminMobileNavbar } from "@/components/AdminMobileNavbar";
@@ -55,8 +56,19 @@ export default function Admin() {
   const [deletingPollId, setDeletingPollId] = useState<string | null>(null);
   const [rejectingItemId, setRejectingItemId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  
+  // User Management State
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [editingUsername, setEditingUsername] = useState<string | null>(null);
+  const [newUsername, setNewUsername] = useState("");
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  
+  // Favicon Management State
+  const [newFaviconName, setNewFaviconName] = useState("");
+  const [newFaviconFile, setNewFaviconFile] = useState<File | null>(null);
 
   const { uploadFile, isUploading: isUploadingAdminArt } = useUpload();
+  const { uploadFile: uploadFavicon, isUploading: isUploadingFavicon } = useUpload();
 
   const { data: manualDevBuys = [], isLoading: loadingBuys } = useQuery<ManualDevBuy[]>({
     queryKey: ["/api/admin/dev-buys"],
@@ -80,6 +92,50 @@ export default function Admin() {
 
   const { data: stats, isLoading: loadingStats } = useQuery<{ totalUsers: number }>({
     queryKey: ["/api/admin/stats"],
+    enabled: isAuthenticated && user?.role === "admin",
+  });
+
+  // User Management Queries
+  interface AdminUser {
+    id: string;
+    username: string;
+    email: string | null;
+    walletAddress: string | null;
+    role: string | null;
+    avatarUrl: string | null;
+    bannedAt: string | null;
+    createdAt: string | null;
+    messageCount: number;
+    galleryCount: number;
+  }
+  
+  const { data: allUsers = [], refetch: refetchUsers } = useQuery<AdminUser[]>({
+    queryKey: ["/api/admin/users"],
+    enabled: isAuthenticated && user?.role === "admin",
+  });
+
+  interface UserDetails {
+    user: AdminUser;
+    messages: Array<{ id: string; content: string; roomId: string; createdAt: string }>;
+    gallery: Array<{ id: string; title: string; imageUrl: string; status: string; createdAt: string }>;
+  }
+  
+  const { data: userDetails, isLoading: loadingUserDetails } = useQuery<UserDetails>({
+    queryKey: ["/api/admin/users", selectedUserId],
+    enabled: !!selectedUserId && isAuthenticated && user?.role === "admin",
+  });
+
+  // Favicon Management Queries
+  interface AdminFavicon {
+    id: string;
+    name: string;
+    fileUrl: string;
+    isActive: boolean;
+    createdAt: string | null;
+  }
+  
+  const { data: favicons = [], refetch: refetchFavicons } = useQuery<AdminFavicon[]>({
+    queryKey: ["/api/admin/favicons"],
     enabled: isAuthenticated && user?.role === "admin",
   });
 
@@ -285,6 +341,169 @@ export default function Admin() {
     },
   });
 
+  // User Management Mutations
+  const banUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/ban`);
+      if (!res.ok) throw new Error("Failed to ban user");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchUsers();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "User Banned", description: "User has been banned and logged out" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to ban user", variant: "destructive" });
+    },
+  });
+
+  const unbanUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/unban`);
+      if (!res.ok) throw new Error("Failed to unban user");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchUsers();
+      toast({ title: "User Unbanned", description: "User can now log in again" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to unban user", variant: "destructive" });
+    },
+  });
+
+  const changeUsernameMutation = useMutation({
+    mutationFn: async ({ userId, username }: { userId: string; username: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/users/${userId}/username`, { username });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to change username");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchUsers();
+      setEditingUsername(null);
+      setNewUsername("");
+      toast({ title: "Username Changed" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendResetEmailMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/send-reset`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to send reset email");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Email Sent", description: "Password reset email has been sent to the user" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const logoutAllUsersMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/logout-all");
+      if (!res.ok) throw new Error("Failed to logout all users");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "All Users Logged Out", description: data.message });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to logout all users", variant: "destructive" });
+    },
+  });
+
+  // Favicon Management Mutations
+  const createFaviconMutation = useMutation({
+    mutationFn: async (data: { name: string; fileUrl: string }) => {
+      const res = await apiRequest("POST", "/api/admin/favicons", data);
+      if (!res.ok) throw new Error("Failed to create favicon");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchFavicons();
+      setNewFaviconName("");
+      setNewFaviconFile(null);
+      toast({ title: "Favicon Added", description: "The favicon is now available for users" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to add favicon", variant: "destructive" });
+    },
+  });
+
+  const toggleFaviconMutation = useMutation({
+    mutationFn: async ({ iconId, isActive }: { iconId: string; isActive: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/admin/favicons/${iconId}`, { isActive });
+      if (!res.ok) throw new Error("Failed to update favicon");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchFavicons();
+      toast({ title: "Favicon Updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update favicon", variant: "destructive" });
+    },
+  });
+
+  const deleteFaviconMutation = useMutation({
+    mutationFn: async (iconId: string) => {
+      const res = await apiRequest("DELETE", `/api/admin/favicons/${iconId}`);
+      if (!res.ok) throw new Error("Failed to delete favicon");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchFavicons();
+      toast({ title: "Favicon Deleted" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete favicon", variant: "destructive" });
+    },
+  });
+
+  const handleUploadFavicon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFaviconName.trim()) {
+      toast({ title: "Error", description: "Please enter a name for the favicon", variant: "destructive" });
+      return;
+    }
+    if (!newFaviconFile) {
+      toast({ title: "Error", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const response = await uploadFavicon(newFaviconFile);
+      if (!response) {
+        throw new Error("Failed to upload image");
+      }
+      createFaviconMutation.mutate({
+        name: newFaviconName.trim(),
+        fileUrl: response.objectPath,
+      });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to upload favicon image", variant: "destructive" });
+    }
+  };
+
+  // Filter users by search query
+  const filteredUsers = allUsers.filter(u => 
+    u.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+    (u.email && u.email.toLowerCase().includes(userSearchQuery.toLowerCase())) ||
+    (u.walletAddress && u.walletAddress.toLowerCase().includes(userSearchQuery.toLowerCase()))
+  );
+
   const handleAddDevBuy = (e: React.FormEvent) => {
     e.preventDefault();
     if (!timestamp || !amount || !price) {
@@ -399,10 +618,14 @@ export default function Admin() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 hidden md:flex">
+          <TabsList className="mb-6 hidden md:flex flex-wrap gap-1">
             <TabsTrigger value="overview" data-testid="tab-admin-overview">
               <Activity className="w-4 h-4 mr-2" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger value="users" data-testid="tab-admin-users">
+              <Users className="w-4 h-4 mr-2" />
+              Users
             </TabsTrigger>
             <TabsTrigger value="gallery" data-testid="tab-admin-gallery">
               <Image className="w-4 h-4 mr-2" />
@@ -502,6 +725,240 @@ export default function Admin() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="users">
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      User Management
+                    </CardTitle>
+                    <CardDescription>
+                      Manage user accounts, ban/unban, and change usernames
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                          placeholder="Search users by name, email, or wallet..."
+                          value={userSearchQuery}
+                          onChange={(e) => setUserSearchQuery(e.target.value)}
+                          className="flex-1"
+                          data-testid="input-search-users"
+                        />
+                        <Button
+                          variant="destructive"
+                          onClick={() => {
+                            if (confirm("This will log out all users immediately. Continue?")) {
+                              logoutAllUsersMutation.mutate();
+                            }
+                          }}
+                          disabled={logoutAllUsersMutation.isPending}
+                          data-testid="button-logout-all"
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          {logoutAllUsersMutation.isPending ? "Logging out..." : "Logout All Users"}
+                        </Button>
+                      </div>
+
+                      <div className="border rounded-md divide-y max-h-[500px] overflow-y-auto">
+                        {filteredUsers.length === 0 ? (
+                          <div className="p-4 text-center text-muted-foreground">
+                            {userSearchQuery ? "No users found matching your search" : "No users yet"}
+                          </div>
+                        ) : (
+                          filteredUsers.map((u) => (
+                            <div
+                              key={u.id}
+                              className={`p-3 flex items-center justify-between gap-2 hover-elevate cursor-pointer ${selectedUserId === u.id ? "bg-accent" : ""}`}
+                              onClick={() => setSelectedUserId(selectedUserId === u.id ? null : u.id)}
+                              data-testid={`user-row-${u.id}`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                  {u.avatarUrl ? (
+                                    <img src={u.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                                  ) : (
+                                    <Users className="w-4 h-4 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium truncate">{u.username}</span>
+                                    {u.role === "admin" && <Badge variant="secondary" className="text-xs">Admin</Badge>}
+                                    {u.bannedAt && <Badge variant="destructive" className="text-xs">Banned</Badge>}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {u.email || u.walletAddress?.slice(0, 8) + "..." || "No contact"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <span className="text-xs text-muted-foreground">{u.messageCount} msgs, {u.galleryCount} art</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">User Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!selectedUserId ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        Select a user to view details and take actions
+                      </p>
+                    ) : loadingUserDetails ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      </div>
+                    ) : userDetails ? (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Username</Label>
+                          {editingUsername === userDetails.user.id ? (
+                            <div className="flex gap-2">
+                              <Input
+                                value={newUsername}
+                                onChange={(e) => setNewUsername(e.target.value)}
+                                placeholder="New username"
+                                data-testid="input-new-username"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => changeUsernameMutation.mutate({ userId: userDetails.user.id, username: newUsername })}
+                                disabled={changeUsernameMutation.isPending || !newUsername.trim()}
+                                data-testid="button-save-username"
+                              >
+                                <Check className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => { setEditingUsername(null); setNewUsername(""); }}
+                                data-testid="button-cancel-username"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium">{userDetails.user.username}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => { setEditingUsername(userDetails.user.id); setNewUsername(userDetails.user.username); }}
+                                data-testid="button-edit-username"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Email</Label>
+                          <p className="text-sm">{userDetails.user.email || "Not set"}</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Wallet</Label>
+                          <p className="text-sm font-mono text-xs truncate">{userDetails.user.walletAddress || "Not connected"}</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Joined</Label>
+                          <p className="text-sm">{userDetails.user.createdAt ? new Date(userDetails.user.createdAt).toLocaleDateString() : "Unknown"}</p>
+                        </div>
+
+                        <div className="pt-4 border-t space-y-2">
+                          <Label>Actions</Label>
+                          <div className="flex flex-col gap-2">
+                            {userDetails.user.email && (
+                              <Button
+                                variant="outline"
+                                className="justify-start"
+                                onClick={() => sendResetEmailMutation.mutate(userDetails.user.id)}
+                                disabled={sendResetEmailMutation.isPending}
+                                data-testid="button-send-reset"
+                              >
+                                <Mail className="w-4 h-4 mr-2" />
+                                {sendResetEmailMutation.isPending ? "Sending..." : "Send Password Reset"}
+                              </Button>
+                            )}
+                            {userDetails.user.bannedAt ? (
+                              <Button
+                                variant="outline"
+                                className="justify-start"
+                                onClick={() => unbanUserMutation.mutate(userDetails.user.id)}
+                                disabled={unbanUserMutation.isPending}
+                                data-testid="button-unban-user"
+                              >
+                                <Check className="w-4 h-4 mr-2" />
+                                {unbanUserMutation.isPending ? "Unbanning..." : "Unban User"}
+                              </Button>
+                            ) : userDetails.user.role !== "admin" ? (
+                              <Button
+                                variant="destructive"
+                                className="justify-start"
+                                onClick={() => {
+                                  if (confirm(`Ban user ${userDetails.user.username}? They will be logged out immediately.`)) {
+                                    banUserMutation.mutate(userDetails.user.id);
+                                  }
+                                }}
+                                disabled={banUserMutation.isPending}
+                                data-testid="button-ban-user"
+                              >
+                                <Ban className="w-4 h-4 mr-2" />
+                                {banUserMutation.isPending ? "Banning..." : "Ban User"}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {userDetails.messages.length > 0 && (
+                          <div className="pt-4 border-t space-y-2">
+                            <Label>Recent Messages ({userDetails.messages.length})</Label>
+                            <div className="max-h-40 overflow-y-auto space-y-2">
+                              {userDetails.messages.slice(0, 10).map((msg) => (
+                                <div key={msg.id} className="text-xs p-2 bg-muted rounded">
+                                  <p className="truncate">{msg.content}</p>
+                                  <p className="text-muted-foreground">{new Date(msg.createdAt).toLocaleString()}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {userDetails.gallery.length > 0 && (
+                          <div className="pt-4 border-t space-y-2">
+                            <Label>Gallery Items ({userDetails.gallery.length})</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {userDetails.gallery.slice(0, 4).map((item) => (
+                                <div key={item.id} className="aspect-square rounded overflow-hidden">
+                                  <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="gallery">
@@ -1089,49 +1546,150 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Platform Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure platform features and preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-md">
-                    <div>
-                      <h3 className="font-medium">User Management</h3>
-                      <p className="text-sm text-muted-foreground">View, edit, and moderate user accounts</p>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="h-5 w-5" />
+                    Custom Icons/Favicons
+                  </CardTitle>
+                  <CardDescription>
+                    Upload custom icons that users can select for their browser tab favicon
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleUploadFavicon} className="space-y-4 mb-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="favicon-name">Icon Name *</Label>
+                      <Input
+                        id="favicon-name"
+                        placeholder="e.g., Normie Beanie, Classic Logo"
+                        value={newFaviconName}
+                        onChange={(e) => setNewFaviconName(e.target.value)}
+                        data-testid="input-favicon-name"
+                      />
                     </div>
-                    <Badge variant="secondary">Coming Soon</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded-md">
-                    <div>
-                      <h3 className="font-medium">Chat Moderation</h3>
-                      <p className="text-sm text-muted-foreground">Monitor and moderate community chat</p>
+                    <div className="space-y-2">
+                      <Label htmlFor="favicon-file">Image File *</Label>
+                      <Input
+                        id="favicon-file"
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                        onChange={(e) => setNewFaviconFile(e.target.files?.[0] || null)}
+                        data-testid="input-favicon-file"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Supported formats: PNG, JPG, JPEG, SVG. Recommended size: 32x32 or 64x64 pixels.
+                      </p>
                     </div>
-                    <Badge variant="secondary">Coming Soon</Badge>
+                    <Button
+                      type="submit"
+                      disabled={isUploadingFavicon || createFaviconMutation.isPending || !newFaviconName.trim() || !newFaviconFile}
+                      data-testid="button-upload-favicon"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isUploadingFavicon || createFaviconMutation.isPending ? "Uploading..." : "Upload Favicon"}
+                    </Button>
+                  </form>
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-4 flex items-center gap-2">
+                      <Palette className="h-4 w-4" />
+                      Available Favicons ({favicons.length})
+                    </h4>
+                    {favicons.length === 0 ? (
+                      <p className="text-muted-foreground text-sm text-center py-4">
+                        No favicons uploaded yet. Upload one above!
+                      </p>
+                    ) : (
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {favicons.map((favicon) => (
+                          <div
+                            key={favicon.id}
+                            className="p-4 border rounded-md flex items-center justify-between gap-3"
+                            data-testid={`favicon-${favicon.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={favicon.fileUrl}
+                                alt={favicon.name}
+                                className="w-8 h-8 object-contain"
+                              />
+                              <div>
+                                <p className="font-medium text-sm">{favicon.name}</p>
+                                <Badge variant={favicon.isActive ? "default" : "secondary"} className="text-xs">
+                                  {favicon.isActive ? "Active" : "Inactive"}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => toggleFaviconMutation.mutate({ iconId: favicon.id, isActive: !favicon.isActive })}
+                                disabled={toggleFaviconMutation.isPending}
+                                data-testid={`button-toggle-favicon-${favicon.id}`}
+                              >
+                                {favicon.isActive ? <ToggleRight className="h-4 w-4 text-green-500" /> : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  if (confirm(`Delete favicon "${favicon.name}"?`)) {
+                                    deleteFaviconMutation.mutate(favicon.id);
+                                  }
+                                }}
+                                disabled={deleteFaviconMutation.isPending}
+                                data-testid={`button-delete-favicon-${favicon.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between p-4 border rounded-md">
-                    <div>
-                      <h3 className="font-medium">Custom Icons/Favicons</h3>
-                      <p className="text-sm text-muted-foreground">Customize app icons and branding</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Other Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-2 p-4 border rounded-md">
+                      <div>
+                        <h3 className="font-medium">User Management</h3>
+                        <p className="text-sm text-muted-foreground">View, edit, and moderate user accounts</p>
+                      </div>
+                      <Button variant="outline" onClick={() => setActiveTab("users")}>
+                        Go to Users
+                      </Button>
                     </div>
-                    <Badge variant="secondary">Coming Soon</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded-md">
-                    <div>
-                      <h3 className="font-medium">NFT Marketplace</h3>
-                      <p className="text-sm text-muted-foreground">Manage NFT listings and transactions</p>
+                    <div className="flex items-center justify-between gap-2 p-4 border rounded-md">
+                      <div>
+                        <h3 className="font-medium">Chat Moderation</h3>
+                        <p className="text-sm text-muted-foreground">Monitor and moderate community chat</p>
+                      </div>
+                      <Badge variant="secondary">Coming Soon</Badge>
                     </div>
-                    <Badge variant="secondary">Coming Soon</Badge>
+                    <div className="flex items-center justify-between gap-2 p-4 border rounded-md">
+                      <div>
+                        <h3 className="font-medium">NFT Marketplace</h3>
+                        <p className="text-sm text-muted-foreground">Manage NFT listings and transactions</p>
+                      </div>
+                      <Badge variant="secondary">Coming Soon</Badge>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
         

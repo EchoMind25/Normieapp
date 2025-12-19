@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,7 +26,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon } from "lucide-react";
+import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon, Palette, Check } from "lucide-react";
 import { NotificationSettings } from "@/components/NotificationSettings";
 
 const profileSchema = z.object({
@@ -62,6 +62,12 @@ const passwordSchema = z.object({
 
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
+interface AvailableIcon {
+  id: string;
+  name: string;
+  fileUrl: string;
+}
+
 export default function Profile() {
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -70,6 +76,12 @@ export default function Profile() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch available favicons/icons
+  const { data: availableIcons = [] } = useQuery<AvailableIcon[]>({
+    queryKey: ["/api/icons"],
+    enabled: isAuthenticated,
+  });
   
   const { uploadFile, isUploading, progress, error: uploadError } = useUpload({
     onSuccess: (response) => {
@@ -159,6 +171,26 @@ export default function Profile() {
     },
     onError: (error: Error) => {
       toast({ title: "Password change failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateFaviconMutation = useMutation({
+    mutationFn: async (iconId: string | null) => {
+      const res = await apiRequest("PATCH", "/api/auth/profile", {
+        selectedIconId: iconId || "",
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update favicon");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "Favicon updated", description: "Your browser tab icon has been updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -533,6 +565,68 @@ export default function Profile() {
                     </div>
                   </form>
                 </Form>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {availableIcons.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-mono">
+                <Palette className="h-5 w-5" />
+                Browser Favicon
+              </CardTitle>
+              <CardDescription>
+                Choose a custom icon to display in your browser tab
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                <button
+                  onClick={() => updateFaviconMutation.mutate(null)}
+                  disabled={updateFaviconMutation.isPending}
+                  className={`relative p-2 border rounded-md hover-elevate flex flex-col items-center gap-1 ${
+                    !user.selectedIconId ? "ring-2 ring-primary" : ""
+                  }`}
+                  data-testid="button-favicon-default"
+                >
+                  <div className="w-8 h-8 bg-muted rounded flex items-center justify-center">
+                    <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <span className="text-xs text-muted-foreground">Default</span>
+                  {!user.selectedIconId && (
+                    <div className="absolute -top-1 -right-1 bg-primary rounded-full p-0.5">
+                      <Check className="w-3 h-3 text-primary-foreground" />
+                    </div>
+                  )}
+                </button>
+                {availableIcons.map((icon) => (
+                  <button
+                    key={icon.id}
+                    onClick={() => updateFaviconMutation.mutate(icon.id)}
+                    disabled={updateFaviconMutation.isPending}
+                    className={`relative p-2 border rounded-md hover-elevate flex flex-col items-center gap-1 ${
+                      user.selectedIconId === icon.id ? "ring-2 ring-primary" : ""
+                    }`}
+                    data-testid={`button-favicon-${icon.id}`}
+                  >
+                    <img
+                      src={icon.fileUrl}
+                      alt={icon.name}
+                      className="w-8 h-8 object-contain"
+                    />
+                    <span className="text-xs text-muted-foreground truncate max-w-full">{icon.name}</span>
+                    {user.selectedIconId === icon.id && (
+                      <div className="absolute -top-1 -right-1 bg-primary rounded-full p-0.5">
+                        <Check className="w-3 h-3 text-primary-foreground" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {updateFaviconMutation.isPending && (
+                <p className="text-xs text-muted-foreground mt-2">Updating...</p>
               )}
             </CardContent>
           </Card>

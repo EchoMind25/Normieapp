@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SoundProvider } from "@/components/SoundEffects";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { DynamicFavicon } from "@/components/DynamicFavicon";
 import { Skeleton } from "@/components/ui/skeleton";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
@@ -49,6 +50,7 @@ function App() {
       <AuthProvider>
         <SoundProvider>
           <TooltipProvider>
+            <DynamicFavicon />
             <Toaster />
             <ForcePasswordChange />
             <NotificationPrompt />

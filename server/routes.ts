@@ -398,6 +398,25 @@ export async function registerRoutes(
   });
 
   // =====================================================
+  // Public Icons/Favicons Routes
+  // =====================================================
+  
+  // Get active favicons (public endpoint for users to select)
+  app.get("/api/icons", async (_req, res) => {
+    try {
+      const activeIcons = await storage.getActiveIcons();
+      res.json(activeIcons.map(icon => ({
+        id: icon.id,
+        name: icon.name,
+        fileUrl: icon.fileUrl,
+      })));
+    } catch (error) {
+      console.error("[Icons] Error fetching active icons:", error);
+      res.status(500).json({ error: "Failed to fetch icons" });
+    }
+  });
+
+  // =====================================================
   // Community Polls Routes
   // =====================================================
   
@@ -595,6 +614,321 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error sending stream notification:", error);
       res.status(500).json({ error: "Failed to send stream notification" });
+    }
+  });
+
+  // =====================================================
+  // Admin: User Management Routes
+  // =====================================================
+
+  // Admin: Get all users with stats
+  app.get("/api/admin/users", requireAdmin, async (_req, res) => {
+    try {
+      const usersWithStats = await storage.getAllUsersWithStats();
+      res.json(usersWithStats.map(u => ({
+        id: u.id,
+        username: u.username,
+        email: u.email,
+        walletAddress: u.walletAddress,
+        role: u.role,
+        avatarUrl: u.avatarUrl,
+        bannedAt: u.bannedAt?.toISOString(),
+        createdAt: u.createdAt?.toISOString(),
+        messageCount: u.messageCount,
+        galleryCount: u.galleryCount,
+      })));
+    } catch (error) {
+      console.error("[Admin] Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Admin: Get user details with content
+  app.get("/api/admin/users/:userId", requireAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const [messages, gallery] = await Promise.all([
+        storage.getUserChatMessages(userId, 50),
+        storage.getUserGalleryItems(userId),
+      ]);
+      
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          walletAddress: user.walletAddress,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+          bannedAt: user.bannedAt?.toISOString(),
+          createdAt: user.createdAt?.toISOString(),
+        },
+        messages: messages.map(m => ({
+          id: m.id,
+          content: m.content,
+          roomId: m.roomId,
+          createdAt: m.createdAt?.toISOString(),
+        })),
+        gallery: gallery.map(g => ({
+          id: g.id,
+          title: g.title,
+          imageUrl: g.imageUrl,
+          status: g.status,
+          createdAt: g.createdAt?.toISOString(),
+        })),
+      });
+    } catch (error) {
+      console.error("[Admin] Error fetching user details:", error);
+      res.status(500).json({ error: "Failed to fetch user details" });
+    }
+  });
+
+  // Admin: Ban user
+  app.post("/api/admin/users/:userId/ban", requireAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      if (user.role === "admin") {
+        return res.status(400).json({ error: "Cannot ban admin users" });
+      }
+      
+      await storage.banUser(userId);
+      await storage.deleteUserSessions(userId);
+      res.json({ success: true, message: "User banned and logged out" });
+    } catch (error) {
+      console.error("[Admin] Error banning user:", error);
+      res.status(500).json({ error: "Failed to ban user" });
+    }
+  });
+
+  // Admin: Unban user
+  app.post("/api/admin/users/:userId/unban", requireAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      await storage.unbanUser(userId);
+      res.json({ success: true, message: "User unbanned" });
+    } catch (error) {
+      console.error("[Admin] Error unbanning user:", error);
+      res.status(500).json({ error: "Failed to unban user" });
+    }
+  });
+
+  // Admin: Change username
+  app.patch("/api/admin/users/:userId/username", requireAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { username } = req.body;
+      
+      if (!username || username.length < 3 || username.length > 50) {
+        return res.status(400).json({ error: "Username must be 3-50 characters" });
+      }
+      
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        return res.status(400).json({ error: "Username must be alphanumeric with underscores only" });
+      }
+      
+      const existing = await storage.getUserByUsername(username);
+      if (existing && existing.id !== userId) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+      
+      const updated = await storage.updateUser(userId, { username });
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({ success: true, username: updated.username });
+    } catch (error) {
+      console.error("[Admin] Error changing username:", error);
+      res.status(500).json({ error: "Failed to change username" });
+    }
+  });
+
+  // Admin: Send forgot password email to user
+  app.post("/api/admin/users/:userId/send-reset", requireAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (!user.email) {
+        return res.status(400).json({ error: "User has no email address" });
+      }
+      
+      const { generatePasswordResetToken } = await import("./auth");
+      const sgMail = await import("@sendgrid/mail");
+      
+      const token = generatePasswordResetToken();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      
+      await storage.createPasswordResetToken({
+        userId: user.id,
+        token,
+        expiresAt,
+      });
+      
+      if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
+        sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
+        const resetLink = `${process.env.APP_URL || "https://normienation.replit.app"}/reset-password?token=${token}`;
+        
+        await sgMail.default.send({
+          to: user.email,
+          from: process.env.SENDGRID_FROM_EMAIL,
+          subject: "Password Reset Request - Normie Nation",
+          html: `
+            <html>
+            <body style="background: #0a0a0a; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 40px 20px;">
+              <div style="max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #00ff00; font-family: monospace;">$NORMIE</h1>
+                <p style="font-size: 16px;">An admin has initiated a password reset for your account.</p>
+                <p style="font-size: 16px;">Click the button below to reset your password:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${resetLink}" style="display: inline-block; background: #00ff00; color: #000; font-weight: bold; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-family: monospace;">RESET PASSWORD</a>
+                </div>
+                <p style="font-size: 14px; color: #888;">This link expires in 1 hour.</p>
+              </div>
+            </body>
+            </html>
+          `,
+        });
+        
+        res.json({ success: true, message: "Password reset email sent" });
+      } else {
+        res.status(500).json({ error: "Email service not configured" });
+      }
+    } catch (error) {
+      console.error("[Admin] Error sending reset email:", error);
+      res.status(500).json({ error: "Failed to send reset email" });
+    }
+  });
+
+  // Admin: Force logout all users
+  app.post("/api/admin/logout-all", requireAdmin, async (req, res) => {
+    try {
+      const count = await storage.deleteAllSessions();
+      res.json({ success: true, message: `Logged out all users (${count} sessions deleted)` });
+    } catch (error) {
+      console.error("[Admin] Error logging out all users:", error);
+      res.status(500).json({ error: "Failed to logout all users" });
+    }
+  });
+
+  // =====================================================
+  // Admin: Favicon/Icon Management Routes
+  // =====================================================
+
+  // Admin: Get all favicons
+  app.get("/api/admin/favicons", requireAdmin, async (_req, res) => {
+    try {
+      const allIcons = await storage.getAllIcons();
+      res.json(allIcons.map(icon => ({
+        id: icon.id,
+        name: icon.name,
+        fileUrl: icon.fileUrl,
+        isActive: icon.isActive,
+        createdAt: icon.createdAt?.toISOString(),
+      })));
+    } catch (error) {
+      console.error("[Admin] Error fetching favicons:", error);
+      res.status(500).json({ error: "Failed to fetch favicons" });
+    }
+  });
+
+  // Admin: Add favicon
+  app.post("/api/admin/favicons", requireAdmin, async (req, res) => {
+    try {
+      const { name, fileUrl } = req.body;
+      
+      if (!name || !fileUrl) {
+        return res.status(400).json({ error: "Name and file URL are required" });
+      }
+      
+      const icon = await storage.createIcon({
+        name,
+        fileUrl,
+        uploadedBy: (req as any).userId,
+        isActive: true,
+      });
+      
+      res.json({
+        id: icon.id,
+        name: icon.name,
+        fileUrl: icon.fileUrl,
+        isActive: icon.isActive,
+        createdAt: icon.createdAt?.toISOString(),
+      });
+    } catch (error) {
+      console.error("[Admin] Error creating favicon:", error);
+      res.status(500).json({ error: "Failed to create favicon" });
+    }
+  });
+
+  // Admin: Toggle favicon active status
+  app.patch("/api/admin/favicons/:iconId", requireAdmin, async (req, res) => {
+    try {
+      const { iconId } = req.params;
+      const { isActive, name } = req.body;
+      
+      const updates: Record<string, any> = {};
+      if (isActive !== undefined) updates.isActive = isActive;
+      if (name !== undefined) updates.name = name;
+      
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No fields to update" });
+      }
+      
+      const updated = await storage.updateIcon(iconId, updates);
+      if (!updated) {
+        return res.status(404).json({ error: "Favicon not found" });
+      }
+      
+      res.json({
+        id: updated.id,
+        name: updated.name,
+        fileUrl: updated.fileUrl,
+        isActive: updated.isActive,
+      });
+    } catch (error) {
+      console.error("[Admin] Error updating favicon:", error);
+      res.status(500).json({ error: "Failed to update favicon" });
+    }
+  });
+
+  // Admin: Delete favicon
+  app.delete("/api/admin/favicons/:iconId", requireAdmin, async (req, res) => {
+    try {
+      const { iconId } = req.params;
+      await storage.deleteIcon(iconId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Admin] Error deleting favicon:", error);
+      res.status(500).json({ error: "Failed to delete favicon" });
+    }
+  });
+
+  // Public: Get active favicons (for user selection)
+  app.get("/api/favicons", async (_req, res) => {
+    try {
+      const activeIcons = await storage.getActiveIcons();
+      res.json(activeIcons.map(icon => ({
+        id: icon.id,
+        name: icon.name,
+        fileUrl: icon.fileUrl,
+      })));
+    } catch (error) {
+      console.error("[Icons] Error fetching favicons:", error);
+      res.status(500).json({ error: "Failed to fetch favicons" });
     }
   });
 
