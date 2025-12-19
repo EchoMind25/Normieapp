@@ -75,33 +75,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Sample polls for seeding - minimum 5 as required
-const SAMPLE_POLLS = [
-  {
-    question: "What should be the next community focus for $NORMIE?",
-    options: ["More token burns", "New partnerships", "Community contests", "Developer transparency reports"]
-  },
-  {
-    question: "Which exchange should list $NORMIE next?",
-    options: ["Binance", "Coinbase", "Kraken", "KuCoin", "Gate.io"]
-  },
-  {
-    question: "Best meme of the week?",
-    options: ["Diamond Hands Pepe", "Moon Wojak", "Gigachad Holder", "Doge to Mars"]
-  },
-  {
-    question: "What feature should we prioritize next?",
-    options: ["NFT marketplace", "Staking rewards", "Mobile app", "DAO governance"]
-  },
-  {
-    question: "Rate the latest community event",
-    options: ["Amazing - 5 stars", "Great - 4 stars", "Good - 3 stars", "Needs improvement"]
-  },
-  {
-    question: "Favorite Solana memecoin besides $NORMIE?",
-    options: ["BONK", "WIF", "POPCAT", "MEW", "Other"]
-  }
-];
 
 // Seed default chat room on startup (idempotent)
 async function seedDefaultChatRoom() {
@@ -125,47 +98,6 @@ async function seedDefaultChatRoom() {
   }
 }
 
-// Seed demo polls on startup (idempotent - checks existing polls)
-async function seedDemoPolls() {
-  try {
-    const existingPolls = await storage.getActivePolls();
-    
-    if (existingPolls.length >= 5) {
-      log(`Sufficient polls already exist (${existingPolls.length} active polls)`, "seed");
-      return;
-    }
-
-    // Get questions of existing polls to avoid duplicates
-    const existingQuestions = new Set(existingPolls.map(p => p.question));
-    let created = 0;
-
-    for (const poll of SAMPLE_POLLS) {
-      if (existingQuestions.has(poll.question)) {
-        continue;
-      }
-
-      try {
-        await storage.createPoll(
-          { question: poll.question, isActive: true },
-          poll.options
-        );
-        created++;
-        log(`Created poll: "${poll.question.substring(0, 40)}..."`, "seed");
-      } catch (pollError: any) {
-        log(`Failed to create poll "${poll.question}": ${pollError.message}`, "seed");
-      }
-    }
-
-    if (created > 0) {
-      log(`Seeded ${created} new polls successfully`, "seed");
-    } else {
-      log("No new polls needed to be created", "seed");
-    }
-  } catch (error: any) {
-    log(`Failed to seed demo polls: ${error.message}`, "seed");
-    log(`Stack trace: ${error.stack}`, "seed");
-  }
-}
 
 // Seed admin account on startup
 async function seedAdminAccount() {
@@ -252,7 +184,7 @@ export function isDatabaseConnected() { return databaseConnected; }
     log("Seeding database...", "startup");
     await seedAdminAccount();
     await seedDefaultChatRoom();
-    await seedDemoPolls();
+    // Demo polls seeding removed - admins create polls manually
   }
   
   await registerRoutes(httpServer, app);
