@@ -231,7 +231,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       });
       
       if (closestIndex !== -1 && closestDiff < toleranceMs) {
-        result[closestIndex] = buy.price;
+        result[closestIndex] = chartData[closestIndex].price;
         amounts[closestIndex] = buy.amount;
       }
     });
