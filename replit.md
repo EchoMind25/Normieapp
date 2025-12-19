@@ -56,6 +56,13 @@ Preferred communication style: Simple, everyday language.
 - **Library**: @solana/web3.js for blockchain queries
 - **Data Fetched**: Token account info, supply metrics, transaction history
 
+### Streamflow Integration (December 2025)
+- **SDK**: @streamflow/stream for querying token locks/vesting contracts
+- **Service**: `server/streamflow.ts` - queries Streamflow for Normie token locks by mint address
+- **Cache**: 5-minute TTL to avoid excessive API calls
+- **Fallback**: Returns last known value (default 230M) if API fails
+- **Data**: Real-time locked token amounts from Streamflow vesting contracts
+
 ### Build & Deployment
 - **Development**: `npm run dev` - Vite dev server with Express backend
 - **Production Build**: `npm run build` - Compiles client with Vite, bundles server with esbuild
