@@ -4,6 +4,7 @@ import { SiTelegram, SiX, SiSolana } from "react-icons/si";
 import { NORMIE_TOKEN } from "@shared/schema";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { FeedbackForm } from "./FeedbackForm";
 
 export function Footer() {
   const [copied, setCopied] = useState(false);
@@ -163,6 +164,7 @@ export function Footer() {
               This is a community-built companion app. Not financial advice. DYOR. Ape responsibly.
             </p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <FeedbackForm />
               <span>Built with chaos</span>
               <span className="text-primary">by Normies, for Normies</span>
             </div>
