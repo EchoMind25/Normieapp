@@ -46,6 +46,11 @@ export default function Home() {
   const prevPriceRef = useRef<number | null>(null);
   const passedMilestonesRef = useRef<Set<number>>(new Set());
 
+  // Scroll to top on mount to ensure we start at the dashboard
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   useEffect(() => {
     if (!metrics?.price) return;
     
