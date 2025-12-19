@@ -156,6 +156,30 @@ async function seedAdminAccount() {
   }
 }
 
+// Seed marketplace config with default values (idempotent)
+async function seedMarketplaceConfig() {
+  try {
+    const defaultConfigs = [
+      { key: "marketplace_fee_percentage", value: "2.5" },
+      { key: "min_listing_price_sol", value: "0.01" },
+      { key: "max_listing_duration_days", value: "30" },
+      { key: "offer_expiration_days", value: "7" },
+      { key: "treasury_wallet", value: process.env.MARKETPLACE_TREASURY_WALLET || "" },
+    ];
+
+    for (const config of defaultConfigs) {
+      const existing = await storage.getMarketplaceConfig(config.key);
+      if (!existing) {
+        await storage.setMarketplaceConfig(config.key, config.value);
+        log(`Set marketplace config: ${config.key} = ${config.value}`, "seed");
+      }
+    }
+    log(`Marketplace config initialized (2.5% fee, 0.01 SOL min)`, "seed");
+  } catch (error: any) {
+    log(`Failed to seed marketplace config: ${error.message}`, "seed");
+  }
+}
+
 // Track database connection status globally for health checks
 let databaseConnected = false;
 export function isDatabaseConnected() { return databaseConnected; }
@@ -184,6 +208,7 @@ export function isDatabaseConnected() { return databaseConnected; }
     log("Seeding database...", "startup");
     await seedAdminAccount();
     await seedDefaultChatRoom();
+    await seedMarketplaceConfig();
     // Demo polls seeding removed - admins create polls manually
   }
   

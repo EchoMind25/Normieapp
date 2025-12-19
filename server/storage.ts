@@ -146,7 +146,7 @@ export interface IStorage {
   getListingsByCollection(collectionId: string, limit?: number): Promise<Array<NftListing & { nft: Nft }>>;
   updateNftListing(id: string, data: Partial<InsertNftListing>): Promise<NftListing | undefined>;
   cancelNftListing(id: string): Promise<void>;
-  markListingSold(id: string): Promise<void>;
+  markListingSold(id: string): Promise<boolean>;
   
   // NFT Offers
   createNftOffer(offer: InsertNftOffer): Promise<NftOffer>;
@@ -603,10 +603,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(nftListings.id, id));
   }
 
-  async markListingSold(id: string): Promise<void> {
-    await db.update(nftListings)
+  async markListingSold(id: string): Promise<boolean> {
+    // Atomic update - only marks as sold if currently active (prevents race conditions)
+    const [updated] = await db.update(nftListings)
       .set({ status: "sold", soldAt: new Date() })
-      .where(eq(nftListings.id, id));
+      .where(and(eq(nftListings.id, id), eq(nftListings.status, "active")))
+      .returning();
+    return !!updated;
   }
 
   // NFT Offers

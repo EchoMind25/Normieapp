@@ -1764,13 +1764,29 @@ export async function registerRoutes(
     }
   });
 
-  // Create a new listing (requires auth)
+  // Zod schema for listing creation with server-enforced minimum
+  // Validates that price is a valid positive number (not NaN, not negative)
+  const createListingSchema = z.object({
+    nftId: z.string().uuid("Invalid NFT ID"),
+    priceSol: z.union([z.string(), z.number()])
+      .transform(val => parseFloat(String(val)))
+      .refine(val => !isNaN(val) && isFinite(val), { message: "Price must be a valid number" })
+      .refine(val => val > 0, { message: "Price must be greater than 0" }),
+    expiresAt: z.string().datetime().optional(),
+  });
+
+  // Create a new listing (requires auth) - enforces 0.01 SOL minimum
   app.post("/api/marketplace/listings", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const { nftId, priceSol, expiresAt } = req.body;
+      const parsed = createListingSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      }
+      const { nftId, priceSol, expiresAt } = parsed.data;
       
+      // Server-enforced minimum price from config
       const minPrice = parseFloat(await storage.getMarketplaceConfig("min_listing_price_sol") || "0.01");
-      if (parseFloat(priceSol) < minPrice) {
+      if (priceSol < minPrice) {
         return res.status(400).json({ error: `Minimum listing price is ${minPrice} SOL` });
       }
 
@@ -1800,7 +1816,7 @@ export async function registerRoutes(
         listedAt: new Date(),
       });
 
-      console.log(`[Marketplace] New listing created: ${nft.name} for ${priceSol} SOL`);
+      console.log(`[Marketplace] New listing created: ${nft.name} for ${priceSol} SOL (min enforced: ${minPrice} SOL)`);
       res.status(201).json(listing);
     } catch (error) {
       console.error("[Marketplace] Error creating listing:", error);
@@ -1808,9 +1824,24 @@ export async function registerRoutes(
     }
   });
 
-  // Update listing price
+  // Zod schema for price update
+  // Validates that price is a valid positive number (not NaN, not negative)
+  const updatePriceSchema = z.object({
+    priceSol: z.union([z.string(), z.number()])
+      .transform(val => parseFloat(String(val)))
+      .refine(val => !isNaN(val) && isFinite(val), { message: "Price must be a valid number" })
+      .refine(val => val > 0, { message: "Price must be greater than 0" }),
+  });
+
+  // Update listing price - enforces 0.01 SOL minimum
   app.patch("/api/marketplace/listings/:id", authMiddleware, async (req: AuthRequest, res) => {
     try {
+      const parsed = updatePriceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid price format" });
+      }
+      const { priceSol } = parsed.data;
+
       const listing = await storage.getNftListing(req.params.id);
       if (!listing) {
         return res.status(404).json({ error: "Listing not found" });
@@ -1822,9 +1853,9 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Listing is not active" });
       }
 
-      const { priceSol } = req.body;
+      // Server-enforced minimum price from config
       const minPrice = parseFloat(await storage.getMarketplaceConfig("min_listing_price_sol") || "0.01");
-      if (parseFloat(priceSol) < minPrice) {
+      if (priceSol < minPrice) {
         return res.status(400).json({ error: `Minimum listing price is ${minPrice} SOL` });
       }
 
@@ -1856,6 +1887,81 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Marketplace] Error cancelling listing:", error);
       res.status(500).json({ error: "Failed to cancel listing" });
+    }
+  });
+
+  // Buy now - instant purchase at listing price with fee calculation
+  // Uses atomic status update to prevent race conditions (double-sell)
+  app.post("/api/marketplace/listings/:id/buy", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const listing = await storage.getNftListing(req.params.id);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found" });
+      }
+      if (listing.status !== "active") {
+        return res.status(400).json({ error: "Listing is not active or already sold" });
+      }
+      if (listing.sellerId === req.user!.id) {
+        return res.status(400).json({ error: "Cannot buy your own listing" });
+      }
+
+      const nft = await storage.getNft(listing.nftId);
+      if (!nft) {
+        return res.status(404).json({ error: "NFT not found" });
+      }
+
+      // Calculate fees using server-side config (enforced)
+      const salePrice = parseFloat(listing.priceSol);
+      const marketplaceFeePercent = parseFloat(await storage.getMarketplaceConfig("marketplace_fee_percentage") || "2.5");
+      const royaltyPercent = nft.royaltyPercentage ? parseFloat(nft.royaltyPercentage) : 0;
+      
+      const marketplaceFeeAmount = salePrice * (marketplaceFeePercent / 100);
+      const royaltyAmount = salePrice * (royaltyPercent / 100);
+      const sellerProceeds = salePrice - marketplaceFeeAmount - royaltyAmount;
+
+      // Atomic update - prevents race conditions (double-sell)
+      // Only marks as sold if still active; returns false if already sold
+      const wasSold = await storage.markListingSold(listing.id);
+      if (!wasSold) {
+        return res.status(409).json({ error: "Listing was already purchased by another buyer" });
+      }
+
+      // Record the transaction with fee breakdown
+      const transaction = await storage.createNftTransaction({
+        nftId: listing.nftId,
+        listingId: listing.id,
+        fromUserId: listing.sellerId,
+        fromAddress: listing.sellerAddress,
+        toUserId: req.user!.id,
+        toAddress: req.user!.walletAddress || "",
+        transactionType: "sale",
+        priceSol: salePrice.toString(),
+        marketplaceFee: marketplaceFeeAmount.toFixed(6),
+        royaltyFee: royaltyAmount.toFixed(6),
+        sellerProceeds: sellerProceeds.toFixed(6),
+        transactionSignature: `pending_${Date.now()}`, // Will be updated with actual Solana signature
+        status: "pending",
+      });
+
+      // Update NFT ownership
+      await storage.updateNft(listing.nftId, { ownerId: req.user!.id });
+
+      console.log(`[Marketplace] Instant buy: ${nft.name} for ${salePrice} SOL (fee: ${marketplaceFeeAmount.toFixed(4)} SOL, royalty: ${royaltyAmount.toFixed(4)} SOL, seller gets: ${sellerProceeds.toFixed(4)} SOL)`);
+      res.json({ 
+        success: true, 
+        transaction,
+        breakdown: {
+          salePrice,
+          marketplaceFee: marketplaceFeeAmount,
+          marketplaceFeePercent,
+          royaltyFee: royaltyAmount,
+          royaltyPercent,
+          sellerProceeds
+        }
+      });
+    } catch (error) {
+      console.error("[Marketplace] Error processing purchase:", error);
+      res.status(500).json({ error: "Failed to process purchase" });
     }
   });
 
@@ -1915,7 +2021,7 @@ export async function registerRoutes(
     }
   });
 
-  // Accept an offer
+  // Accept an offer - calculates and records marketplace fee + transaction
   app.post("/api/marketplace/offers/:id/accept", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const offer = await storage.getNftOffer(req.params.id);
@@ -1931,13 +2037,57 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Not your listing" });
       }
 
+      const nft = await storage.getNft(offer.nftId);
+      if (!nft) {
+        return res.status(404).json({ error: "NFT not found" });
+      }
+
+      // Calculate fees
+      const salePrice = parseFloat(offer.offerAmountSol);
+      const marketplaceFeePercent = parseFloat(await storage.getMarketplaceConfig("marketplace_fee_percentage") || "2.5");
+      const royaltyPercent = nft.royaltyPercentage ? parseFloat(nft.royaltyPercentage) : 0;
+      
+      const marketplaceFeeAmount = salePrice * (marketplaceFeePercent / 100);
+      const royaltyAmount = salePrice * (royaltyPercent / 100);
+      const sellerProceeds = salePrice - marketplaceFeeAmount - royaltyAmount;
+
+      // Accept the offer
       await storage.acceptNftOffer(req.params.id);
       if (listing) {
         await storage.markListingSold(listing.id);
       }
 
-      console.log(`[Marketplace] Offer accepted: ${req.params.id}`);
-      res.json({ success: true });
+      // Record the transaction with fee breakdown
+      const transaction = await storage.createNftTransaction({
+        nftId: offer.nftId,
+        listingId: offer.listingId || undefined,
+        fromUserId: listing?.sellerId || req.user!.id,
+        fromAddress: listing?.sellerAddress || req.user!.walletAddress || "",
+        toUserId: offer.buyerId,
+        toAddress: offer.buyerAddress,
+        transactionType: "sale",
+        priceSol: salePrice.toString(),
+        marketplaceFee: marketplaceFeeAmount.toFixed(6),
+        royaltyFee: royaltyAmount.toFixed(6),
+        sellerProceeds: sellerProceeds.toFixed(6),
+        transactionSignature: `pending_${Date.now()}`, // Will be updated with actual signature
+        status: "pending",
+      });
+
+      // Update NFT ownership
+      await storage.updateNft(offer.nftId, { ownerId: offer.buyerId });
+
+      console.log(`[Marketplace] Sale completed: ${nft.name} for ${salePrice} SOL (fee: ${marketplaceFeeAmount.toFixed(4)} SOL, royalty: ${royaltyAmount.toFixed(4)} SOL, seller gets: ${sellerProceeds.toFixed(4)} SOL)`);
+      res.json({ 
+        success: true, 
+        transaction,
+        breakdown: {
+          salePrice,
+          marketplaceFee: marketplaceFeeAmount,
+          royaltyFee: royaltyAmount,
+          sellerProceeds
+        }
+      });
     } catch (error) {
       console.error("[Marketplace] Error accepting offer:", error);
       res.status(500).json({ error: "Failed to accept offer" });
