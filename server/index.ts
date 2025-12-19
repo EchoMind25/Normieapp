@@ -165,10 +165,10 @@ async function seedAdminAccount() {
     const existingAdmin = await storage.getUserByUsername(ADMIN_USERNAME);
     if (existingAdmin) {
       log(`Admin account "${ADMIN_USERNAME}" already exists (id: ${existingAdmin.id}) - SKIPPING (password NOT modified)`, "seed");
+    } else if (!process.env.NORMIE_ADMIN_PASSWORD) {
+      log(`Admin account "${ADMIN_USERNAME}" not created - NORMIE_ADMIN_PASSWORD environment variable required`, "seed");
     } else {
-      // Create admin account with password from environment or default
-      const adminPassword = process.env.NORMIE_ADMIN_PASSWORD || "NormieAdmin2024!";
-      const passwordHash = await hashPassword(adminPassword);
+      const passwordHash = await hashPassword(process.env.NORMIE_ADMIN_PASSWORD);
 
       const newAdmin = await storage.createUser({
         username: ADMIN_USERNAME,
@@ -182,10 +182,6 @@ async function seedAdminAccount() {
       log(`Admin account "${ADMIN_USERNAME}" created successfully (id: ${newAdmin.id})`, "seed");
       log(`Admin email: ${ADMIN_EMAIL}`, "seed");
       log(`Password changed flag: false (will require password reset on first login)`, "seed");
-      
-      if (!process.env.NORMIE_ADMIN_PASSWORD) {
-        log("WARNING: Using default admin password. Set NORMIE_ADMIN_PASSWORD in production!", "seed");
-      }
     }
 
     // Seed second admin account (Echo_Dev)
@@ -194,9 +190,10 @@ async function seedAdminAccount() {
     const existingAdmin2 = await storage.getUserByUsername(ADMIN2_USERNAME);
     if (existingAdmin2) {
       log(`Admin account "${ADMIN2_USERNAME}" already exists (id: ${existingAdmin2.id}) - SKIPPING (password NOT modified)`, "seed");
+    } else if (!process.env.ECHO_DEV_ADMIN_PASSWORD) {
+      log(`Admin account "${ADMIN2_USERNAME}" not created - ECHO_DEV_ADMIN_PASSWORD environment variable required`, "seed");
     } else {
-      const admin2Password = process.env.ECHO_DEV_ADMIN_PASSWORD || "EchoDev2024!";
-      const passwordHash2 = await hashPassword(admin2Password);
+      const passwordHash2 = await hashPassword(process.env.ECHO_DEV_ADMIN_PASSWORD);
 
       const newAdmin2 = await storage.createUser({
         username: ADMIN2_USERNAME,
@@ -210,10 +207,6 @@ async function seedAdminAccount() {
       log(`Admin account "${ADMIN2_USERNAME}" created successfully (id: ${newAdmin2.id})`, "seed");
       log(`Admin email: ${ADMIN2_EMAIL}`, "seed");
       log(`Password changed flag: false (will require password reset on first login)`, "seed");
-      
-      if (!process.env.ECHO_DEV_ADMIN_PASSWORD) {
-        log("WARNING: Using default Echo_Dev admin password. Set ECHO_DEV_ADMIN_PASSWORD in production!", "seed");
-      }
     }
   } catch (error: any) {
     log(`CRITICAL: Failed to seed admin account: ${error.message}`, "seed");
