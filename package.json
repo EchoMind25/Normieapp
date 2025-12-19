@@ -44,6 +44,7 @@
     "@radix-ui/react-tooltip": "^1.2.0",
     "@sendgrid/mail": "^8.1.3",
     "@solana/web3.js": "^1.98.4",
+    "@streamflow/stream": "^10.0.3",
     "@tanstack/react-query": "^5.60.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",

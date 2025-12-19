@@ -1,6 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { NORMIE_TOKEN } from "@shared/schema";
 import type { TokenMetrics, PricePoint, DevBuy, ActivityItem } from "@shared/schema";
+import { fetchStreamflowLockedTokens, getLockedTokens } from "./streamflow";
 
 const RPC_ENDPOINT = "https://solana-rpc.publicnode.com";
 const DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens";
@@ -13,8 +14,7 @@ const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || "";
 // Per dev (@NormieCEO) on X: OVER 527 million burned/locked total
 // Burned + Locked combined = 527M+ (shown as "Supply Stranglehold")
 const BURNED_TOKENS: number = 297000000;  // ~297M burned
-const LOCKED_TOKENS: number = 230000000;  // 230M locked
-// Total removed from circulation: 527M+
+// Locked tokens now fetched from Streamflow (fallback: 230M)
 let cachedBurnedTokens: number = BURNED_TOKENS;
 
 let connection: Connection | null = null;
@@ -59,9 +59,11 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
   }
   
   try {
-    const [response, burnedTokens] = await Promise.all([
+    // Fetch DexScreener data, burned tokens, and Streamflow locked tokens in parallel
+    const [response, burnedTokens, lockedTokens] = await Promise.all([
       fetch(`${DEXSCREENER_API}/${TOKEN_ADDRESS}`),
       fetchBurnedTokens(),
+      fetchStreamflowLockedTokens(),
     ]);
     
     if (!response.ok) {
@@ -82,9 +84,9 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
       const priceChange24h = pair.priceChange?.h24 || 0;
       
       const totalSupply = 1000000000;
-      const circulatingSupply = totalSupply - burnedTokens - LOCKED_TOKENS;
+      const circulatingSupply = totalSupply - burnedTokens - lockedTokens;
       
-      console.log(`[DexScreener] Fetched real data - Price: $${price.toFixed(8)}, MCap: $${marketCap}, Burned: ${formatBurnedTokens(burnedTokens)}`);
+      console.log(`[DexScreener] Fetched real data - Price: $${price.toFixed(8)}, MCap: $${marketCap}, Burned: ${formatBurnedTokens(burnedTokens)}, Locked: ${formatBurnedTokens(lockedTokens)}`);
       
       currentMetrics = {
         price,
@@ -96,7 +98,7 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
         totalSupply,
         circulatingSupply,
         burnedTokens,
-        lockedTokens: LOCKED_TOKENS,
+        lockedTokens,
         holders: 0,
         lastUpdated: new Date().toISOString(),
       };
@@ -122,7 +124,7 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
       totalSupply: 1000000000,
       circulatingSupply: 1000000000,
       burnedTokens: cachedBurnedTokens,
-      lockedTokens: LOCKED_TOKENS,
+      lockedTokens: getLockedTokens(),
       holders: 0,
       lastUpdated: new Date().toISOString(),
     };
