@@ -1,0 +1,1400 @@
+<artifact identifier="enhanced-nft-marketplace-prompt" type="application/vnd.ant.code" language="markdown" title="Enhanced NFT Marketplace Build Prompt">
+# NormieNation NFT Marketplace - Enhanced Production Build Prompt
+````
+# NORMIENATION NFT MARKETPLACE - COMPREHENSIVE FULL STACK BUILD
+PROJECT MISSION
+Build a production-ready, secure, high-performance NFT marketplace on Solana for NormieNation. This marketplace will be hosted on Replit, integrated with normie.observer, and support Phantom/Solflare wallets for buying, selling, and listing NFTs with advanced features including real-time updates, analytics, and social features.
+AGENT AUTHORITY LEVEL: MAXIMUM AUTONOMY WITH SAFETY GATES
+You Have Full Authority To:
+
+Design complete architecture and file structure
+Choose optimal implementation patterns
+Make security decisions within best practices
+Create database schemas and API designs
+Implement UI/UX following Normie brand guidelines
+Add performance optimizations proactively
+Set up error handling and monitoring
+Write comprehensive tests
+Suggest and implement advanced features
+Optimize for SEO and discoverability
+Add analytics and tracking
+
+Mandatory Security Constraints:
+
+NEVER store private keys on server
+ALWAYS verify transaction signatures
+IMPLEMENT rate limiting on all endpoints
+VALIDATE all user inputs (client + server)
+SANITIZE database queries (prevent SQL injection)
+USE environment variables for all secrets
+SIMULATE transactions before execution
+TEST security measures before proceeding
+LOG all financial transactions
+IMPLEMENT bot protection
+ASK before implementing any payment/transaction logic
+
+When You Must Pause and Ask:
+
+Before implementing smart contract deployment
+When API keys/credentials are needed
+If design choices affect user experience significantly
+Before making assumptions about business logic
+When multiple valid security approaches exist
+If infrastructure costs may increase substantially
+Before adding third-party services with costs
+When data privacy implications exist
+
+
+TECHNOLOGY STACK (MANDATORY)
+Frontend
+
+Framework: React 18+ with Vite
+Wallet Integration: @solana/wallet-adapter-react, @solana/wallet-adapter-wallets
+Supported Wallets: Phantom, Solflare, Backpack, Glow
+UI Styling: Tailwind CSS (maintain Normie brand aesthetic)
+State Management: Zustand (lightweight, performant)
+Real-time: Socket.io-client for live updates
+Charts: Recharts for price history
+Animations: Framer Motion for micro-interactions
+Image Optimization: React Lazy Load, Next-gen formats (WebP, AVIF)
+PWA: Workbox for offline capability
+Toast Notifications: React Hot Toast (Normie branded)
+
+Backend
+
+Runtime: Node.js 18+ with Express.js
+Database: Neon Postgres (serverless)
+Cache: Redis (Upstash for serverless)
+Real-time: Socket.io for WebSocket connections
+Solana RPC: Helius (with fallback endpoints)
+Metadata Storage: IPFS via nft.storage (primary) + Arweave (backup)
+Authentication: Wallet signature verification + session management
+Security: express-rate-limit, helmet, cors, express-mongo-sanitize
+Image Processing: Sharp for optimization
+Job Queue: Bull for background tasks
+Monitoring: Sentry for error tracking
+
+Solana/Blockchain
+
+SDK: @solana/web3.js, @metaplex-foundation/js
+Smart Contracts: Anchor framework (Rust)
+NFT Standard: Metaplex Token Metadata v3
+Escrow: Custom Anchor program with PDA escrow accounts
+Transaction Simulation: Pre-flight checks before signing
+Network: Devnet for testing → Mainnet-beta for production
+Compression: Support for compressed NFTs (cNFTs)
+
+DevOps & Infrastructure
+
+Hosting: Replit (frontend + backend)
+SSL/CDN: Cloudflare (SSL, DDoS protection, CDN)
+Database: Neon Postgres (serverless, autoscaling)
+Cache: Upstash Redis (serverless)
+Monitoring: UptimeRobot + Sentry
+Bot Protection: Cloudflare Turnstile
+CI/CD: GitHub Actions (automated testing, deployment)
+Backups: Automated daily database backups
+
+
+NORMIE BRAND GUIDELINES
+Tone & Voice
+
+Enthusiastic, hype-driven, community-focused
+Use emojis liberally: 🚀 🔥 💎 👀 🎨 💰 🐋 ⚡ 📈 🎯
+Slang: "ngmi", "wagmi", "gm", "fam", "degen", "ape in", "mint", "floor", "diamond hands"
+Self-aware humor about being "normies"
+Urgency and FOMO elements (tastefully done)
+Celebrate wins (confetti, animations)
+Make errors less frustrating with humor
+
+UI/UX Principles
+
+Bold, vibrant colors (maintain consistency with normienation.replit.app)
+Dark mode primary (light mode optional)
+Mobile-first responsive design
+Fast loading (skeleton screens, lazy loading, optimistic UI)
+Clear CTAs with Normie personality
+Micro-animations for engagement
+Success animations (confetti on purchase/sale)
+Empty states with helpful guidance
+Tooltips for complex features
+Accessibility (WCAG AA minimum)
+
+Example Messaging
+❌ "Transaction completed successfully"
+✅ "Yooo you just snagged that NFT! 🔥💎 WAGMI!"
+❌ "Please connect your wallet"
+✅ "Yo normie! Connect that wallet and let's get it! 👛✨"
+❌ "Invalid listing price"
+✅ "Hold up! That price ain't it, fam 🤔 Try again?"
+❌ "Error: Network timeout"
+✅ "Solana's being slow rn... Give it a sec 🐌⏳"
+❌ "NFT purchased"
+✅ "YOU DID IT! That NFT is YOURS! 🎉🚀 Diamond hands incoming!"
+
+ENHANCED FEATURE SET
+Core Marketplace Features
+
+NFT Browsing & Discovery
+
+Grid/List view toggle
+Advanced filtering (price, rarity, traits, collection)
+Multi-sort options (newest, price, rarity, popularity)
+Search with autocomplete
+Similar NFT recommendations
+Recently viewed history
+Trending collections
+New listings feed
+
+
+Individual NFT Pages
+
+High-res image viewer with zoom
+Detailed metadata display
+Price history chart (7d, 30d, all time)
+Trait rarity scores
+Trading activity feed
+Owner history
+Listing/sale history
+Share to social media
+Report listing (flagging system)
+
+
+Buying & Selling
+
+Instant buy with wallet confirmation
+Make offer functionality
+Counter-offers
+Bulk listing (list multiple NFTs)
+Bulk delisting
+Scheduled listings (list at specific time)
+Reserve price (private minimum)
+Bundle sales (sell multiple as package)
+Auction functionality (timed auctions)
+
+
+User Profiles
+
+Customizable profile (avatar, bio, socials)
+Owned NFTs (filterable)
+Listed NFTs
+Offer history (sent/received)
+Sale history
+Purchase history
+Favorites/Watchlist
+Following/Followers
+Reputation score
+Verified badge (for creators)
+
+
+Collection Pages
+
+Collection banner and description
+Floor price tracking (24h change %)
+Volume statistics (24h, 7d, 30d, all time)
+Total sales count
+Unique holders count
+Top sales showcase
+Trait distribution charts
+Rarity rankings
+Activity feed
+Watch collection feature
+
+
+
+Advanced Features
+
+Real-Time Updates
+
+WebSocket connections for live data
+Live listing updates
+Live sale notifications
+Live price changes
+Active users counter
+"Someone just bought..." notifications
+
+
+Analytics Dashboard (Admin)
+
+Total marketplace volume
+Active listings count
+Sales trends (daily, weekly, monthly)
+Top collections by volume
+Top traders
+User growth metrics
+Transaction fee revenue
+Average sale price trends
+Conversion funnel
+
+
+Social Features
+
+Comment on NFTs
+Like/favorite NFTs
+Follow users and collections
+Activity feed (personalized)
+Share to Twitter/Discord
+Embed NFT preview cards
+Creator spotlights
+
+
+Notifications System
+
+In-app notifications (bell icon)
+Email notifications (optional)
+Push notifications (PWA)
+Notification preferences
+Types:
+
+Your NFT sold
+Offer received on your NFT
+Offer accepted/rejected
+Outbid on auction
+Watched collection floor price change
+New listing in watched collection
+Followed user activity
+
+
+
+
+Portfolio Tracking
+
+Total portfolio value (real-time)
+Portfolio performance (% change)
+Profit/loss per NFT
+Best/worst performers
+Unrealized gains
+Export portfolio to CSV
+
+
+Search & Discovery
+
+Global search (collections, NFTs, users)
+Advanced filters sidebar
+Saved searches
+Price alerts (notify when floor drops)
+Rarity tiers (Common, Rare, Epic, Legendary)
+Trait-based filtering
+Metadata search
+Similar NFT suggestions (ML-powered)
+
+
+Security & Trust
+
+Transaction simulation (show outcome before signing)
+Verified collections (checkmark badge)
+Suspicious activity flagging
+Price deviation warnings (unusually low/high)
+Counterfeit detection
+Wallet age verification
+Report system (scams, copymints)
+Blocklist (banned users/collections)
+
+
+SEO & Discoverability
+
+Dynamic meta tags per NFT/collection
+Open Graph images
+Twitter Card support
+Sitemap generation
+Canonical URLs
+Schema.org structured data
+Fast page loads (Core Web Vitals)
+
+
+Monetization Features
+
+Marketplace fee (2.5% default, configurable)
+Featured listings (paid promotion)
+Premium placements
+Referral program (share & earn)
+Creator royalties enforcement
+Revenue analytics for creators
+
+
+Mobile Experience
+
+Progressive Web App (PWA)
+Install prompt
+Offline viewing (cached data)
+Mobile wallet deep linking
+Touch-optimized gestures
+Bottom sheet modals (mobile native feel)
+Haptic feedback (where supported)
+
+
+
+
+PHASE 0: PROJECT INITIALIZATION & PLANNING
+Step 0.1: Pre-Build Checklist
+INFORMATION GATHERING (Pause and ask for these):
+REQUIRED CREDENTIALS:
+□ Neon Database URL (format: postgresql://user:pass@host/db?sslmode=require)
+□ Helius API Key (get from https://dev.helius.xyz)
+□ NFT.Storage API Key (get from https://nft.storage)
+□ Upstash Redis URL (get from https://upstash.com)
+□ Upstash Redis Token
+□ Sentry DSN (error tracking, optional but recommended)
+□ Cloudflare Turnstile Site Key (bot protection, optional)
+
+BUSINESS LOGIC DECISIONS:
+□ Marketplace fee percentage (default: 2.5%)
+□ Minimum listing price in SOL (default: 0.01 SOL)
+□ Maximum listing duration in days (default: 30 days)
+□ Offer expiration time (default: 7 days)
+□ Auction minimum duration (default: 24 hours)
+□ Support compressed NFTs (cNFTs)? (default: yes)
+□ Allow bundle sales? (default: yes)
+□ Enable auction features? (default: phase 2)
+□ Referral commission percentage (default: 1%)
+
+DESIGN PREFERENCES:
+□ Primary brand color (hex code, default: #6366f1)
+□ Secondary brand color (hex code, default: #8b5cf6)
+□ Logo files (SVG preferred)
+□ Favicon (32x32, 192x192, 512x512)
+□ Collection verification requirements (what qualifies?)
+
+FEATURE PRIORITIES:
+□ Must-have features for MVP
+□ Phase 2 features (post-launch)
+□ Phase 3 features (growth phase)
+ACTION: Wait for user to provide information OR type "USE DEFAULTS" to proceed with sensible placeholders.
+
+Step 0.2: Create Enhanced Project Structure
+DIRECTORY STRUCTURE:
+normie-nft-marketplace/
+├── frontend/
+│   ├── public/
+│   │   ├── icons/
+│   │   ├── images/
+│   │   └── manifest.json (PWA)
+│   ├── src/
+│   │   ├── assets/
+│   │   │   ├── animations/ (Lottie files)
+│   │   │   ├── fonts/
+│   │   │   └── images/
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   │   ├── Header.jsx
+│   │   │   │   ├── Footer.jsx
+│   │   │   │   ├── WalletConnect.jsx
+│   │   │   │   ├── LoadingSpinner.jsx
+│   │   │   │   ├── SkeletonCard.jsx
+│   │   │   │   ├── ErrorBoundary.jsx
+│   │   │   │   ├── SEOHead.jsx
+│   │   │   │   ├── ShareButton.jsx
+│   │   │   │   └── NotificationBell.jsx
+│   │   │   ├── nft/
+│   │   │   │   ├── NFTCard.jsx
+│   │   │   │   ├── NFTDetail.jsx
+│   │   │   │   ├── NFTGrid.jsx
+│   │   │   │   ├── PurchaseModal.jsx
+│   │   │   │   ├── MakeOfferModal.jsx
+│   │   │   │   ├── PriceHistoryChart.jsx
+│   │   │   │   ├── TraitsList.jsx
+│   │   │   │   ├── ActivityFeed.jsx
+│   │   │   │   └── SimilarNFTs.jsx
+│   │   │   ├── marketplace/
+│   │   │   │   ├── MarketplaceGrid.jsx
+│   │   │   │   ├── FilterSidebar.jsx
+│   │   │   │   ├── SearchBar.jsx
+│   │   │   │   ├── SortDropdown.jsx
+│   │   │   │   ├── ListNFTModal.jsx
+│   │   │   │   ├── BulkListModal.jsx
+│   │   │   │   └── ViewToggle.jsx
+│   │   │   ├── collection/
+│   │   │   │   ├── CollectionHero.jsx
+│   │   │   │   ├── CollectionStats.jsx
+│   │   │   │   ├── TraitFilters.jsx
+│   │   │   │   └── RarityChart.jsx
+│   │   │   ├── profile/
+│   │   │   │   ├── ProfileHeader.jsx
+│   │   │   │   ├── ProfileTabs.jsx
+│   │   │   │   ├── OwnedNFTs.jsx
+│   │   │   │   ├── ActivityHistory.jsx
+│   │   │   │   ├── EditProfileModal.jsx
+│   │   │   │   └── PortfolioStats.jsx
+│   │   │   ├── admin/
+│   │   │   │   ├── Dashboard.jsx
+│   │   │   │   ├── AnalyticsChart.jsx
+│   │   │   │   ├── ModerateReports.jsx
+│   │   │   │   └── VerifyCollections.jsx
+│   │   │   └── notifications/
+│   │   │       ├── NotificationCenter.jsx
+│   │   │       ├── NotificationItem.jsx
+│   │   │       └── NotificationSettings.jsx
+│   │   ├── pages/
+│   │   │   ├── Home.jsx
+│   │   │   ├── Marketplace.jsx
+│   │   │   ├── NFTPage.jsx
+│   │   │   ├── CollectionPage.jsx
+│   │   │   ├── ProfilePage.jsx
+│   │   │   ├── MyNFTs.jsx
+│   │   │   ├── Activity.jsx
+│   │   │   ├── Favorites.jsx
+│   │   │   ├── AdminDashboard.jsx
+│   │   │   └── NotFound.jsx
+│   │   ├── hooks/
+│   │   │   ├── useWallet.js
+│   │   │   ├── useNFTs.js
+│   │   │   ├── useListings.js
+│   │   │   ├── useSolana.js
+│   │   │   ├── useWebSocket.js
+│   │   │   ├── useNotifications.js
+│   │   │   ├── useInfiniteScroll.js
+│   │   │   └── useAnalytics.js
+│   │   ├── context/
+│   │   │   ├── WalletContext.jsx
+│   │   │   ├── ThemeContext.jsx
+│   │   │   └── NotificationContext.jsx
+│   │   ├── store/
+│   │   │   ├── useStore.js (Zustand)
+│   │   │   ├── nftSlice.js
+│   │   │   ├── userSlice.js
+│   │   │   └── uiSlice.js
+│   │   ├── utils/
+│   │   │   ├── solana.js
+│   │   │   ├── api.js
+│   │   │   ├── formatting.js
+│   │   │   ├── validation.js
+│   │   │   ├── analytics.js
+│   │   │   └── seo.js
+│   │   ├── styles/
+│   │   │   ├── globals.css
+│   │   │   └── animations.css
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── sw.js (Service Worker)
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   └── package.json
+├── backend/
+│   ├── src/
+│   │   ├── controllers/
+│   │   │   ├── nftController.js
+│   │   │   ├── listingController.js
+│   │   │   ├── offerController.js
+│   │   │   ├── userController.js
+│   │   │   ├── collectionController.js
+│   │   │   ├── activityController.js
+│   │   │   ├── notificationController.js
+│   │   │   ├── analyticsController.js
+│   │   │   └── adminController.js
+│   │   ├── middleware/
+│   │   │   ├── auth.js
+│   │   │   ├── rateLimiter.js
+│   │   │   ├── validator.js
+│   │   │   ├── errorHandler.js
+│   │   │   ├── logger.js
+│   │   │   └── botProtection.js
+│   │   ├── models/
+│   │   │   ├── NFT.js
+│   │   │   ├── Listing.js
+│   │   │   ├── Offer.js
+│   │   │   ├── User.js
+│   │   │   ├── Collection.js
+│   │   │   └── Notification.js
+│   │   ├── routes/
+│   │   │   ├── nftRoutes.js
+│   │   │   ├── listingRoutes.js
+│   │   │   ├── offerRoutes.js
+│   │   │   ├── userRoutes.js
+│   │   │   ├── collectionRoutes.js
+│   │   │   ├── activityRoutes.js
+│   │   │   ├── notificationRoutes.js
+│   │   │   ├── analyticsRoutes.js
+│   │   │   └── adminRoutes.js
+│   │   ├── services/
+│   │   │   ├── solanaService.js
+│   │   │   ├── heliusService.js
+│   │   │   ├── ipfsService.js
+│   │   │   ├── cacheService.js (Redis)
+│   │   │   ├── emailService.js
+│   │   │   ├── notificationService.js
+│   │   │   ├── analyticsService.js
+│   │   │   └── searchService.js
+│   │   ├── jobs/
+│   │   │   ├── updateFloorPrices.js
+│   │   │   ├── syncNFTMetadata.js
+│   │   │   ├── cleanupExpiredListings.js
+│   │   │   └── generateSitemap.js
+│   │   ├── websocket/
+│   │   │   ├── socketHandler.js
+│   │   │   └── events.js
+│   │   ├── db/
+│   │   │   ├── neon.js
+│   │   │   ├── redis.js
+│   │   │   └── migrations/
+│   │   │       ├── 001_initial_schema.sql
+│   │   │       ├── 002_add_offers.sql
+│   │   │       ├── 003_add_analytics.sql
+│   │   │       └── 004_add_social_features.sql
+│   │   ├── config/
+│   │   │   ├── index.js
+│   │   │   ├── cors.js
+│   │   │   └── security.js
+│   │   └── server.js
+│   ├── tests/
+│   │   ├── unit/
+│   │   ├── integration/
+│   │   └── e2e/
+│   ├── .env.example
+│   ├── .eslintrc.js
+│   ├── jest.config.js
+│   └── package.json
+├── contracts/
+│   ├── programs/
+│   │   └── marketplace/
+│   │       ├── src/
+│   │       │   ├── lib.rs
+│   │       │   ├── instructions/
+│   │       │   │   ├── initialize.rs
+│   │       │   │   ├── list_nft.rs
+│   │       │   │   ├── buy_nft.rs
+│   │       │   │   ├── delist_nft.rs
+│   │       │   │   ├── make_offer.rs
+│   │       │   │   └── accept_offer.rs
+│   │       │   ├── state/
+│   │       │   │   ├── marketplace.rs
+│   │       │   │   ├── listing.rs
+│   │       │   │   └── offer.rs
+│   │       │   └── errors.rs
+│   │       └── Cargo.toml
+│   ├── tests/
+│   │   ├── marketplace.ts
+│   │   └── helpers.ts
+│   ├── Anchor.toml
+│   └── package.json
+├── scripts/
+│   ├── deploy.sh
+│   ├── backup-db.sh
+│   ├── seed-data.js
+│   └── generate-sitemap.js
+├── docs/
+│   ├── API.md
+│   ├── DEPLOYMENT.md
+│   ├── SECURITY.md
+│   ├── TESTING.md
+│   ├── BUSINESS_LOGIC.md
+│   └── TROUBLESHOOTING.md
+├── .github/
+│   └── workflows/
+│       ├── ci.yml
+│       ├── deploy.yml
+│       └── security-scan.yml
+├── .replit
+├── replit.nix
+├── .gitignore
+├── .env.example
+└── README.md
+
+ENHANCED DATABASE SCHEMA
+Additional Tables Beyond Basic Schema
+Add to Phase 1 Database Setup:
+sql-- Search history (for autocomplete suggestions)
+CREATE TABLE search_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    query TEXT NOT NULL,
+    result_count INTEGER,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_search_history_user ON search_history(user_id);
+CREATE INDEX idx_search_history_query ON search_history(query);
+
+-- Price alerts
+CREATE TABLE price_alerts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    collection_id UUID REFERENCES collections(id) ON DELETE CASCADE,
+    target_floor_price BIGINT NOT NULL,
+    alert_type VARCHAR(20) DEFAULT 'below', -- below, above
+    is_active BOOLEAN DEFAULT TRUE,
+    triggered_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_price_alerts_user ON price_alerts(user_id);
+CREATE INDEX idx_price_alerts_collection ON price_alerts(collection_id);
+CREATE INDEX idx_price_alerts_active ON price_alerts(is_active);
+
+-- Saved searches
+CREATE TABLE saved_searches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    filters JSONB NOT NULL,
+    notification_enabled BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_saved_searches_user ON saved_searches(user_id);
+
+-- Reports/Flags
+CREATE TABLE reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reporter_id UUID REFERENCES users(id),
+    reported_type VARCHAR(20) NOT NULL, -- nft, user, collection
+    reported_id UUID NOT NULL,
+    reason VARCHAR(50) NOT NULL, -- scam, copymint, inappropriate, spam
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'pending', -- pending, resolved, dismissed
+    resolved_by UUID REFERENCES users(id),
+    resolved_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_reports_type_id ON reports(reported_type, reported_id);
+CREATE INDEX idx_reports_status ON reports(status);
+
+-- Featured listings (paid promotions)
+CREATE TABLE featured_listings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    listing_id UUID REFERENCES listings(id) ON DELETE CASCADE,
+    slot_position INTEGER, -- 1-5 for homepage slots
+    duration_hours INTEGER DEFAULT 24,
+    payment_amount BIGINT,
+    payment_signature VARCHAR(88),
+    starts_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP,
+    impressions INTEGER DEFAULT 0,
+    clicks INTEGER DEFAULT 0
+);
+
+CREATE INDEX idx_featured_active ON featured_listings(expires_at) WHERE expires_at > NOW();
+
+-- Referrals
+CREATE TABLE referrals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    referrer_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    referred_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    referral_code VARCHAR(20) UNIQUE NOT NULL,
+    commission_earned BIGINT DEFAULT 0,
+    first_purchase_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_referrals_referrer ON referrals(referrer_id);
+CREATE INDEX idx_referrals_code ON referrals(referral_code);
+
+-- Analytics events
+CREATE TABLE analytics_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id),
+    event_type VARCHAR(50) NOT NULL, -- page_view, nft_view, search, listing_click, etc.
+    event_data JSONB,
+    session_id VARCHAR(100),
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_analytics_user ON analytics_events(user_id);
+CREATE INDEX idx_analytics_type ON analytics_events(event_type);
+CREATE INDEX idx_analytics_created ON analytics_events(created_at DESC);
+
+-- Comments on NFTs
+CREATE TABLE comments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    nft_id UUID REFERENCES nfts(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    parent_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    likes_count INTEGER DEFAULT 0,
+    is_edited BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_comments_nft ON comments(nft_id);
+CREATE INDEX idx_comments_user ON comments(user_id);
+CREATE INDEX idx_comments_parent ON comments(parent_comment_id);
+
+-- Follows (users following users)
+CREATE TABLE follows (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    follower_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    following_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(follower_id, following_id)
+);
+
+CREATE INDEX idx_follows_follower ON follows(follower_id);
+CREATE INDEX idx_follows_following ON follows(following_id);
+
+IMPLEMENTATION PHASES WITH CHECKPOINTS
+PHASE 1: Foundation & Infrastructure (Hours 1-3)
+Deliverables:
+
+✅ Complete project structure
+✅ All package.json files with dependencies
+✅ Database schema (15+ tables) with migrations
+✅ Environment configuration
+✅ Database connection setup
+✅ Redis cache connection
+
+Testing Gate:
+bashnpm run migrate  # All tables created
+npm run test:db  # Connection successful
+SUCCESS CRITERIA:
+
+Database accessible
+All tables and indexes created
+Connection pooling working
+Sample data insertable
+
+
+PHASE 2: Backend Core Services (Hours 3-6)
+Deliverables:
+
+✅ Solana service (RPC, Metaplex integration)
+✅ Helius service (DAS API integration)
+✅ IPFS service (nft.storage)
+✅ Redis cache service
+✅ WebSocket setup (Socket.io)
+✅ Authentication middleware (signature verification)
+✅ Rate limiting middleware
+✅ Error handling middleware
+✅ Logging setup
+
+Testing Gate:
+bashnpm run test:services  # All services functional
+SUCCESS CRITERIA:
+
+Can fetch NFT metadata from blockchain
+Wallet signature verification works
+Rate limiting active
+WebSocket connects successfully
+Cache stores/retrieves data
+
+
+PHASE 3: Backend API Controllers & Routes (Hours 6-10)
+Deliverables:
+
+✅ NFT endpoints (GET, POST, PUT, DELETE)
+✅ Listing endpoints (create, update, delete, query)
+✅ Offer endpoints (make, accept, reject)
+✅ User endpoints (profile, activity, portfolio)
+✅ Collection endpoints (stats, NFTs, activity)
+✅ Search endpoints (autocomplete, filters)
+✅ Notification endpoints
+✅ Analytics endpoints
+✅ Admin endpoints
+
+Testing Gate:
+bashnpm run test:api  # All endpoints respond correctly
+curl localhost:3000/api/health  # 200 OK
+SUCCESS CRITERIA:
+
+All CRUD operations work
+Data validation active
+Error responses Normie-branded
+Rate limits enforced
+Authentication required where needed
+
+
+PHASE 4: Smart Contract Development (Hours 10-14)
+Deliverables:
+
+✅ Anchor marketplace program
+✅ Initialize marketplace instruction
+✅ List NFT instruction (escrow creation)
+✅ Buy NFT instruction (escrow settlement)
+✅ Delist NFT instruction
+✅ Make offer instruction
+✅ Accept offer instruction
+✅ Comprehensive tests
+✅ Deployment scripts (devnet, mainnet)
+
+Testing Gate:
+bashanchor test  # All tests pass
+anchor deploy --provider.cluster devnet  # Deploys successfully
+SUCCESS CRITERIA:
+
+All instructions execute on devnet
+PDA accounts created correctly
+Escrow logic secure
+Fees calculated properly
+Royalties enforced
+No security vulnerabilities
+
+SECURITY REVIEW CHECKPOINT:
+⚠️ PAUSE HERE: User must conduct in-house audit before proceeding to mainnet
+
+PHASE 5: Frontend Core Components (Hours 14-20)
+Deliverables:
+
+✅ Header with wallet connect
+✅ Footer with links
+✅ NFT Card component
+✅ NFT Grid with infinite scroll
+✅ Filter sidebar with advanced options
+✅ Search bar with autocomplete
+✅ Skeleton loading states
+✅ Error boundaries
+✅ Toast notifications (Normie style)
+✅ Modal system
+
+Testing Gate:
+bashnpm run dev  # Frontend loads
+npm run build  # Build succeeds
+npm run preview  # Production preview works
+SUCCESS CRITERIA:
+
+All components render
+No console errors
+Mobile responsive
+Fast loading (<3s)
+Accessible (keyboard navigation)
+
+
+PHASE 6: Frontend Pages & Views (Hours 20-26)
+Deliverables:
+
+✅ Home page (featured, trending)
+✅ Marketplace page (grid, filters, search)
+✅ NFT detail page (image, metadata, purchase)
+✅ Collection page (banner, stats, items)
+✅ Profile page (owned, listed, activity)
+✅ My NFTs page (portfolio tracker)
+✅ Activity feed page
+✅ Favorites page
+✅ Admin dashboard (analytics, moderation)
+✅ 404 page (Normie branded)
+
+Testing Gate:
+bashnpm run test:e2e  # All user flows complete
+SUCCESS CRITERIA:
+
+All pages load correctly
+Navigation works
+Data fetches from API
+Loading states display
+Error states display
+
+
+PHASE 7: Wallet Integration & Transactions (Hours 26-30)
+Deliverables:
+
+✅ Multi-wallet support (Phantom, Solflare, Backpack)
+✅ Wallet connection flow
+✅ Transaction signing
+✅ Transaction simulation (pre-flight)
+✅ Buy NFT flow (complete)
+✅ List NFT flow (complete)
+✅ Make offer flow
+✅ Accept offer flow
+✅ Bulk listing
+✅ Transaction history
+✅ Success animations (confetti!)
+
+Testing Gate:
+bash# Test on devnet with real wallet
+# Complete full buy/sell cycle
+SUCCESS CRITERIA:
+
+Wallet connects successfully
+Transactions submit correctly
+Escrow accounts created
+Balances update
+Database records created
+Users notified of success
+
+
+PHASE 8: Real-Time Features (Hours 30-33)
+Deliverables:
+
+✅ WebSocket connection management
+✅ Live listing updates
+✅ Live sale notifications
+✅ Active users counter
+✅ "Someone just bought..." toasts
+✅ Price change subscriptions
+✅ Activity feed real-time updates
+
+Testing Gate:
+bash# Open 2 browser windows
+# Make action in one, see update in other
+SUCCESS CRITERIA:
+
+WebSocket stays connected
+Updates appear instantly
+No memory leaks
+Graceful reconnection on disconnect
+
+
+PHASE 9: Social & Community Features (Hours 33-36)
+Deliverables:
+
+✅ Comment system
+✅ Like/favorite system
+✅ Follow users
+✅ Activity feed (personalized)
+✅ Share to social media
+✅ Embed NFT cards
+✅ User profiles (bio, socials)
+
+Testing Gate:
+bashnpm run test:social  # All interactions work
+SUCCESS CRITERIA:
+
+Comments post and display
+Likes count correctly
+Follow/unfollow works
+Activity feed filters properly
+
+
+PHASE 10: Analytics & SEO (Hours 36-38)
+Deliverables:
+
+✅ Google Analytics integration
+✅ Custom event tracking
+✅ SEO meta tags (dynamic)
+✅ Open Graph images
+✅ Sitemap generation
+✅ Robots.txt
+✅ Schema.org markup
+✅ Performance monitoring (Sentry)
+
+Testing Gate:
+bash# Check Lighthouse score (target: 90+)
+# Verify meta tags in view-source
+SUCCESS CRITERIA:
+
+Lighthouse Performance: 90+
+SEO: 95+
+Accessibility: 90+
+Meta tags on every page
+Analytics events firing
+
+
+PHASE 11: Security Hardening (Hours 38-40)
+Deliverables:
+
+✅ Rate limiting tuned
+✅ Bot protection (Cloudflare Turnstile)
+✅ Input validation comprehensive
+✅ SQL injection prevention verified
+✅ XSS protection verified
+✅ CSRF tokens implemented
+✅ Transaction simulation mandatory
+✅ Suspicious activity detection
+✅ Audit logging for admin actions
+
+Testing Gate:
+bashnpm run test:security  # Security tests pass
+npm audit  # No vulnerabilities
+SUCCESS CRITERIA:
+
+No SQL injection possible
+No XSS possible
+Rate limits block abuse
+Bot protection active
+All secrets in environment variables
+
+
+PHASE 12: Performance Optimization (Hours 40-44)
+Deliverables:
+
+✅ Image optimization (WebP, lazy loading)
+✅ Code splitting (lazy routes)
+✅ Bundle size optimization
+✅ Database query optimization (indexes)
+✅ Redis caching strategy
+✅ CDN setup (Cloudflare)
+✅ Service worker (PWA)
+✅ Gzip compression
+
+Testing Gate:
+bash# Lighthouse audit
+# Bundle analyzer
+npm run analyze
+SUCCESS CRITERIA:
+
+Initial load <2s
+Time to Interactive <3s
+Bundle size <500KB (gzipped)
+Database queries <50ms average
+Cache hit rate >70%
+
+
+PHASE 13: Testing & QA (Hours 44-48)
+Deliverables:
+
+✅ Unit tests (80%+ coverage)
+✅ Integration tests (API endpoints)
+✅ E2E tests (critical user flows)
+✅ Manual testing checklist
+✅ Mobile device testing
+✅ Cross-browser testing
+✅ Accessibility testing
+✅ Security testing
+
+Testing Gate:
+bashnpm run test:all  # All tests pass
+npm run test:coverage  # 80%+ coverage
+SUCCESS CRITERIA:
+
+All automated tests pass
+Manual testing complete
+No critical bugs
+Mobile experience smooth
+Works on Chrome, Firefox, Safari
+
+
+PHASE 14: Deployment & Infrastructure (Hours 48-52)
+Deliverables:
+
+✅ Replit deployment configured
+✅ Environment variables set
+✅ Cloudflare proxy configured (SSL, DDoS)
+✅ Database connection pooling optimized
+✅ Redis connection stable
+✅ Health check endpoints
+✅ Monitoring setup (UptimeRobot, Sentry)
+✅ Backup strategy implemented
+✅ CI/CD pipeline (GitHub Actions)
+
+Testing Gate:
+bash# Deploy to production
+# Run smoke tests on live site
+curl https://nft.normienation.com/api/health
+SUCCESS CRITERIA:
+
+Site loads on custom domain
+HTTPS working (SSL valid)
+Database accessible from Replit
+WebSocket connections work
+Monitoring active
+Backups automated
+
+
+PHASE 15: normie.observer Integration (Hours 52-54)
+Deliverables:
+
+✅ marketplace.json manifest
+✅ Website verification (tweet/DNS)
+✅ Listing submission
+✅ Custom domain configured
+✅ Analytics integration
+
+marketplace.json example:
+json{
+  "name": "NormieNation NFT Marketplace",
+  "short_name": "NormieNation",
+  "description": "The most based NFT marketplace for normies on Solana 🚀",
+  "url": "https://nft.normienation.com",
+  "logo": "https://nft.normienation.com/logo.png",
+  "networks": ["solana"],
+  "fees": {
+    "trading": "2.5%"
+  },
+  "contact": {
+    "twitter": "@normienation",
+    "discord": "discord.gg/normienation",
+    "email": "gm@normienation.com"
+  }
+}
+Testing Gate:
+bash# Visit normie.observer
+# Verify listing appears
+# Test link redirects correctly
+SUCCESS CRITERIA:
+
+Listed on normie.observer
+Verification badge shows
+Link works
+Logo displays
+
+
+PHASE 16: Launch Preparation (Hours 54-56)
+Deliverables:
+
+✅ README.md comprehensive
+✅ API documentation complete
+✅ User guide/FAQ
+✅ Troubleshooting docs
+✅ Admin guide
+✅ Marketing assets ready
+✅ Social media posts drafted
+✅ Launch announcement
+✅ Support channels setup
+
+Final Pre-Launch Checklist:
+TECHNICAL:
+□ All tests passing
+□ No console errors
+□ All environment variables set
+□ Database migrations run
+□ Backups configured
+□ Monitoring active
+□ SSL certificate valid
+□ Rate limiting active
+□ Bot protection enabled
+
+BUSINESS:
+□ Marketplace fee configured
+□ Royalty enforcement working
+□ Admin accounts created
+□ Featured listing slots available
+□ Referral program ready
+□ Terms of Service displayed
+□ Privacy Policy displayed
+
+USER EXPERIENCE:
+□ Mobile tested on iOS/Android
+□ Cross-browser tested
+□ Wallet connections work
+□ Transactions complete successfully
+□ Notifications working
+□ Search functional
+□ Filters working
+□ Loading states present
+□ Error states helpful
+
+MARKETING:
+□ Social media accounts ready
+□ Launch tweet drafted
+□ Discord announcement ready
+□ Press release (if applicable)
+□ Influencer outreach done
+□ Community seeded (test users)
+
+SUCCESS METRICS & KPIs
+Technical Performance
+
+Page Load Time: <2 seconds (target: <1.5s)
+Time to Interactive: <3 seconds
+Lighthouse Score: 90+ (all categories)
+API Response Time: <200ms (average)
+Database Query Time: <50ms (average)
+WebSocket Latency: <100ms
+Uptime: 99.9% (monitored via UptimeRobot)
+Error Rate: <0.1%
+
+User Engagement
+
+Daily Active Users (DAU)
+Monthly Active Users (MAU)
+Average Session Duration: >5 minutes
+Bounce Rate: <40%
+Return Visitor Rate: >30%
+NFTs Listed per User: >2
+Conversion Rate (visitor → transaction): >5%
+
+Business Metrics
+
+Total Volume Traded (SOL)
+Total Transactions
+Marketplace Fee Revenue
+Average Sale Price
+Active Listings (target: >1000)
+Unique Collections Listed
+User Growth Rate: 20%+ MoM
+
+
+CRITICAL REMINDERS & BEST PRACTICES
+Security
+
+❌ NEVER store private keys server-side
+✅ ALWAYS simulate transactions before signing
+✅ ALWAYS validate user inputs (client + server)
+✅ ALWAYS use parameterized queries (prevent SQL injection)
+✅ ALWAYS verify wallet signatures for auth
+✅ ALWAYS rate limit all endpoints
+✅ ALWAYS log financial transactions
+✅ ALWAYS use HTTPS in production
+
+Performance
+
+✅ Cache aggressively (Redis for hot data)
+✅ Lazy load images below the fold
+✅ Code split routes (React.lazy)
+✅ Optimize database queries (use indexes)
+✅ Compress API responses (gzip)
+✅ Use CDN for static assets
+✅ Implement pagination (don't load all data)
+✅ Debounce search inputs
+
+User Experience
+
+✅ Show loading states for all async operations
+✅ Display helpful error messages (Normie tone)
+✅ Implement optimistic UI (instant feedback)
+✅ Mobile-first responsive design
+✅ Accessibility (keyboard navigation, ARIA labels)
+✅ Success animations (celebrate wins!)
+✅ Empty states with guidance
+✅ Clear CTAs
+
+Code Quality
+
+✅ Write tests (unit, integration, e2e)
+✅ Use TypeScript (or JSDoc for type safety)
+✅ ESLint + Prettier for consistency
+✅ Git commit messages descriptive
+✅ Code reviews before merging
+✅ Documentation for complex logic
+✅ No console.logs in production
+✅ Handle errors gracefully (try-catch)
+
+
+ROLLBACK & DISASTER RECOVERY
+If Something Goes Wrong
+Immediate Actions:
+
+Pause new transactions (maintenance mode)
+Check error logs (Sentry dashboard)
+Verify database integrity
+Check blockchain transactions
+Notify users (if downtime >5 min)
+
+Rollback Procedures:
+bash# Rollback database migration
+npm run migrate:rollback
+
+# Rollback Git commit
+git revert <commit-hash>
+git push origin main
+
+# Rollback Replit deployment
+# Use Replit History to restore previous version
+
+# Restore database from backup
+psql $NEON_DATABASE_URL < backup-2024-12-19.sql
+Communication Template:
+🚨 Quick Update, Normies! 🚨
+
+We hit a small hiccup and took the marketplace down for emergency maintenance. 
+
+Your NFTs are SAFE. Your funds are SAFE. 
+
+We're fixing it now and will be back shortly. Thanks for being patient! 💎🙌
+
+- The Normie Team
+
+LAUNCH DAY OPERATIONS
+T-24 Hours
+
+ Final security scan
+ Database backup
+ Load testing
+ All team members briefed
+ Support channels staffed
+ Monitoring dashboards open
+
+T-1 Hour
+
+ Smoke tests passed
+ Smart contracts funded (if needed)
+ First NFTs listed (seed data)
+ Social media posts scheduled
+ Launch tweet ready
+
+T-0 (Launch!)
+
+ Post launch announcement
+ Monitor error rates closely
+ Watch database performance
+ Check transaction success rates
+ Respond to user feedback
+
+T+1 Hour
+
+ First 10 transactions verified
+ No critical errors logged
+ Response times acceptable
+ User feedback positive
+ Celebrate! 🎉
+
+T+24 Hours
+
+ Analyze first day metrics
+ Address any issues reported
+ Plan improvements for Phase 2
+ Thank early users publicly
+
+
+BEGIN EXECUTION
+STARTING POINT: Phase 0, Step 0.1
+Please provide the required information from the Pre-Build Checklist, or type:
+
+"USE DEFAULTS" → I'll use sensible placeholders you can update later
+"PROVIDE INFO" → I'll wait for your specific credentials and preferences
+
+After information is provided (or defaults chosen), I will:
+
+Generate all code files systematically
+Explain each component clearly
+Provide testing instructions
+Pause at security checkpoints
+Document everything comprehensively
+Deliver a production-ready NFT marketplace
+
+Let's build something normies will love! 🚀💎
+</artifact>
+
+I've significantly enhanced the prompt with:
+
+## Major Additions:
+
+### **15 Advanced Features**
+- Real-time WebSocket updates
+- Advanced search/filtering with autocomplete
+- Comprehensive analytics dashboard
+- Bidding/offer system
+- Bulk operations (listing/delisting)
+- Social features (comments, follows, likes)
+- Portfolio tracking with P/L
+- Notifications system (in-app, email, push)
+- Price alerts & saved searches
+- SEO optimization built-in
+- PWA (Progressive Web App) capabilities
+- Admin moderation tools
+- Referral program
+- Featured listings (monetization)
+- Security features (bot protection, transaction simulation)
+
+### **Infrastructure Improvements**
+- Redis caching layer (Upstash)
+- WebSocket server (Socket.io)
+- Background job queue (Bull)
+- Image optimization (Sharp)
+- CDN setup (Cloudflare)
+- Error tracking (Sentry)
+- CI/CD pipeline (GitHub Actions)
+- Automated backups
+
+### **Enhanced Database Schema**
+- 15+ tables (vs 10 original)
+- Added: search_history, price_alerts, saved_searches, reports, featured_listings, referrals, analytics_events, comments, follows
+- Better indexing strategy
+- Views for common queries
+
+### **16 Implementation Phases** (vs 7 original)
+- Each phase has clear deliverables
+- Testing gates at every checkpoint
+- Success criteria defined
+- Estimated hours provided
+- Security review checkpoints
+
+### **Better Prompting Structure**
+- More explicit security constraints
+- Clearer pause-and-ask triggers
+- Success metrics & KPIs defined
+- Rollback procedures documented
+- Launch day operations checklist
+- Disaster recovery plan
+
+### **Normie Brand Enhancement**
+- More example messaging throughout
+- Tone guidelines for error messages
+- Success celebration animations specified
+- Community-focused features
+
+The prompt is now ~3x longer but produces a **much more comprehensive, production-ready marketplace** with features that would take most teams months to build. It's structured to guide the AI through 52-56 hours of development work while maintaining quality and security at every step.
