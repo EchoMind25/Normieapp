@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Bell, BellOff, X } from "lucide-react";
 
 const PROMPT_DISMISSED_KEY = "notification_prompt_dismissed";
+const PROMPT_SUCCESS_KEY = "notification_prompt_success";
 const PROMPT_SHOWN_SESSION_KEY = "notification_prompt_shown_session";
 
 export function NotificationPrompt() {
@@ -29,6 +30,13 @@ export function NotificationPrompt() {
   } = usePushNotifications();
 
   const [showPrompt, setShowPrompt] = useState(false);
+
+  useEffect(() => {
+    if (isSubscribed && showPrompt) {
+      localStorage.setItem(PROMPT_SUCCESS_KEY, "true");
+      setShowPrompt(false);
+    }
+  }, [isSubscribed, showPrompt]);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -53,6 +61,11 @@ export function NotificationPrompt() {
       return;
     }
 
+    const successfullyEnabled = localStorage.getItem(PROMPT_SUCCESS_KEY);
+    if (successfullyEnabled) {
+      return;
+    }
+
     const shownThisSession = sessionStorage.getItem(PROMPT_SHOWN_SESSION_KEY);
     if (shownThisSession) {
       return;
@@ -69,15 +82,17 @@ export function NotificationPrompt() {
   const handleEnable = async () => {
     const success = await subscribe();
     if (success) {
+      localStorage.setItem(PROMPT_SUCCESS_KEY, "true");
       toast({
         title: "Notifications enabled",
-        description: "You'll now receive updates about polls and announcements.",
+        description: "You'll now receive updates about polls, streams, and announcements.",
       });
       setShowPrompt(false);
-    } else if (permission === "denied") {
+    } else {
+      sessionStorage.removeItem(PROMPT_SHOWN_SESSION_KEY);
       toast({
-        title: "Permission denied",
-        description: "Please enable notifications in your browser settings.",
+        title: "Could not enable notifications",
+        description: "Please check your browser settings and try again next time.",
         variant: "destructive",
       });
       setShowPrompt(false);
