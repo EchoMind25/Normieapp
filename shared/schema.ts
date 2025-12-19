@@ -495,6 +495,35 @@ export type InsertGalleryComment = z.infer<typeof insertGalleryCommentSchema>;
 export type GalleryComment = typeof galleryComments.$inferSelect;
 
 // =====================================================
+// User Feedback Table
+// =====================================================
+
+export const userFeedback = pgTable("user_feedback", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id),
+  visitorName: varchar("visitor_name", { length: 100 }),
+  email: varchar("email", { length: 255 }),
+  category: varchar("category", { length: 50 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  status: varchar("status", { length: 20 }).default("new"),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_feedback_status").on(table.status),
+  index("idx_feedback_category").on(table.category),
+]);
+
+export const insertUserFeedbackSchema = createInsertSchema(userFeedback).omit({ 
+  id: true, 
+  createdAt: true,
+  status: true,
+  adminNotes: true,
+});
+export type InsertUserFeedback = z.infer<typeof insertUserFeedbackSchema>;
+export type UserFeedback = typeof userFeedback.$inferSelect;
+
+// =====================================================
 // Normie token constants
 // =====================================================
 
