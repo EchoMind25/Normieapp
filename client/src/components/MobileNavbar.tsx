@@ -1,4 +1,5 @@
-import { BarChart3, Image, Users, Home } from "lucide-react";
+import { Link } from "wouter";
+import { BarChart3, Image, Users, Home, ShoppingBag } from "lucide-react";
 
 interface MobileNavbarProps {
   onNavigate: (sectionId: string) => void;
@@ -24,6 +25,15 @@ export function MobileNavbar({ onNavigate }: MobileNavbarProps) {
           <BarChart3 className="h-5 w-5" />
           <span className="text-[10px] font-medium">Dashboard</span>
         </button>
+        <Link href="/marketplace">
+          <div
+            className="flex flex-col items-center justify-center flex-1 h-full gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="mobile-nav-marketplace"
+          >
+            <ShoppingBag className="h-5 w-5" />
+            <span className="text-[10px] font-medium">NFTs</span>
+          </div>
+        </Link>
         <button
           onClick={() => onNavigate("meme-generator")}
           className="flex flex-col items-center justify-center flex-1 h-full gap-1 text-muted-foreground hover:text-foreground transition-colors"

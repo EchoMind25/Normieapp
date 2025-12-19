@@ -16,6 +16,10 @@ import NotFound from "@/pages/not-found";
 const Profile = lazy(() => import("@/pages/Profile"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const Marketplace = lazy(() => import("@/pages/Marketplace"));
+const NftDetail = lazy(() => import("@/pages/NftDetail"));
+const MyNfts = lazy(() => import("@/pages/MyNfts"));
+const CollectionDetail = lazy(() => import("@/pages/CollectionDetail"));
 
 function PageLoader() {
   return (
@@ -38,6 +42,10 @@ function Router() {
         <Route path="/profile" component={Profile} />
         <Route path="/admin" component={Admin} />
         <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/marketplace" component={Marketplace} />
+        <Route path="/marketplace/nft/:id" component={NftDetail} />
+        <Route path="/marketplace/my-nfts" component={MyNfts} />
+        <Route path="/marketplace/collection/:id" component={CollectionDetail} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>

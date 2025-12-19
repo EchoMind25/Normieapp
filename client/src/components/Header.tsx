@@ -127,15 +127,12 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
           <Button
             variant="ghost"
             size="sm"
-            disabled
-            className="opacity-60 gap-1"
+            onClick={() => setLocation("/marketplace")}
+            className="gap-1"
             data-testid="nav-nft-marketplace"
           >
             <ShoppingBag className="h-4 w-4" />
             NFTs
-            <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-1">
-              Soon
-            </Badge>
           </Button>
           <Button
             variant="ghost"

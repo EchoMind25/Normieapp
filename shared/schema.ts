@@ -211,28 +211,72 @@ export type InsertManualDevBuy = z.infer<typeof insertManualDevBuySchema>;
 export type ManualDevBuy = typeof manualDevBuys.$inferSelect;
 
 // =====================================================
-// PHASE 2: NFT Tables
+// PHASE 2: NFT Marketplace Tables
 // =====================================================
+
+// NFT Collections table
+export const nftCollections = pgTable("nft_collections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  symbol: varchar("symbol", { length: 50 }).unique().notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  bannerUrl: text("banner_url"),
+  creatorAddress: varchar("creator_address", { length: 44 }),
+  creatorId: uuid("creator_id").references(() => users.id),
+  verified: boolean("verified").default(false),
+  floorPrice: decimal("floor_price", { precision: 20, scale: 9 }),
+  totalVolume: decimal("total_volume", { precision: 20, scale: 9 }).default("0"),
+  totalSales: integer("total_sales").default(0),
+  totalListings: integer("total_listings").default(0),
+  uniqueHolders: integer("unique_holders").default(0),
+  royaltyPercentage: decimal("royalty_percentage", { precision: 5, scale: 2 }).default("5.0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_collections_symbol").on(table.symbol),
+  index("idx_collections_verified").on(table.verified),
+  index("idx_collections_floor").on(table.floorPrice),
+]);
+
+export const insertNftCollectionSchema = createInsertSchema(nftCollections).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  totalVolume: true,
+  totalSales: true,
+  totalListings: true,
+  uniqueHolders: true,
+});
+export type InsertNftCollection = z.infer<typeof insertNftCollectionSchema>;
+export type NftCollection = typeof nftCollections.$inferSelect;
 
 // NFTs table
 export const nfts = pgTable("nfts", {
   id: uuid("id").primaryKey().defaultRandom(),
   mintAddress: varchar("mint_address", { length: 44 }).unique().notNull(),
+  collectionId: uuid("collection_id").references(() => nftCollections.id),
   ownerId: uuid("owner_id").references(() => users.id),
+  ownerAddress: varchar("owner_address", { length: 44 }),
   creatorId: uuid("creator_id").references(() => users.id),
-  metadataUri: text("metadata_uri").notNull(),
-  name: varchar("name", { length: 100 }),
+  creatorAddress: varchar("creator_address", { length: 44 }),
+  metadataUri: text("metadata_uri"),
+  name: varchar("name", { length: 200 }),
   description: text("description"),
   imageUrl: text("image_url"),
-  priceSol: decimal("price_sol", { precision: 20, scale: 9 }),
-  priceNormie: decimal("price_normie", { precision: 20, scale: 9 }),
+  attributes: text("attributes"), // JSON string of traits
+  rarityScore: decimal("rarity_score", { precision: 10, scale: 4 }),
+  rarityRank: integer("rarity_rank"),
   royaltyPercentage: decimal("royalty_percentage", { precision: 5, scale: 2 }).default("5.0"),
-  status: varchar("status", { length: 20 }).default("minted"),
+  lastSalePrice: decimal("last_sale_price", { precision: 20, scale: 9 }),
+  lastSaleAt: timestamp("last_sale_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_nfts_owner").on(table.ownerId),
-  index("idx_nfts_status").on(table.status),
+  index("idx_nfts_owner_address").on(table.ownerAddress),
+  index("idx_nfts_collection").on(table.collectionId),
+  index("idx_nfts_mint").on(table.mintAddress),
 ]);
 
 export const insertNftSchema = createInsertSchema(nfts).omit({ 
@@ -243,18 +287,92 @@ export const insertNftSchema = createInsertSchema(nfts).omit({
 export type InsertNft = z.infer<typeof insertNftSchema>;
 export type Nft = typeof nfts.$inferSelect;
 
-// NFT transactions
+// NFT Listings (marketplace listings)
+export const nftListings = pgTable("nft_listings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nftId: uuid("nft_id").references(() => nfts.id).notNull(),
+  sellerId: uuid("seller_id").references(() => users.id).notNull(),
+  sellerAddress: varchar("seller_address", { length: 44 }).notNull(),
+  priceSol: decimal("price_sol", { precision: 20, scale: 9 }).notNull(),
+  marketplaceFee: decimal("marketplace_fee", { precision: 5, scale: 2 }).default("2.5"),
+  royaltyFee: decimal("royalty_fee", { precision: 5, scale: 2 }),
+  escrowAccount: varchar("escrow_account", { length: 44 }),
+  listingSignature: varchar("listing_signature", { length: 88 }),
+  status: varchar("status", { length: 20 }).default("active"), // active, sold, cancelled, expired
+  expiresAt: timestamp("expires_at"),
+  listedAt: timestamp("listed_at").defaultNow(),
+  soldAt: timestamp("sold_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_listings_nft").on(table.nftId),
+  index("idx_listings_seller").on(table.sellerId),
+  index("idx_listings_status").on(table.status),
+  index("idx_listings_price").on(table.priceSol),
+]);
+
+export const insertNftListingSchema = createInsertSchema(nftListings).omit({ 
+  id: true, 
+  createdAt: true,
+  soldAt: true,
+  cancelledAt: true,
+});
+export type InsertNftListing = z.infer<typeof insertNftListingSchema>;
+export type NftListing = typeof nftListings.$inferSelect;
+
+// NFT Offers
+export const nftOffers = pgTable("nft_offers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nftId: uuid("nft_id").references(() => nfts.id).notNull(),
+  listingId: uuid("listing_id").references(() => nftListings.id),
+  buyerId: uuid("buyer_id").references(() => users.id).notNull(),
+  buyerAddress: varchar("buyer_address", { length: 44 }).notNull(),
+  offerAmountSol: decimal("offer_amount_sol", { precision: 20, scale: 9 }).notNull(),
+  escrowAccount: varchar("escrow_account", { length: 44 }),
+  offerSignature: varchar("offer_signature", { length: 88 }),
+  status: varchar("status", { length: 20 }).default("pending"), // pending, accepted, rejected, expired, cancelled
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  respondedAt: timestamp("responded_at"),
+}, (table) => [
+  index("idx_offers_nft").on(table.nftId),
+  index("idx_offers_buyer").on(table.buyerId),
+  index("idx_offers_listing").on(table.listingId),
+  index("idx_offers_status").on(table.status),
+]);
+
+export const insertNftOfferSchema = createInsertSchema(nftOffers).omit({ 
+  id: true, 
+  createdAt: true,
+  respondedAt: true,
+});
+export type InsertNftOffer = z.infer<typeof insertNftOfferSchema>;
+export type NftOffer = typeof nftOffers.$inferSelect;
+
+// NFT transactions (sales/transfers)
 export const nftTransactions = pgTable("nft_transactions", {
   id: uuid("id").primaryKey().defaultRandom(),
   nftId: uuid("nft_id").references(() => nfts.id),
+  listingId: uuid("listing_id").references(() => nftListings.id),
+  offerId: uuid("offer_id").references(() => nftOffers.id),
   fromUserId: uuid("from_user_id").references(() => users.id),
+  fromAddress: varchar("from_address", { length: 44 }),
   toUserId: uuid("to_user_id").references(() => users.id),
-  transactionType: varchar("transaction_type", { length: 20 }),
+  toAddress: varchar("to_address", { length: 44 }),
+  transactionType: varchar("transaction_type", { length: 20 }), // sale, transfer, mint, list, delist
   priceSol: decimal("price_sol", { precision: 20, scale: 9 }),
-  priceNormie: decimal("price_normie", { precision: 20, scale: 9 }),
+  marketplaceFeeAmount: decimal("marketplace_fee_amount", { precision: 20, scale: 9 }),
+  royaltyFeeAmount: decimal("royalty_fee_amount", { precision: 20, scale: 9 }),
   txSignature: varchar("tx_signature", { length: 88 }),
+  blockTime: timestamp("block_time"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_nft_tx_nft").on(table.nftId),
+  index("idx_nft_tx_from").on(table.fromUserId),
+  index("idx_nft_tx_to").on(table.toUserId),
+  index("idx_nft_tx_type").on(table.transactionType),
+  index("idx_nft_tx_created").on(table.createdAt),
+]);
 
 export const insertNftTransactionSchema = createInsertSchema(nftTransactions).omit({ 
   id: true, 
@@ -262,6 +380,41 @@ export const insertNftTransactionSchema = createInsertSchema(nftTransactions).om
 });
 export type InsertNftTransaction = z.infer<typeof insertNftTransactionSchema>;
 export type NftTransaction = typeof nftTransactions.$inferSelect;
+
+// User favorites/watchlist
+export const nftFavorites = pgTable("nft_favorites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  nftId: uuid("nft_id").references(() => nfts.id, { onDelete: "cascade" }),
+  collectionId: uuid("collection_id").references(() => nftCollections.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_favorites_user").on(table.userId),
+  index("idx_favorites_nft").on(table.nftId),
+  index("idx_favorites_collection").on(table.collectionId),
+]);
+
+export const insertNftFavoriteSchema = createInsertSchema(nftFavorites).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertNftFavorite = z.infer<typeof insertNftFavoriteSchema>;
+export type NftFavorite = typeof nftFavorites.$inferSelect;
+
+// Marketplace configuration
+export const marketplaceConfig = pgTable("marketplace_config", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: varchar("key", { length: 50 }).unique().notNull(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMarketplaceConfigSchema = createInsertSchema(marketplaceConfig).omit({ 
+  id: true, 
+  updatedAt: true,
+});
+export type InsertMarketplaceConfig = z.infer<typeof insertMarketplaceConfigSchema>;
+export type MarketplaceConfig = typeof marketplaceConfig.$inferSelect;
 
 // =====================================================
 // PHASE 2: Chat Tables

@@ -1698,5 +1698,499 @@ export async function registerRoutes(
     }
   });
 
+  // =====================================================
+  // NFT Marketplace Routes
+  // =====================================================
+
+  // Get marketplace config
+  app.get("/api/marketplace/config", async (_req, res) => {
+    try {
+      const feePercentage = await storage.getMarketplaceConfig("marketplace_fee_percentage") || "2.5";
+      const minListingPrice = await storage.getMarketplaceConfig("min_listing_price_sol") || "0.01";
+      const maxListingDuration = await storage.getMarketplaceConfig("max_listing_duration_days") || "30";
+      const offerExpiration = await storage.getMarketplaceConfig("offer_expiration_days") || "7";
+      
+      res.json({
+        feePercentage: parseFloat(feePercentage),
+        minListingPrice: parseFloat(minListingPrice),
+        maxListingDurationDays: parseInt(maxListingDuration),
+        offerExpirationDays: parseInt(offerExpiration),
+        treasuryWallet: process.env.MARKETPLACE_TREASURY_WALLET || null,
+      });
+    } catch (error) {
+      console.error("[Marketplace] Error fetching config:", error);
+      res.status(500).json({ error: "Failed to fetch marketplace config" });
+    }
+  });
+
+  // Get all active listings
+  app.get("/api/marketplace/listings", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const listings = await storage.getActiveListings(limit, offset);
+      res.json(listings);
+    } catch (error) {
+      console.error("[Marketplace] Error fetching listings:", error);
+      res.status(500).json({ error: "Failed to fetch listings" });
+    }
+  });
+
+  // Get single listing
+  app.get("/api/marketplace/listings/:id", async (req, res) => {
+    try {
+      const listing = await storage.getNftListing(req.params.id);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found" });
+      }
+      const nft = await storage.getNft(listing.nftId);
+      const collection = nft?.collectionId ? await storage.getNftCollection(nft.collectionId) : null;
+      res.json({ ...listing, nft, collection });
+    } catch (error) {
+      console.error("[Marketplace] Error fetching listing:", error);
+      res.status(500).json({ error: "Failed to fetch listing" });
+    }
+  });
+
+  // Get listings by collection
+  app.get("/api/marketplace/collections/:collectionId/listings", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const listings = await storage.getListingsByCollection(req.params.collectionId, limit);
+      res.json(listings);
+    } catch (error) {
+      console.error("[Marketplace] Error fetching collection listings:", error);
+      res.status(500).json({ error: "Failed to fetch collection listings" });
+    }
+  });
+
+  // Create a new listing (requires auth)
+  app.post("/api/marketplace/listings", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { nftId, priceSol, expiresAt } = req.body;
+      
+      const minPrice = parseFloat(await storage.getMarketplaceConfig("min_listing_price_sol") || "0.01");
+      if (parseFloat(priceSol) < minPrice) {
+        return res.status(400).json({ error: `Minimum listing price is ${minPrice} SOL` });
+      }
+
+      const nft = await storage.getNft(nftId);
+      if (!nft) {
+        return res.status(404).json({ error: "NFT not found" });
+      }
+      if (nft.ownerId !== req.user!.id) {
+        return res.status(403).json({ error: "You don't own this NFT" });
+      }
+
+      const existingListing = await storage.getActiveNftListingByNft(nftId);
+      if (existingListing) {
+        return res.status(400).json({ error: "NFT is already listed" });
+      }
+
+      const marketplaceFee = await storage.getMarketplaceConfig("marketplace_fee_percentage") || "2.5";
+      const listing = await storage.createNftListing({
+        nftId,
+        sellerId: req.user!.id,
+        sellerAddress: req.user!.walletAddress || "",
+        priceSol: priceSol.toString(),
+        marketplaceFee,
+        royaltyFee: nft.royaltyPercentage,
+        status: "active",
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        listedAt: new Date(),
+      });
+
+      console.log(`[Marketplace] New listing created: ${nft.name} for ${priceSol} SOL`);
+      res.status(201).json(listing);
+    } catch (error) {
+      console.error("[Marketplace] Error creating listing:", error);
+      res.status(500).json({ error: "Failed to create listing" });
+    }
+  });
+
+  // Update listing price
+  app.patch("/api/marketplace/listings/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const listing = await storage.getNftListing(req.params.id);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found" });
+      }
+      if (listing.sellerId !== req.user!.id) {
+        return res.status(403).json({ error: "Not your listing" });
+      }
+      if (listing.status !== "active") {
+        return res.status(400).json({ error: "Listing is not active" });
+      }
+
+      const { priceSol } = req.body;
+      const minPrice = parseFloat(await storage.getMarketplaceConfig("min_listing_price_sol") || "0.01");
+      if (parseFloat(priceSol) < minPrice) {
+        return res.status(400).json({ error: `Minimum listing price is ${minPrice} SOL` });
+      }
+
+      const updated = await storage.updateNftListing(req.params.id, { priceSol: priceSol.toString() });
+      res.json(updated);
+    } catch (error) {
+      console.error("[Marketplace] Error updating listing:", error);
+      res.status(500).json({ error: "Failed to update listing" });
+    }
+  });
+
+  // Cancel listing
+  app.post("/api/marketplace/listings/:id/cancel", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const listing = await storage.getNftListing(req.params.id);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found" });
+      }
+      if (listing.sellerId !== req.user!.id) {
+        return res.status(403).json({ error: "Not your listing" });
+      }
+      if (listing.status !== "active") {
+        return res.status(400).json({ error: "Listing is not active" });
+      }
+
+      await storage.cancelNftListing(req.params.id);
+      console.log(`[Marketplace] Listing cancelled: ${req.params.id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Marketplace] Error cancelling listing:", error);
+      res.status(500).json({ error: "Failed to cancel listing" });
+    }
+  });
+
+  // Get offers for a listing
+  app.get("/api/marketplace/listings/:id/offers", async (req, res) => {
+    try {
+      const listing = await storage.getNftListing(req.params.id);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found" });
+      }
+      const offers = await storage.getPendingOffersByListing(req.params.id);
+      res.json(offers);
+    } catch (error) {
+      console.error("[Marketplace] Error fetching offers:", error);
+      res.status(500).json({ error: "Failed to fetch offers" });
+    }
+  });
+
+  // Create an offer on a listing
+  app.post("/api/marketplace/listings/:id/offers", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const listing = await storage.getNftListing(req.params.id);
+      if (!listing) {
+        return res.status(404).json({ error: "Listing not found" });
+      }
+      if (listing.status !== "active") {
+        return res.status(400).json({ error: "Listing is not active" });
+      }
+      if (listing.sellerId === req.user!.id) {
+        return res.status(400).json({ error: "Cannot make offer on your own listing" });
+      }
+
+      const { offerAmountSol } = req.body;
+      if (parseFloat(offerAmountSol) <= 0) {
+        return res.status(400).json({ error: "Offer amount must be greater than 0" });
+      }
+
+      const offerExpirationDays = parseInt(await storage.getMarketplaceConfig("offer_expiration_days") || "7");
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + offerExpirationDays);
+
+      const offer = await storage.createNftOffer({
+        nftId: listing.nftId,
+        listingId: req.params.id,
+        buyerId: req.user!.id,
+        buyerAddress: req.user!.walletAddress || "",
+        offerAmountSol: offerAmountSol.toString(),
+        status: "pending",
+        expiresAt,
+      });
+
+      console.log(`[Marketplace] New offer: ${offerAmountSol} SOL on listing ${req.params.id}`);
+      res.status(201).json(offer);
+    } catch (error) {
+      console.error("[Marketplace] Error creating offer:", error);
+      res.status(500).json({ error: "Failed to create offer" });
+    }
+  });
+
+  // Accept an offer
+  app.post("/api/marketplace/offers/:id/accept", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const offer = await storage.getNftOffer(req.params.id);
+      if (!offer) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+      if (offer.status !== "pending") {
+        return res.status(400).json({ error: "Offer is not pending" });
+      }
+
+      const listing = offer.listingId ? await storage.getNftListing(offer.listingId) : null;
+      if (listing && listing.sellerId !== req.user!.id) {
+        return res.status(403).json({ error: "Not your listing" });
+      }
+
+      await storage.acceptNftOffer(req.params.id);
+      if (listing) {
+        await storage.markListingSold(listing.id);
+      }
+
+      console.log(`[Marketplace] Offer accepted: ${req.params.id}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Marketplace] Error accepting offer:", error);
+      res.status(500).json({ error: "Failed to accept offer" });
+    }
+  });
+
+  // Reject an offer
+  app.post("/api/marketplace/offers/:id/reject", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const offer = await storage.getNftOffer(req.params.id);
+      if (!offer) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+      if (offer.status !== "pending") {
+        return res.status(400).json({ error: "Offer is not pending" });
+      }
+
+      const listing = offer.listingId ? await storage.getNftListing(offer.listingId) : null;
+      if (listing && listing.sellerId !== req.user!.id) {
+        return res.status(403).json({ error: "Not your listing" });
+      }
+
+      await storage.rejectNftOffer(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Marketplace] Error rejecting offer:", error);
+      res.status(500).json({ error: "Failed to reject offer" });
+    }
+  });
+
+  // Get user's offers
+  app.get("/api/marketplace/my-offers", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const offers = await storage.getOffersByBuyer(req.user!.id);
+      res.json(offers);
+    } catch (error) {
+      console.error("[Marketplace] Error fetching user offers:", error);
+      res.status(500).json({ error: "Failed to fetch offers" });
+    }
+  });
+
+  // Get user's listings
+  app.get("/api/marketplace/my-listings", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const listings = await storage.getListingsBySeller(req.user!.id);
+      res.json(listings);
+    } catch (error) {
+      console.error("[Marketplace] Error fetching user listings:", error);
+      res.status(500).json({ error: "Failed to fetch listings" });
+    }
+  });
+
+  // =====================================================
+  // NFT Collection Routes
+  // =====================================================
+
+  // Get all collections
+  app.get("/api/collections", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const verified = req.query.verified === "true";
+      const collections = verified 
+        ? await storage.getVerifiedNftCollections()
+        : await storage.getAllNftCollections(limit);
+      res.json(collections);
+    } catch (error) {
+      console.error("[Collections] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch collections" });
+    }
+  });
+
+  // Search collections
+  app.get("/api/collections/search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query || query.length < 2) {
+        return res.status(400).json({ error: "Search query too short" });
+      }
+      const collections = await storage.searchNftCollections(query, 20);
+      res.json(collections);
+    } catch (error) {
+      console.error("[Collections] Error searching:", error);
+      res.status(500).json({ error: "Failed to search collections" });
+    }
+  });
+
+  // Get single collection
+  app.get("/api/collections/:id", async (req, res) => {
+    try {
+      const collection = await storage.getNftCollection(req.params.id);
+      if (!collection) {
+        return res.status(404).json({ error: "Collection not found" });
+      }
+      res.json(collection);
+    } catch (error) {
+      console.error("[Collections] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch collection" });
+    }
+  });
+
+  // Get NFTs in a collection
+  app.get("/api/collections/:id/nfts", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const nfts = await storage.getNftsByCollection(req.params.id, limit, offset);
+      res.json(nfts);
+    } catch (error) {
+      console.error("[Collections] Error fetching NFTs:", error);
+      res.status(500).json({ error: "Failed to fetch collection NFTs" });
+    }
+  });
+
+  // =====================================================
+  // NFT Routes
+  // =====================================================
+
+  // Search NFTs
+  app.get("/api/nfts/search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query || query.length < 2) {
+        return res.status(400).json({ error: "Search query too short" });
+      }
+      const nfts = await storage.searchNfts(query, 20);
+      res.json(nfts);
+    } catch (error) {
+      console.error("[NFTs] Error searching:", error);
+      res.status(500).json({ error: "Failed to search NFTs" });
+    }
+  });
+
+  // Get single NFT with listing info
+  app.get("/api/nfts/:id", async (req, res) => {
+    try {
+      const nft = await storage.getNft(req.params.id);
+      if (!nft) {
+        return res.status(404).json({ error: "NFT not found" });
+      }
+      const listing = await storage.getActiveNftListingByNft(req.params.id);
+      const collection = nft.collectionId ? await storage.getNftCollection(nft.collectionId) : null;
+      const transactions = await storage.getNftTransactions(req.params.id, 10);
+      res.json({ nft, listing, collection, transactions });
+    } catch (error) {
+      console.error("[NFTs] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch NFT" });
+    }
+  });
+
+  // Get NFT by mint address
+  app.get("/api/nfts/mint/:mintAddress", async (req, res) => {
+    try {
+      const nft = await storage.getNftByMint(req.params.mintAddress);
+      if (!nft) {
+        return res.status(404).json({ error: "NFT not found" });
+      }
+      const listing = await storage.getActiveNftListingByNft(nft.id);
+      const collection = nft.collectionId ? await storage.getNftCollection(nft.collectionId) : null;
+      res.json({ nft, listing, collection });
+    } catch (error) {
+      console.error("[NFTs] Error fetching by mint:", error);
+      res.status(500).json({ error: "Failed to fetch NFT" });
+    }
+  });
+
+  // Get user's NFTs
+  app.get("/api/user/:userId/nfts", async (req, res) => {
+    try {
+      const nfts = await storage.getNftsByOwner(req.params.userId);
+      res.json(nfts);
+    } catch (error) {
+      console.error("[NFTs] Error fetching user NFTs:", error);
+      res.status(500).json({ error: "Failed to fetch user NFTs" });
+    }
+  });
+
+  // Get user's favorites
+  app.get("/api/marketplace/favorites", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const nfts = await storage.getUserFavoriteNfts(req.user!.id);
+      const collections = await storage.getUserFavoriteCollections(req.user!.id);
+      res.json({ nfts, collections });
+    } catch (error) {
+      console.error("[Favorites] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch favorites" });
+    }
+  });
+
+  // Add to favorites
+  app.post("/api/marketplace/favorites", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { nftId, collectionId } = req.body;
+      if (!nftId && !collectionId) {
+        return res.status(400).json({ error: "Must provide nftId or collectionId" });
+      }
+      const favorite = await storage.addNftFavorite({
+        userId: req.user!.id,
+        nftId: nftId || null,
+        collectionId: collectionId || null,
+      });
+      res.status(201).json(favorite);
+    } catch (error) {
+      console.error("[Favorites] Error adding:", error);
+      res.status(500).json({ error: "Failed to add favorite" });
+    }
+  });
+
+  // Remove from favorites
+  app.delete("/api/marketplace/favorites", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { nftId, collectionId } = req.body;
+      await storage.removeNftFavorite(req.user!.id, nftId, collectionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Favorites] Error removing:", error);
+      res.status(500).json({ error: "Failed to remove favorite" });
+    }
+  });
+
+  // Check if NFT is favorited
+  app.get("/api/marketplace/favorites/:nftId/check", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const isFavorited = await storage.isNftFavorited(req.user!.id, req.params.nftId);
+      res.json({ isFavorited });
+    } catch (error) {
+      console.error("[Favorites] Error checking:", error);
+      res.status(500).json({ error: "Failed to check favorite" });
+    }
+  });
+
+  // Get recent sales
+  app.get("/api/marketplace/recent-sales", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sales = await storage.getRecentSales(limit);
+      res.json(sales);
+    } catch (error) {
+      console.error("[Marketplace] Error fetching recent sales:", error);
+      res.status(500).json({ error: "Failed to fetch recent sales" });
+    }
+  });
+
+  // Get user's transaction history
+  app.get("/api/marketplace/my-transactions", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const transactions = await storage.getUserTransactions(req.user!.id, limit);
+      res.json(transactions);
+    } catch (error) {
+      console.error("[Marketplace] Error fetching user transactions:", error);
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
+
   return httpServer;
 }

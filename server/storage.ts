@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, gt, desc, sql } from "drizzle-orm";
+import { eq, and, gt, desc, sql, or, asc, ilike } from "drizzle-orm";
 import {
   users,
   sessions,
@@ -7,7 +7,12 @@ import {
   authChallenges,
   icons,
   nfts,
+  nftCollections,
+  nftListings,
+  nftOffers,
   nftTransactions,
+  nftFavorites,
+  marketplaceConfig,
   chatRooms,
   chatMessages,
   chatRoomMembers,
@@ -32,8 +37,18 @@ import {
   type InsertIcon,
   type Nft,
   type InsertNft,
+  type NftCollection,
+  type InsertNftCollection,
+  type NftListing,
+  type InsertNftListing,
+  type NftOffer,
+  type InsertNftOffer,
   type NftTransaction,
   type InsertNftTransaction,
+  type NftFavorite,
+  type InsertNftFavorite,
+  type MarketplaceConfig,
+  type InsertMarketplaceConfig,
   type ChatRoom,
   type InsertChatRoom,
   type InsertChatRoomWithId,
@@ -103,15 +118,62 @@ export interface IStorage {
   getUserGalleryItems(userId: string): Promise<GalleryItem[]>;
   deleteAllSessions(): Promise<number>;
   
+  // NFT Collections
+  createNftCollection(collection: InsertNftCollection): Promise<NftCollection>;
+  getNftCollection(id: string): Promise<NftCollection | undefined>;
+  getNftCollectionBySymbol(symbol: string): Promise<NftCollection | undefined>;
+  getAllNftCollections(limit?: number): Promise<NftCollection[]>;
+  getVerifiedNftCollections(): Promise<NftCollection[]>;
+  updateNftCollection(id: string, data: Partial<InsertNftCollection>): Promise<NftCollection | undefined>;
+  searchNftCollections(query: string, limit?: number): Promise<NftCollection[]>;
+  
   // NFTs
   createNft(nft: InsertNft): Promise<Nft>;
   getNft(id: string): Promise<Nft | undefined>;
+  getNftByMint(mintAddress: string): Promise<Nft | undefined>;
   getNftsByOwner(ownerId: string): Promise<Nft[]>;
-  getListedNfts(): Promise<Nft[]>;
+  getNftsByOwnerAddress(ownerAddress: string): Promise<Nft[]>;
+  getNftsByCollection(collectionId: string, limit?: number, offset?: number): Promise<Nft[]>;
   updateNft(id: string, data: Partial<InsertNft>): Promise<Nft | undefined>;
+  searchNfts(query: string, limit?: number): Promise<Nft[]>;
+  
+  // NFT Listings
+  createNftListing(listing: InsertNftListing): Promise<NftListing>;
+  getNftListing(id: string): Promise<NftListing | undefined>;
+  getActiveNftListingByNft(nftId: string): Promise<NftListing | undefined>;
+  getActiveListings(limit?: number, offset?: number): Promise<Array<NftListing & { nft: Nft }>>;
+  getListingsBySeller(sellerId: string): Promise<NftListing[]>;
+  getListingsByCollection(collectionId: string, limit?: number): Promise<Array<NftListing & { nft: Nft }>>;
+  updateNftListing(id: string, data: Partial<InsertNftListing>): Promise<NftListing | undefined>;
+  cancelNftListing(id: string): Promise<void>;
+  markListingSold(id: string): Promise<void>;
+  
+  // NFT Offers
+  createNftOffer(offer: InsertNftOffer): Promise<NftOffer>;
+  getNftOffer(id: string): Promise<NftOffer | undefined>;
+  getOffersByNft(nftId: string): Promise<NftOffer[]>;
+  getOffersByBuyer(buyerId: string): Promise<NftOffer[]>;
+  getPendingOffersByListing(listingId: string): Promise<NftOffer[]>;
+  updateNftOffer(id: string, data: Partial<InsertNftOffer>): Promise<NftOffer | undefined>;
+  acceptNftOffer(id: string): Promise<void>;
+  rejectNftOffer(id: string): Promise<void>;
   
   // NFT Transactions
   createNftTransaction(tx: InsertNftTransaction): Promise<NftTransaction>;
+  getNftTransactions(nftId: string, limit?: number): Promise<NftTransaction[]>;
+  getRecentSales(limit?: number): Promise<NftTransaction[]>;
+  getUserTransactions(userId: string, limit?: number): Promise<NftTransaction[]>;
+  
+  // NFT Favorites
+  addNftFavorite(favorite: InsertNftFavorite): Promise<NftFavorite>;
+  removeNftFavorite(userId: string, nftId?: string, collectionId?: string): Promise<void>;
+  getUserFavoriteNfts(userId: string): Promise<Nft[]>;
+  getUserFavoriteCollections(userId: string): Promise<NftCollection[]>;
+  isNftFavorited(userId: string, nftId: string): Promise<boolean>;
+  
+  // Marketplace Config
+  getMarketplaceConfig(key: string): Promise<string | undefined>;
+  setMarketplaceConfig(key: string, value: string): Promise<void>;
   
   // Chat Rooms
   createChatRoom(room: InsertChatRoom): Promise<ChatRoom>;
@@ -380,6 +442,49 @@ export class DatabaseStorage implements IStorage {
     return result.length;
   }
 
+  // NFT Collections
+  async createNftCollection(collection: InsertNftCollection): Promise<NftCollection> {
+    const [created] = await db.insert(nftCollections).values(collection).returning();
+    return created;
+  }
+
+  async getNftCollection(id: string): Promise<NftCollection | undefined> {
+    const [collection] = await db.select().from(nftCollections).where(eq(nftCollections.id, id));
+    return collection;
+  }
+
+  async getNftCollectionBySymbol(symbol: string): Promise<NftCollection | undefined> {
+    const [collection] = await db.select().from(nftCollections).where(eq(nftCollections.symbol, symbol));
+    return collection;
+  }
+
+  async getAllNftCollections(limit: number = 50): Promise<NftCollection[]> {
+    return db.select().from(nftCollections).orderBy(desc(nftCollections.totalVolume)).limit(limit);
+  }
+
+  async getVerifiedNftCollections(): Promise<NftCollection[]> {
+    return db.select().from(nftCollections).where(eq(nftCollections.verified, true)).orderBy(desc(nftCollections.totalVolume));
+  }
+
+  async updateNftCollection(id: string, data: Partial<InsertNftCollection>): Promise<NftCollection | undefined> {
+    const [updated] = await db
+      .update(nftCollections)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(nftCollections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async searchNftCollections(query: string, limit: number = 20): Promise<NftCollection[]> {
+    return db.select().from(nftCollections)
+      .where(or(
+        ilike(nftCollections.name, `%${query}%`),
+        ilike(nftCollections.symbol, `%${query}%`)
+      ))
+      .orderBy(desc(nftCollections.totalVolume))
+      .limit(limit);
+  }
+
   // NFTs
   async createNft(nft: InsertNft): Promise<Nft> {
     const [created] = await db.insert(nfts).values(nft).returning();
@@ -391,12 +496,25 @@ export class DatabaseStorage implements IStorage {
     return nft;
   }
 
-  async getNftsByOwner(ownerId: string): Promise<Nft[]> {
-    return db.select().from(nfts).where(eq(nfts.ownerId, ownerId));
+  async getNftByMint(mintAddress: string): Promise<Nft | undefined> {
+    const [nft] = await db.select().from(nfts).where(eq(nfts.mintAddress, mintAddress));
+    return nft;
   }
 
-  async getListedNfts(): Promise<Nft[]> {
-    return db.select().from(nfts).where(eq(nfts.status, "listed"));
+  async getNftsByOwner(ownerId: string): Promise<Nft[]> {
+    return db.select().from(nfts).where(eq(nfts.ownerId, ownerId)).orderBy(desc(nfts.createdAt));
+  }
+
+  async getNftsByOwnerAddress(ownerAddress: string): Promise<Nft[]> {
+    return db.select().from(nfts).where(eq(nfts.ownerAddress, ownerAddress)).orderBy(desc(nfts.createdAt));
+  }
+
+  async getNftsByCollection(collectionId: string, limit: number = 50, offset: number = 0): Promise<Nft[]> {
+    return db.select().from(nfts)
+      .where(eq(nfts.collectionId, collectionId))
+      .orderBy(asc(nfts.rarityRank))
+      .limit(limit)
+      .offset(offset);
   }
 
   async updateNft(id: string, data: Partial<InsertNft>): Promise<Nft | undefined> {
@@ -408,10 +526,212 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async searchNfts(query: string, limit: number = 20): Promise<Nft[]> {
+    return db.select().from(nfts)
+      .where(or(
+        ilike(nfts.name, `%${query}%`),
+        ilike(nfts.mintAddress, `%${query}%`)
+      ))
+      .orderBy(desc(nfts.createdAt))
+      .limit(limit);
+  }
+
+  // NFT Listings
+  async createNftListing(listing: InsertNftListing): Promise<NftListing> {
+    const [created] = await db.insert(nftListings).values(listing).returning();
+    return created;
+  }
+
+  async getNftListing(id: string): Promise<NftListing | undefined> {
+    const [listing] = await db.select().from(nftListings).where(eq(nftListings.id, id));
+    return listing;
+  }
+
+  async getActiveNftListingByNft(nftId: string): Promise<NftListing | undefined> {
+    const [listing] = await db.select().from(nftListings)
+      .where(and(eq(nftListings.nftId, nftId), eq(nftListings.status, "active")));
+    return listing;
+  }
+
+  async getActiveListings(limit: number = 50, offset: number = 0): Promise<Array<NftListing & { nft: Nft }>> {
+    const results = await db.select({
+      listing: nftListings,
+      nft: nfts,
+    })
+    .from(nftListings)
+    .innerJoin(nfts, eq(nftListings.nftId, nfts.id))
+    .where(eq(nftListings.status, "active"))
+    .orderBy(desc(nftListings.listedAt))
+    .limit(limit)
+    .offset(offset);
+    
+    return results.map(r => ({ ...r.listing, nft: r.nft }));
+  }
+
+  async getListingsBySeller(sellerId: string): Promise<NftListing[]> {
+    return db.select().from(nftListings)
+      .where(eq(nftListings.sellerId, sellerId))
+      .orderBy(desc(nftListings.listedAt));
+  }
+
+  async getListingsByCollection(collectionId: string, limit: number = 50): Promise<Array<NftListing & { nft: Nft }>> {
+    const results = await db.select({
+      listing: nftListings,
+      nft: nfts,
+    })
+    .from(nftListings)
+    .innerJoin(nfts, eq(nftListings.nftId, nfts.id))
+    .where(and(eq(nfts.collectionId, collectionId), eq(nftListings.status, "active")))
+    .orderBy(asc(nftListings.priceSol))
+    .limit(limit);
+    
+    return results.map(r => ({ ...r.listing, nft: r.nft }));
+  }
+
+  async updateNftListing(id: string, data: Partial<InsertNftListing>): Promise<NftListing | undefined> {
+    const [updated] = await db
+      .update(nftListings)
+      .set(data)
+      .where(eq(nftListings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async cancelNftListing(id: string): Promise<void> {
+    await db.update(nftListings)
+      .set({ status: "cancelled", cancelledAt: new Date() })
+      .where(eq(nftListings.id, id));
+  }
+
+  async markListingSold(id: string): Promise<void> {
+    await db.update(nftListings)
+      .set({ status: "sold", soldAt: new Date() })
+      .where(eq(nftListings.id, id));
+  }
+
+  // NFT Offers
+  async createNftOffer(offer: InsertNftOffer): Promise<NftOffer> {
+    const [created] = await db.insert(nftOffers).values(offer).returning();
+    return created;
+  }
+
+  async getNftOffer(id: string): Promise<NftOffer | undefined> {
+    const [offer] = await db.select().from(nftOffers).where(eq(nftOffers.id, id));
+    return offer;
+  }
+
+  async getOffersByNft(nftId: string): Promise<NftOffer[]> {
+    return db.select().from(nftOffers)
+      .where(eq(nftOffers.nftId, nftId))
+      .orderBy(desc(nftOffers.offerAmountSol));
+  }
+
+  async getOffersByBuyer(buyerId: string): Promise<NftOffer[]> {
+    return db.select().from(nftOffers)
+      .where(eq(nftOffers.buyerId, buyerId))
+      .orderBy(desc(nftOffers.createdAt));
+  }
+
+  async getPendingOffersByListing(listingId: string): Promise<NftOffer[]> {
+    return db.select().from(nftOffers)
+      .where(and(eq(nftOffers.listingId, listingId), eq(nftOffers.status, "pending")))
+      .orderBy(desc(nftOffers.offerAmountSol));
+  }
+
+  async updateNftOffer(id: string, data: Partial<InsertNftOffer>): Promise<NftOffer | undefined> {
+    const [updated] = await db
+      .update(nftOffers)
+      .set(data)
+      .where(eq(nftOffers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async acceptNftOffer(id: string): Promise<void> {
+    await db.update(nftOffers)
+      .set({ status: "accepted", respondedAt: new Date() })
+      .where(eq(nftOffers.id, id));
+  }
+
+  async rejectNftOffer(id: string): Promise<void> {
+    await db.update(nftOffers)
+      .set({ status: "rejected", respondedAt: new Date() })
+      .where(eq(nftOffers.id, id));
+  }
+
   // NFT Transactions
   async createNftTransaction(tx: InsertNftTransaction): Promise<NftTransaction> {
     const [created] = await db.insert(nftTransactions).values(tx).returning();
     return created;
+  }
+
+  async getNftTransactions(nftId: string, limit: number = 20): Promise<NftTransaction[]> {
+    return db.select().from(nftTransactions)
+      .where(eq(nftTransactions.nftId, nftId))
+      .orderBy(desc(nftTransactions.createdAt))
+      .limit(limit);
+  }
+
+  async getRecentSales(limit: number = 20): Promise<NftTransaction[]> {
+    return db.select().from(nftTransactions)
+      .where(eq(nftTransactions.transactionType, "sale"))
+      .orderBy(desc(nftTransactions.createdAt))
+      .limit(limit);
+  }
+
+  async getUserTransactions(userId: string, limit: number = 50): Promise<NftTransaction[]> {
+    return db.select().from(nftTransactions)
+      .where(or(eq(nftTransactions.fromUserId, userId), eq(nftTransactions.toUserId, userId)))
+      .orderBy(desc(nftTransactions.createdAt))
+      .limit(limit);
+  }
+
+  // NFT Favorites
+  async addNftFavorite(favorite: InsertNftFavorite): Promise<NftFavorite> {
+    const [created] = await db.insert(nftFavorites).values(favorite).returning();
+    return created;
+  }
+
+  async removeNftFavorite(userId: string, nftId?: string, collectionId?: string): Promise<void> {
+    if (nftId) {
+      await db.delete(nftFavorites).where(and(eq(nftFavorites.userId, userId), eq(nftFavorites.nftId, nftId)));
+    } else if (collectionId) {
+      await db.delete(nftFavorites).where(and(eq(nftFavorites.userId, userId), eq(nftFavorites.collectionId, collectionId)));
+    }
+  }
+
+  async getUserFavoriteNfts(userId: string): Promise<Nft[]> {
+    const favorites = await db.select({ nft: nfts })
+      .from(nftFavorites)
+      .innerJoin(nfts, eq(nftFavorites.nftId, nfts.id))
+      .where(eq(nftFavorites.userId, userId));
+    return favorites.map(f => f.nft);
+  }
+
+  async getUserFavoriteCollections(userId: string): Promise<NftCollection[]> {
+    const favorites = await db.select({ collection: nftCollections })
+      .from(nftFavorites)
+      .innerJoin(nftCollections, eq(nftFavorites.collectionId, nftCollections.id))
+      .where(eq(nftFavorites.userId, userId));
+    return favorites.map(f => f.collection);
+  }
+
+  async isNftFavorited(userId: string, nftId: string): Promise<boolean> {
+    const [favorite] = await db.select().from(nftFavorites)
+      .where(and(eq(nftFavorites.userId, userId), eq(nftFavorites.nftId, nftId)));
+    return !!favorite;
+  }
+
+  // Marketplace Config
+  async getMarketplaceConfig(key: string): Promise<string | undefined> {
+    const [config] = await db.select().from(marketplaceConfig).where(eq(marketplaceConfig.key, key));
+    return config?.value;
+  }
+
+  async setMarketplaceConfig(key: string, value: string): Promise<void> {
+    await db.insert(marketplaceConfig)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: marketplaceConfig.key, set: { value, updatedAt: new Date() } });
   }
 
   // Chat Rooms
