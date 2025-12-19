@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -344,15 +344,25 @@ function ItemDetails({ item, onClose, onVote }: ItemDetailsProps) {
   const [newComment, setNewComment] = useState("");
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
+  const hasTrackedView = useRef(false);
 
-  // Fetch item details to track view
-  const { data: itemDetails } = useQuery<GalleryItem>({
-    queryKey: ["/api/gallery", item.id],
-    staleTime: 60000, // Only refetch every minute to avoid spam
-  });
+  // Track view once per session
+  useEffect(() => {
+    if (hasTrackedView.current) return;
+    
+    const viewedKey = `gallery_viewed_${item.id}`;
+    const alreadyViewed = sessionStorage.getItem(viewedKey);
+    
+    if (!alreadyViewed) {
+      // Mark as viewed in session and call API
+      sessionStorage.setItem(viewedKey, "1");
+      fetch(`/api/gallery/${item.id}`).catch(() => {});
+    }
+    hasTrackedView.current = true;
+  }, [item.id]);
 
-  // Use fresh data if available, fallback to passed item
-  const displayItem = itemDetails || item;
+  // Use passed item directly (no extra fetch needed)
+  const displayItem = item;
 
   const { data: comments = [], refetch: refetchComments } = useQuery<GalleryComment[]>({
     queryKey: ["/api/gallery", item.id, "comments"],

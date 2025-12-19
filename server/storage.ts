@@ -18,6 +18,7 @@ import {
   galleryItems,
   galleryVotes,
   galleryComments,
+  notifications,
   type User,
   type InsertUser,
   type Session,
@@ -53,6 +54,8 @@ import {
   type InsertGalleryVote,
   type GalleryComment,
   type InsertGalleryComment,
+  type Notification,
+  type InsertNotification,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -147,6 +150,15 @@ export interface IStorage {
   getGalleryComments(itemId: string): Promise<GalleryComment[]>;
   createGalleryComment(comment: InsertGalleryComment): Promise<GalleryComment>;
   deleteGalleryComment(id: string): Promise<void>;
+  
+  // Notifications
+  getUserNotifications(userId: string, limit?: number): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  createBroadcastNotification(notification: Omit<InsertNotification, "userId">): Promise<void>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  getAllUsers(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
