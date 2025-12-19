@@ -40,7 +40,10 @@ const HOLDER_CACHE_TTL = 300000; // 5 minutes
 
 function getConnection(): Connection {
   if (!connection) {
-    connection = new Connection(RPC_ENDPOINT, "confirmed");
+    // Prefer Helius RPC if available, otherwise use public endpoint
+    const endpoint = HELIUS_API_KEY ? HELIUS_RPC_URL : RPC_ENDPOINT;
+    connection = new Connection(endpoint, "confirmed");
+    console.log(`[Solana] Using RPC: ${HELIUS_API_KEY ? 'Helius' : 'PublicNode'}`);
   }
   return connection;
 }
@@ -227,6 +230,7 @@ export async function fetchTokenMetrics(): Promise<TokenMetrics> {
 
 export async function fetchDevBuys(): Promise<DevBuy[]> {
   try {
+    console.log("[DevBuys] Fetching dev wallet transactions...");
     const conn = getConnection();
     const devPubkey = new PublicKey(DEV_WALLET);
     
@@ -307,8 +311,9 @@ export async function fetchDevBuys(): Promise<DevBuy[]> {
         console.log(`[Solana] Identified ${recentBuys.length} dev buys`);
       }
     }
-  } catch (error) {
-    console.error("[Solana] Error fetching dev buys:", error);
+  } catch (error: any) {
+    console.error("[DevBuys] Error fetching from Solana RPC:", error?.message || error);
+    console.log(`[DevBuys] Returning ${devBuys.length} cached dev buys`);
   }
   
   return devBuys;
