@@ -38,8 +38,7 @@ export function MatrixRain({ opacity = 0.04, speed = 1, density = 0.5 }: MatrixR
     }
 
     const draw = () => {
-      ctx.fillStyle = `rgba(12, 17, 12, 0.05)`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       ctx.fillStyle = `rgba(34, 197, 94, ${opacity})`;
       ctx.font = `${fontSize}px JetBrains Mono, monospace`;
@@ -77,7 +76,7 @@ export function MatrixRain({ opacity = 0.04, speed = 1, density = 0.5 }: MatrixR
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none"
-      style={{ zIndex: 0 }}
+      style={{ zIndex: -1 }}
       aria-hidden="true"
       data-testid="matrix-rain-canvas"
     />
