@@ -1,0 +1,537 @@
+# NORMIENATION FEATURE IMPLEMENTATION & BUG FIXES
+
+## AGENT AUTONOMY LEVEL: HIGH
+You have authority to:
+- Inspect all relevant files before proposing solutions
+- Make architectural decisions within scope
+- Choose optimal implementation patterns
+- Create new components/utilities as needed
+- Propose testing strategies
+
+## PROJECT CONTEXT
+NormieNation (normienation.replit.app) is a Solana memecoin tracker with community features. We're implementing fixes and new features before production launch.
+
+## CRITICAL OPERATING RULES
+
+### 1. Inspection Protocol
+- ALWAYS inspect files before making changes
+- Read existing patterns and conventions first
+- Identify where similar features already exist
+- Review component structure before adding new ones
+
+### 2. Implementation Standards
+- Follow existing code style and patterns
+- Reuse existing components/utilities where possible
+- Keep "Normie" brand voice in all user-facing text
+- Maintain mobile-first responsive design
+- Use existing state management patterns
+
+### 3. Quality Gates
+After implementing EACH task:
+- Test functionality works as described
+- Verify mobile responsiveness
+- Check console for errors
+- Confirm no existing features broke
+- Validate with me before moving to next task
+
+### 4. Autonomy Boundaries
+YOU DECIDE:
+- Implementation approach and file structure
+- Component design and state management
+- Utility functions and helper methods
+- UI/UX details within brand guidelines
+
+YOU MUST ASK:
+- If acceptance criteria are unclear
+- If change might affect other features
+- If architectural decision has major tradeoffs
+- Before removing or heavily refactoring existing code
+
+---
+
+## TASK BREAKDOWN
+
+### TASK 1: Fix Total Users Display
+**PRIORITY**: High
+**CATEGORY**: Bug Fix
+
+**PROBLEM**:
+"Total Users" metric isn't reading/displaying anything on the dashboard.
+
+**INVESTIGATION REQUIRED**:
+1. Locate where "Total Users" is displayed (component/file)
+2. Trace data source (API call, database query, state)
+3. Check for errors in browser console or network tab
+4. Verify data exists in database
+5. Check if calculation logic is correct
+
+**ACCEPTANCE CRITERIA**:
+- Total Users displays accurate count from database
+- Number updates when new users register
+- Loading state shown while fetching
+- Error state if data fetch fails
+- Number formatted properly (e.g., "1,234" not "1234")
+
+**IMPLEMENTATION AUTONOMY**:
+- Choose whether to fix existing query or rewrite
+- Decide on caching strategy if needed
+- Implement loading/error states as you see fit
+
+---
+
+### TASK 2: Replace Avatar URL with File Upload
+**PRIORITY**: High
+**CATEGORY**: Feature Enhancement
+
+**CURRENT STATE**:
+Users currently provide an avatar URL string for profile pictures.
+
+**NEW REQUIREMENT**:
+Replace URL input with file upload functionality.
+
+**INVESTIGATION REQUIRED**:
+1. Find profile/settings component with avatar URL input
+2. Check if file storage is already configured (AWS S3, Cloudinary, Replit DB, etc.)
+3. Identify existing image upload patterns elsewhere in codebase
+4. Review max file size and allowed formats
+
+**ACCEPTANCE CRITERIA**:
+- File upload input replaces URL text input
+- Accepted formats: JPG, PNG, GIF, WEBP (max 5MB)
+- Image preview before upload
+- Upload progress indicator
+- Crop/resize functionality (optional but recommended)
+- Fallback to default avatar if no image uploaded
+- Delete/change uploaded avatar functionality
+- Mobile-friendly upload experience
+
+**TECHNICAL REQUIREMENTS**:
+- Store uploaded files securely (choose appropriate service)
+- Generate thumbnail/optimized version
+- Return CDN/storage URL for database
+- Handle upload errors gracefully
+- Validate file type and size server-side
+
+**IMPLEMENTATION AUTONOMY**:
+- Choose storage solution (if not already configured)
+- Design upload UI/UX
+- Implement validation strategy
+- Decide on image optimization approach
+
+**ASK IF**:
+- Existing storage solution isn't clear from codebase
+- You need credentials for storage service
+- Budget constraints for storage service
+
+---
+
+### TASK 3: Display Poll Time Limit
+**PRIORITY**: Medium
+**CATEGORY**: Feature Enhancement
+
+**CURRENT STATE**:
+Community Polls exist but don't show how long users have to vote.
+
+**NEW REQUIREMENT**:
+Display time remaining/deadline for each active poll.
+
+**INVESTIGATION REQUIRED**:
+1. Locate Community Polls component
+2. Check if poll end_time/deadline exists in database
+3. Review existing date/time formatting utilities
+4. Identify if real-time countdown needed vs static time
+
+**ACCEPTANCE CRITERIA**:
+- Each poll displays time remaining (e.g., "2 days 5 hours left")
+- Expired polls show "Poll Ended" or similar
+- Real-time countdown updates every minute (optional: every second)
+- Mobile-friendly time display
+- Timezone handling (UTC or user's local time)
+- Clear visual distinction between active and ended polls
+
+**IMPLEMENTATION AUTONOMY**:
+- Choose countdown format (relative time vs absolute)
+- Decide on update frequency (every second/minute/hour)
+- Design visual treatment for time display
+- Handle edge cases (just expired, ending soon)
+
+**ASK IF**:
+- Poll deadline doesn't exist in database schema
+- You need to add migration for existing polls
+
+---
+
+### TASK 4: Clarify Chart Markers in Admin Panel
+**PRIORITY**: Medium
+**CATEGORY**: Bug Investigation / Documentation
+
+**PROBLEM**:
+Chart Markers in admin panel aren't being displayed.
+
+**INVESTIGATION REQUIRED**:
+1. Locate admin panel chart component
+2. Check if markers are supposed to be:
+   - Auto-generated from buy/sell events
+   - Manually added by admins
+   - Triggered by specific conditions
+3. Review data source for markers
+4. Check for JavaScript errors preventing display
+5. Verify if feature is implemented at all
+
+**ACCEPTANCE CRITERIA**:
+If markers should be AUTO:
+- Display markers for significant buy events (e.g., >$10K)
+- Show timestamp and amount on hover
+- Color code by event type (buy=green, sell=red)
+- Filter controls for marker visibility
+
+If markers should be MANUAL:
+- Add UI for admins to create markers
+- Allow annotation text with each marker
+- Edit/delete marker functionality
+- Clear documentation in admin panel
+
+If feature is incomplete:
+- Document what's missing
+- Propose implementation plan
+- Estimate complexity
+
+**IMPLEMENTATION AUTONOMY**:
+- Determine intended behavior from code context
+- Fix if it's a bug
+- Implement if it's incomplete
+- Propose design if specs unclear
+
+**ASK BEFORE**:
+- Making assumption about intended behavior
+- Implementing full feature if it's currently non-existent
+
+---
+
+### TASK 5: Add Chart Disclaimer & PumpFun Link
+**PRIORITY**: High
+**CATEGORY**: Feature Addition
+
+**REQUIREMENT**:
+Add disclaimer and external link to chart component.
+
+**ACCEPTANCE CRITERIA**:
+
+**Disclaimer Text**:
+"⚠️ Normie Nation data may vary 1-5% from PumpFun due to refresh intervals. For real-time precision, check PumpFun directly."
+
+**PumpFun Button**:
+- Text: "View on PumpFun" or "Check PumpFun Live"
+- Style: Prominent CTA button (use existing button styles)
+- Link: https://pump.fun/coin/FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump
+- Opens in new tab (target="_blank" rel="noopener noreferrer")
+- Icon: PumpFun logo or external link icon (choose appropriately)
+
+**Placement**:
+- Bottom of chart component
+- Visible on mobile without scrolling
+- Doesn't obscure chart data
+- Sticky or always visible (your choice)
+
+**IMPLEMENTATION AUTONOMY**:
+- Choose exact disclaimer wording within guidelines
+- Design button style matching site aesthetic
+- Decide on placement details (above/below chart, sticky, etc.)
+- Add PumpFun logo or icon as you see fit
+
+---
+
+### TASK 6: Admin Stream Notification System
+**PRIORITY**: High
+**CATEGORY**: Feature Addition (Complex)
+
+**REQUIREMENT**:
+Admins can notify users about PumpFun live streams with deep linking.
+
+**FUNCTIONAL REQUIREMENTS**:
+
+**Admin Interface**:
+1. Notification composer in admin panel
+2. Fields:
+   - Message (pre-filled with Normie template)
+   - PumpFun stream URL
+   - Send immediately / Schedule for later
+   - Target: All users / Specific segments
+3. Preview notification before sending
+4. View notification history
+
+**Notification Message Template** (Normie Tone):
+🚨 YO NORMIES! 🚨
+[Coin Name] is PUMPING on stream RIGHT NOW!
+Don't be a paper-handed normie—catch the action live! 👀💎
+[Stream Link - Deep Link / Web Fallback]
+
+The Normie Nation Team
+
+
+**Deep Linking Logic**:
+```javascript
+// Pseudo-logic for implementation
+if (user has PumpFun app installed) {
+  → Open PumpFun app to specific stream
+  → Use deep link: pumpfun://stream/[stream_id]
+} else {
+  → Redirect to PumpFun web: https://pump.fun/[stream_url]
+  → Suggest downloading app
+}
+```
+
+**Notification Delivery**:
+- In-app notification (real-time if user active)
+- Push notification (if enabled)
+- Email notification (if enabled)
+- Notification badge/counter
+
+**ACCEPTANCE CRITERIA**:
+- Admin can compose and send stream notifications
+- Notifications use Normie brand voice
+- Deep linking works on iOS and Android
+- Fallback to web if app not installed
+- Users can click through to PumpFun stream
+- Notification history tracked in admin panel
+- Rate limiting (max 1 stream notification per hour)
+- Users can opt-out of stream notifications
+
+**INVESTIGATION REQUIRED**:
+1. Check existing notification system architecture
+2. Identify notification service (Firebase, OneSignal, custom)
+3. Review user preferences/settings structure
+4. Find mobile app deep linking configuration (if mobile app exists)
+5. Check if PumpFun provides deep link documentation
+
+**IMPLEMENTATION AUTONOMY**:
+- Design notification composition UI
+- Choose notification service if not configured
+- Implement deep link detection logic
+- Create notification templates
+- Design opt-out flow
+
+**ASK BEFORE**:
+- Implementing if notification infrastructure doesn't exist
+- Choosing paid notification service
+- If mobile app doesn't exist (affects deep linking)
+
+**NORMIE TONE EXAMPLES FOR VARIATIONS**:
+Example 1 (Hype):
+"🔥 NORMIES ASSEMBLE 🔥
+[Token] bout to go BRRRR on stream! Get in before the whales do! 🐋💨"
+Example 2 (FOMO):
+"⏰ LAST CALL NORMIES ⏰
+[Token] stream going OFF rn and you're missing it? Ngmi fam 😤"
+Example 3 (Community):
+"📢 NORMIE ALERT 📢
+Our degen fam is live streaming [Token] - don't let your normie friends outpace you! 🏃‍♂️💨"
+
+---
+
+## IMPLEMENTATION SEQUENCE
+
+Work on tasks in this order (or propose alternative if dependencies exist):
+
+**PHASE 1 - Critical Fixes**:
+1. Task 1: Fix Total Users (15 min)
+2. Task 4: Investigate Chart Markers (20 min)
+
+**PHASE 2 - Chart Enhancements**:
+3. Task 5: Add Disclaimer & PumpFun Link (20 min)
+
+**PHASE 3 - User Features**:
+4. Task 3: Display Poll Time Limits (30 min)
+5. Task 2: File Upload for Avatars (45 min)
+
+**PHASE 4 - Admin Features**:
+6. Task 6: Stream Notification System (90 min)
+
+**Estimated Total Time**: 3-4 hours
+
+---
+
+## WORKFLOW PROTOCOL
+
+### For Each Task:
+
+**STEP 1: RECONNAISSANCE** (Don't skip this!)
+
+Locate relevant files using view tool
+Read and understand existing code
+Identify patterns and conventions
+Note dependencies and integrations
+Check for similar existing features
+Report findings to me
+
+
+**STEP 2: IMPLEMENTATION PLAN**
+
+Propose approach (files to modify, new files needed)
+Highlight any tradeoffs or decisions
+Wait for my approval if approach is complex
+Proceed with implementation
+
+
+**STEP 3: CODE CHANGES**
+
+Make changes incrementally
+Follow existing code style
+Add comments for complex logic
+Preserve existing functionality
+Handle errors gracefully
+
+
+**STEP 4: VALIDATION**
+
+Test feature works as specified
+Check console for errors
+Verify mobile responsiveness
+Confirm no regressions
+Report completion with test results
+
+
+**STEP 5: DOCUMENTATION**
+
+Update README if needed
+Add inline code comments
+Document new admin features
+Note any env variables added
+
+
+---
+
+## QUALITY CHECKLIST
+
+Before marking any task complete, verify:
+
+**Functionality**:
+- [ ] Feature works as specified
+- [ ] Edge cases handled
+- [ ] Error states work
+- [ ] Loading states work
+
+**Code Quality**:
+- [ ] Follows existing patterns
+- [ ] No console errors
+- [ ] No console warnings
+- [ ] Commented where necessary
+- [ ] No dead code left behind
+
+**User Experience**:
+- [ ] Mobile responsive
+- [ ] Intuitive UI
+- [ ] Clear feedback to user actions
+- [ ] Accessible (keyboard navigation, screen readers)
+- [ ] Maintains Normie brand voice
+
+**Performance**:
+- [ ] No unnecessary re-renders
+- [ ] Optimized images/assets
+- [ ] Efficient database queries
+- [ ] Reasonable load times
+
+**Security**:
+- [ ] Input validation (client + server)
+- [ ] No exposed secrets
+- [ ] Protected admin routes
+- [ ] Sanitized user content
+
+---
+
+## COMMUNICATION PROTOCOL
+
+**ASK ME IF**:
+- Acceptance criteria unclear
+- Multiple valid approaches exist
+- Change might break existing features
+- You need credentials/API keys
+- Database migration required
+- Architectural decision needed
+
+**TELL ME WHEN**:
+- You complete reconnaissance for a task
+- Ready to implement (show plan first)
+- Task complete (with test results)
+- You discover related issues
+- Estimate significantly changes
+
+**REPORT FORMAT** after each task:
+✅ TASK [N] COMPLETE: [Title]
+CHANGES MADE:
+
+File 1: [what changed]
+File 2: [what changed]
+
+TESTING RESULTS:
+✓ Functionality verified
+✓ Mobile tested
+✓ No console errors
+✓ No regressions
+NOTES:
+[Any important context or decisions]
+READY FOR: Task [N+1]
+
+---
+
+## BRAND VOICE GUIDE (For User-Facing Text)
+
+**Normie Tone Attributes**:
+- Enthusiastic, hype-driven, FOMO-inducing
+- Internet slang: "ngmi", "wagmi", "fam", "degen", "brrrr", "rn"
+- Emoji heavy: 🚀 🔥 💎 🐋 👀 ⏰ 📈 💰
+- Self-aware humor about being "normies"
+- Community-focused ("fam", "our degen community")
+- Urgency and excitement
+- Casual, not corporate
+
+**Examples**:
+❌ "Your avatar has been updated successfully."
+✅ "Profile pic lookin' fresh fam! 🔥"
+
+❌ "Notification sent to users."
+✅ "Normies have been alerted! 🚨 Let's goooo!"
+
+❌ "Poll ends in 2 days."
+✅ "⏰ 2 days left to vote - don't sleep on this!"
+
+---
+
+## BEGIN EXECUTION
+
+Start with Task 1 (Fix Total Users Display). 
+
+Inspect the codebase, report your findings, propose your approach, then implement when I give the green light.
+
+**REMEMBER**:
+- Inspect files before coding
+- Follow existing patterns
+- Test after each change
+- Ask when uncertain
+- Keep it Normie 🚀
+
+How to Use in Replit
+
+Open Replit Agent (Opus 4.5 High Autonomy mode)
+Paste the prompt above in the Agent chat
+Have ready:
+
+Database access credentials (if needed)
+Any API keys for new services (image storage, notifications)
+Admin access to test admin features
+Mobile device for testing responsiveness
+
+
+Work iteratively:
+
+Agent will report findings before implementing
+Review each plan before giving green light
+Test each completed task immediately
+Rollback if something breaks
+
+
+Monitor progress:
+
+Agent will checkpoint after each task
+Review changes in Git history
+Test on staging before production deploy
