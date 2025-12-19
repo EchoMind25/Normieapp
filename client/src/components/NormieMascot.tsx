@@ -8,6 +8,7 @@ interface NormieMascotProps {
 }
 
 type MascotMood = "pumping" | "neutral" | "dipping" | "diamond";
+type PriceSeverity = "moonshot" | "pumping" | "mild_up" | "neutral" | "mild_dip" | "dipping" | "dumping" | "crash" | "diamond";
 
 const getMoodFromChange = (change: number): MascotMood => {
   if (change > 5) return "pumping";
@@ -15,11 +16,77 @@ const getMoodFromChange = (change: number): MascotMood => {
   return "neutral";
 };
 
-const moodMessages: Record<MascotMood, string[]> = {
-  pumping: ["LFG! We're pumping!", "To the moon!", "Number go up!", "Wagmi fren!"],
-  dipping: ["HODL strong!", "Diamond hands!", "Buy the dip!", "Patience pays!"],
-  neutral: ["Chillin...", "Steady as she goes", "Comfy hold", "Just normie things"],
-  diamond: ["DIAMOND HANDS ACTIVATED!", "Unshakeable!", "Never selling!", "Hands of pure diamond!"],
+const getSeverityFromChange = (change: number): PriceSeverity => {
+  if (change > 20) return "moonshot";
+  if (change > 10) return "pumping";
+  if (change > 3) return "mild_up";
+  if (change >= -3) return "neutral";
+  if (change >= -10) return "mild_dip";
+  if (change >= -20) return "dipping";
+  if (change >= -35) return "dumping";
+  return "crash";
+};
+
+const severityMessages: Record<PriceSeverity, string[]> = {
+  moonshot: [
+    "MOONING! Strap in!",
+    "Normies eating good today!",
+    "Where lambo? HERE LAMBO!",
+    "This is what diamond hands look like!",
+  ],
+  pumping: [
+    "LFG! We're pumping!",
+    "To the moon!",
+    "Number go up!",
+    "Wagmi fren!",
+    "Green candles everywhere!",
+  ],
+  mild_up: [
+    "Looking good!",
+    "Steady gains!",
+    "The chart is looking healthy",
+    "Slow and steady wins the race",
+  ],
+  neutral: [
+    "Chillin...",
+    "Steady as she goes",
+    "Comfy hold",
+    "Just normie things",
+    "Sideways action, no stress",
+  ],
+  mild_dip: [
+    "Small dip, no worries",
+    "Just a pullback",
+    "Healthy consolidation",
+    "Nothing to panic about",
+  ],
+  dipping: [
+    "Stay strong, normie!",
+    "Dips are for buying",
+    "Diamond hands activated",
+    "We've seen worse, we'll see better",
+  ],
+  dumping: [
+    "Rough day out there...",
+    "Tough times don't last, tough normies do",
+    "This too shall pass",
+    "Stay calm and HODL on",
+    "Not gonna lie, this hurts",
+  ],
+  crash: [
+    "Absolute carnage...",
+    "Blood in the streets",
+    "Only diamond hands survive this",
+    "This is the ultimate test",
+    "If you're reading this, you're still here",
+    "Survivors will be rewarded",
+  ],
+  diamond: [
+    "DIAMOND HANDS ACTIVATED!",
+    "Unshakeable!",
+    "Never selling!",
+    "Hands of pure diamond!",
+  ],
 };
 
 export function NormieMascot({ priceChange = 0, className = "", onClickSound }: NormieMascotProps) {
@@ -124,12 +191,17 @@ export function NormieMascot({ priceChange = 0, className = "", onClickSound }: 
   };
 
   const handleClick = () => {
-    const messages = moodMessages[mood];
+    const severity = mood === "diamond" ? "diamond" : getSeverityFromChange(priceChange);
+    const messages = severityMessages[severity];
     const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    
+    const formattedChange = Math.abs(priceChange) < 0.01 
+      ? "~0%" 
+      : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`;
     
     toast({
       title: randomMessage,
-      description: `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}% in 24h`,
+      description: `${formattedChange} in 24h`,
     });
     
     setClickBounce(true);
