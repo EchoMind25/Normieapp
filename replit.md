@@ -11,6 +11,9 @@ A real-time companion web application for the $NORMIE memecoin on Solana. The ap
 - Interactive meme generator with templates and stickers
 - Community polls and activity feed
 - Social media integration (Telegram, X/Twitter)
+- Interactive floating mascot with speech bubbles (auto-dismiss after 8s)
+- Whale buy alerts (2M+ tokens) with push notifications
+- Jeet sell alarms (5M+ tokens) with push notifications
 
 ## User Preferences
 
@@ -74,8 +77,10 @@ Preferred communication style: Simple, everyday language.
 - **Startup Verification**: Checks all 18 required tables exist before accepting requests
 - **Error Handling**: Request-scoped logging with correlation IDs for poll and database operations
 - **Sticker Proxy**: 2-retry bounded retries, 5MB size guards, in-memory caching, detailed error diagnostics
-- **Seed Data**: 6 sample community polls seeded automatically (idempotent execution)
+- **Seed Data**: Admin accounts seeded automatically (polls removed - user-created only)
 - **Admin Account**: Default password "NormieAdmin2024!" unless NORMIE_ADMIN_PASSWORD env var is set
+- **Transaction Monitoring**: Whale detection (2M+ tokens bought) and jeet detection (5M+ tokens sold)
+- **Push Notifications**: Web Push API with VAPID keys for whale alerts and jeet alarms
 
 ## External Dependencies
 
