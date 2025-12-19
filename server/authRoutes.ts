@@ -574,11 +574,13 @@ router.patch(
       .optional({ nullable: true })
       .custom((value) => {
         if (value === null || value === "") return true;
+        // Allow relative paths (e.g., /api/storage/public/...) or absolute URLs
+        if (typeof value === "string" && value.startsWith("/")) return true;
         try {
           new URL(value);
           return true;
         } catch {
-          throw new Error("Avatar must be a valid URL");
+          throw new Error("Must be a valid URL or empty");
         }
       }),
     body("holdingsVisible")

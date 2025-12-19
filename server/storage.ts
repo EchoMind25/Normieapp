@@ -618,21 +618,24 @@ export class DatabaseStorage implements IStorage {
 
   // Leaderboard
   async getTopMemeCreators(limit: number = 10): Promise<{ userId: string; username: string; avatarUrl?: string; score: number; rank: number }[]> {
+    // Join gallery items by creator_id OR by matching username when creator_id is null
+    // Include creators with any approved artwork (count > 0), ordered by upvotes then by item count
     const results = await db
       .select({
         userId: users.id,
         username: users.username,
         avatarUrl: users.avatarUrl,
         totalUpvotes: sql<number>`COALESCE(SUM(${galleryItems.upvotes}), 0)::int`,
+        itemCount: sql<number>`COUNT(${galleryItems.id})::int`,
       })
       .from(users)
       .leftJoin(galleryItems, and(
-        eq(galleryItems.creatorId, users.id),
-        eq(galleryItems.status, "approved")
+        eq(galleryItems.status, "approved"),
+        sql`(${galleryItems.creatorId} = ${users.id} OR (${galleryItems.creatorId} IS NULL AND ${galleryItems.creatorName} = ${users.username}))`
       ))
       .groupBy(users.id, users.username, users.avatarUrl)
-      .having(sql`COALESCE(SUM(${galleryItems.upvotes}), 0) > 0`)
-      .orderBy(sql`COALESCE(SUM(${galleryItems.upvotes}), 0) DESC`)
+      .having(sql`COUNT(${galleryItems.id}) > 0`)
+      .orderBy(sql`COALESCE(SUM(${galleryItems.upvotes}), 0) DESC`, sql`COUNT(${galleryItems.id}) DESC`)
       .limit(limit);
     
     return results.map((r, i) => ({

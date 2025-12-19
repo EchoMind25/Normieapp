@@ -50,6 +50,7 @@ export default function Admin() {
   const [adminArtDescription, setAdminArtDescription] = useState("");
   const [adminArtFile, setAdminArtFile] = useState<File | null>(null);
   const [adminArtTags, setAdminArtTags] = useState("");
+  const [deletingPollId, setDeletingPollId] = useState<string | null>(null);
 
   const { uploadFile, isUploading: isUploadingAdminArt } = useUpload();
 
@@ -198,6 +199,7 @@ export default function Admin() {
 
   const deletePollMutation = useMutation({
     mutationFn: async (id: string) => {
+      setDeletingPollId(id);
       const res = await apiRequest("DELETE", `/api/admin/polls/${id}`);
       if (!res.ok) throw new Error("Failed to delete poll");
       return res.json();
@@ -210,6 +212,9 @@ export default function Admin() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to delete poll", variant: "destructive" });
+    },
+    onSettled: () => {
+      setDeletingPollId(null);
     },
   });
 
@@ -945,10 +950,14 @@ export default function Admin() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => deletePollMutation.mutate(poll.id)}
-                                disabled={deletePollMutation.isPending}
+                                disabled={deletingPollId === poll.id}
                                 data-testid={`button-delete-poll-${poll.id}`}
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                {deletingPollId === poll.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                )}
                               </Button>
                             </div>
                           </div>

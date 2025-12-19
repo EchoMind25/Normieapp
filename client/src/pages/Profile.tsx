@@ -37,7 +37,7 @@ const profileSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
   bio: z.string().max(500, "Bio must be 500 characters or less").optional().or(z.literal("")),
   avatarUrl: z.string().refine(
-    (val) => val === "" || /^https?:\/\/.+/.test(val),
+    (val) => val === "" || /^https?:\/\/.+/.test(val) || /^\//.test(val),
     "Must be a valid URL or empty"
   ).optional(),
   holdingsVisible: z.boolean(),
