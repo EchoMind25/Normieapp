@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SoundProvider } from "@/components/SoundEffects";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
@@ -50,6 +51,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <ForcePasswordChange />
+            <NotificationPrompt />
             <Router />
           </TooltipProvider>
         </SoundProvider>

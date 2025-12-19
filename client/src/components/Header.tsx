@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Menu, X, Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle } from "lucide-react";
 import { SoundToggle } from "@/components/SoundEffects";
+import { NotificationBell } from "@/components/NotificationBell";
 import { SiTelegram, SiX } from "react-icons/si";
 import { NORMIE_TOKEN } from "@shared/schema";
 import type { TokenMetrics } from "@shared/schema";
@@ -167,6 +168,7 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
             </Button>
           </a>
           <SoundToggle />
+          <NotificationBell />
           <Button
             variant="ghost"
             size="icon"
