@@ -337,12 +337,22 @@ function UploadForm({ onSuccess }: UploadFormProps) {
 interface ItemDetailsProps {
   item: GalleryItem;
   onClose: () => void;
+  onVote: (id: string, voteType: "up" | "down") => void;
 }
 
-function ItemDetails({ item, onClose }: ItemDetailsProps) {
+function ItemDetails({ item, onClose, onVote }: ItemDetailsProps) {
   const [newComment, setNewComment] = useState("");
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
+
+  // Fetch item details to track view
+  const { data: itemDetails } = useQuery<GalleryItem>({
+    queryKey: ["/api/gallery", item.id],
+    staleTime: 60000, // Only refetch every minute to avoid spam
+  });
+
+  // Use fresh data if available, fallback to passed item
+  const displayItem = itemDetails || item;
 
   const { data: comments = [], refetch: refetchComments } = useQuery<GalleryComment[]>({
     queryKey: ["/api/gallery", item.id, "comments"],
@@ -369,17 +379,17 @@ function ItemDetails({ item, onClose }: ItemDetailsProps) {
     });
   };
 
-  const score = (item.upvotes || 0) - (item.downvotes || 0);
+  const score = (displayItem.upvotes || 0) - (displayItem.downvotes || 0);
 
   return (
     <div className="max-h-[80vh] overflow-y-auto">
       <div className="relative">
         <img
-          src={item.imageUrl}
-          alt={item.title}
+          src={displayItem.imageUrl}
+          alt={displayItem.title}
           className="w-full max-h-[50vh] object-contain bg-black/50 rounded-lg"
         />
-        {item.featured && (
+        {displayItem.featured && (
           <Badge className="absolute top-2 right-2 bg-yellow-500/90">
             <Star className="w-3 h-3 mr-1" />
             Featured
@@ -389,37 +399,52 @@ function ItemDetails({ item, onClose }: ItemDetailsProps) {
       
       <div className="mt-4 space-y-4">
         <div>
-          <h2 className="text-xl font-mono font-bold">{item.title}</h2>
+          <h2 className="text-xl font-mono font-bold">{displayItem.title}</h2>
           <p className="text-sm text-muted-foreground font-mono">
-            by {item.creatorName || "Anonymous"}
+            by {displayItem.creatorName || "Anonymous"}
           </p>
         </div>
         
-        {item.description && (
-          <p className="text-sm text-muted-foreground">{item.description}</p>
+        {displayItem.description && (
+          <p className="text-sm text-muted-foreground">{displayItem.description}</p>
         )}
         
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-4 text-sm flex-wrap">
           <span className="flex items-center gap-1">
             <Eye className="w-4 h-4" />
-            {item.views || 0} views
-          </span>
-          <span className="flex items-center gap-1 text-green-400">
-            <ThumbsUp className="w-4 h-4" />
-            {item.upvotes || 0}
-          </span>
-          <span className="flex items-center gap-1 text-red-400">
-            <ThumbsDown className="w-4 h-4" />
-            {item.downvotes || 0}
+            {displayItem.views || 0} views
           </span>
           <span className="font-bold">
             Score: {score > 0 ? "+" : ""}{score}
           </span>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onVote(displayItem.id, "up")}
+            data-testid={`button-detail-upvote-${displayItem.id}`}
+          >
+            <ThumbsUp className="w-4 h-4 mr-2 text-green-400" />
+            Upvote ({displayItem.upvotes || 0})
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onVote(displayItem.id, "down")}
+            data-testid={`button-detail-downvote-${displayItem.id}`}
+          >
+            <ThumbsDown className="w-4 h-4 mr-2 text-red-400" />
+            Downvote ({displayItem.downvotes || 0})
+          </Button>
+        </div>
         
-        {item.tags && item.tags.length > 0 && (
+        {displayItem.tags && displayItem.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {item.tags.map((tag, i) => (
+            {displayItem.tags.map((tag, i) => (
               <Badge key={i} variant="secondary" className="text-xs font-mono">
                 #{tag}
               </Badge>
@@ -513,8 +538,10 @@ export function ArtGallery() {
     mutationFn: async ({ id, voteType }: { id: string; voteType: "up" | "down" }) => {
       return apiRequest("POST", `/api/gallery/${id}/vote`, { voteType, visitorId });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      // Invalidate all gallery queries including individual item
       queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery", variables.id] });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to vote.", variant: "destructive" });
@@ -608,7 +635,7 @@ export function ArtGallery() {
             <DialogTitle className="font-mono">{selectedItem?.title}</DialogTitle>
           </DialogHeader>
           {selectedItem && (
-            <ItemDetails item={selectedItem} onClose={() => setSelectedItem(null)} />
+            <ItemDetails item={selectedItem} onClose={() => setSelectedItem(null)} onVote={handleVote} />
           )}
         </DialogContent>
       </Dialog>
