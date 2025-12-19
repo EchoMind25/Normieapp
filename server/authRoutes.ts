@@ -362,14 +362,55 @@ router.post(
         await sgMail.send({
           to: email,
           from: process.env.SENDGRID_FROM_EMAIL,
-          subject: "Normie Nation Password Reset",
+          subject: "Forgot Your Password, Bro? No Sweat, Let's Get You Back In",
           html: `
             <html>
-            <body style="background: #000; color: #00ff00; font-family: monospace; padding: 20px;">
-              <h2>Normie Nation Password Reset</h2>
-              <p>Click below to reset your password (expires in 1 hour):</p>
-              <a href="${resetLink}" style="color: #00ff00; font-size: 16px;">Reset Password</a>
-              <p style="margin-top: 20px;">If you didn't request this, ignore this email.</p>
+            <body style="background: #0a0a0a; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 0; margin: 0;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <h1 style="color: #00ff00; font-family: monospace; font-size: 28px; margin: 0;">$NORMIE</h1>
+                  <p style="color: #666; font-size: 12px; margin-top: 5px;">NORMIE NATION</p>
+                </div>
+                
+                <div style="background: #111; border: 1px solid #222; border-radius: 8px; padding: 30px;">
+                  <p style="font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                    Yo, <span style="color: #00ff00;">Normie</span> here—your favorite bearded CEO grinding away at <span style="color: #00ff00;">$NORMIE</span> and all things built different.
+                  </p>
+                  
+                  <p style="font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                    Forgot your password? Damn, that happens to the best of us, even in the trenches. Don't trip, just prove you're the real deal and I'll hook you up to reset that thing. We're all about that relentless vibe—no shortcuts, just straight-up getting back to the grind.
+                  </p>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${resetLink}" style="display: inline-block; background: #00ff00; color: #000; font-weight: bold; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-family: monospace;">RESET PASSWORD</a>
+                  </div>
+                  
+                  <p style="font-size: 14px; color: #888; margin: 20px 0 0 0; text-align: center;">
+                    This link expires in 1 hour. If you didn't request this, just ignore it.
+                  </p>
+                </div>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #222;">
+                  <p style="font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">
+                    Stay locked in, believe in the vision, and let's keep building. Much love to you and the <span style="color: #00ff00;">#NormieNation</span> fam.
+                  </p>
+                  
+                  <p style="font-size: 16px; margin: 20px 0 5px 0;">
+                    Your Normie CEO,<br>
+                    <a href="https://x.com/NormieCEO" style="color: #00ff00; text-decoration: none;">@NormieCEO</a>
+                  </p>
+                  
+                  <p style="font-size: 13px; color: #666; margin-top: 20px; font-style: italic;">
+                    P.S. Tell my hot Normie wife <a href="https://x.com/JessyGHotOrNot" style="color: #00ff00; text-decoration: none;">@JessyGHotOrNot</a> I said hi if you see her. Built different, always.
+                  </p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #222;">
+                  <p style="font-size: 12px; color: #444; margin: 0;">
+                    Normie Nation | Built Different
+                  </p>
+                </div>
+              </div>
             </body>
             </html>
           `,
