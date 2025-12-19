@@ -1,0 +1,450 @@
+NormieNation Pre-Launch Audit Prompt
+Copy-paste this into Claude Opus 4.5:
+# NORMIENATION PRODUCTION AUDIT & FIX
+
+## PROJECT CONTEXT
+NormieNation is a Solana memecoin tracking website deployed at normienation.replit.app. The application has experienced:
+- Production API failures
+- Database synchronization issues between dev and production environments
+- Netlify deployment errors with React/Vite + Solana integration
+- Node.js version compatibility issues
+- Dependency conflicts
+
+## CRITICAL AUDIT CONSTRAINTS
+
+### Mandatory Rules
+1. **INSPECTION FIRST**: ALWAYS read and inspect files before proposing ANY changes
+2. **INCREMENTAL FIXES**: Change ONE thing at a time, wait for test confirmation
+3. **NO OVER-ENGINEERING**: Fix only what's broken. No feature additions, no "improvements" beyond stated issues
+4. **PRESERVE WORKING CODE**: If something works in dev but fails in production, fix the environment/config issue, not the working code
+5. **TEST BETWEEN CHANGES**: After each fix, I will test. Do not proceed until I confirm tests pass
+
+### Scope Boundaries
+- **IN SCOPE**: Security vulnerabilities, production bugs, deployment issues, API reliability, database sync
+- **OUT OF SCOPE**: UI/UX changes, new features, complete rewrites, performance optimizations (unless blocking)
+
+---
+
+## AUDIT METHODOLOGY
+
+### PHASE 1: PROJECT RECONNAISSANCE (NO CHANGES)
+
+**Step 1.1: Map Project Structure**
+TASK: Use the view tool to inspect project root directory
+OUTPUT: Document the following:
+
+Frontend stack (React/Vite version, key dependencies)
+Backend architecture (if separate API exists)
+Database technology and connection management
+Deployment configuration (Netlify, Replit, or other)
+Environment variable usage (.env files)
+Build and deployment scripts in package.json
+
+
+**Step 1.2: Identify Critical Paths**
+TASK: Locate and inspect files responsible for:
+
+Solana blockchain integration (RPC calls, wallet connections)
+API endpoints (internal or external service calls)
+Database queries and connection pooling
+Environment-specific configuration (dev vs production)
+Build configuration (vite.config.js, netlify.toml, etc.)
+
+OUTPUT: List file paths for each critical component
+
+**Step 1.3: Document Known Issues**
+CURRENT KNOWN ISSUES:
+
+Production API failures → Identify which API calls fail in production
+Database sync problems → Map where dev/prod databases diverge
+Netlify deployment errors → Review build logs and config
+Node version conflicts → Check .nvmrc, package.json engines
+Dependency conflicts → Scan package.json and lock file
+
+FOR EACH: Note exact error messages, stack traces, or symptoms
+
+---
+
+### PHASE 2: SECURITY AUDIT
+
+**Step 2.1: API Key & Secret Management**
+INSPECT:
+
+All files for hardcoded API keys, private keys, wallet seeds
+Environment variable usage for sensitive data
+.gitignore coverage for .env files
+Solana wallet private key exposure risks
+
+FLAG ANY:
+
+Secrets in source code
+API keys in client-side code (should be server-side)
+Missing environment variables in production
+Exposed RPC endpoints without rate limiting
+
+
+**Step 2.2: Solana-Specific Security**
+INSPECT:
+
+Wallet connection implementation (Phantom, Solflare)
+Transaction signing flow (never sign blindly)
+RPC endpoint configuration (mainnet vs devnet)
+Token account validation before operations
+
+FLAG ANY:
+
+Auto-approval of transactions
+Missing transaction simulation before signing
+Unvalidated token addresses
+RPC endpoints vulnerable to MITM
+
+
+**Step 2.3: Input Validation**
+INSPECT:
+
+User-provided wallet addresses (validate format)
+Token mint addresses (verify against known list)
+API request parameters (sanitize before database queries)
+URL parameters and query strings
+
+FLAG ANY:
+
+Unvalidated user inputs
+SQL injection vectors (if using SQL)
+NoSQL injection risks (if using MongoDB)
+Missing rate limiting on public endpoints
+
+
+---
+
+### PHASE 3: PRODUCTION API FAILURE DIAGNOSIS
+
+**Step 3.1: API Endpoint Analysis**
+FOR EACH API CALL IN CODEBASE:
+
+IDENTIFY:
+
+Endpoint URL (hardcoded vs environment variable)
+Request method (GET, POST, etc.)
+Headers and authentication
+Timeout configuration
+Error handling implementation
+
+
+CHECK:
+
+Does endpoint URL differ between dev and production?
+Are API keys/tokens properly set in production env?
+Is CORS configured correctly for production domain?
+Are there network/firewall restrictions in production?
+Does error handling catch and log specific failures?
+
+
+PROPOSE FIX:
+
+Minimal code change to resolve production failure
+Environment variable adjustment if needed
+Improved error logging for debugging
+
+
+
+
+**Step 3.2: Solana RPC Reliability**
+INSPECT:
+
+Which RPC provider is used (Alchemy, QuickNode, public, custom)
+Retry logic for failed RPC calls
+Fallback RPC endpoints
+Rate limit handling
+Connection timeout settings
+
+PROPOSE:
+
+RPC endpoint redundancy (primary + fallback)
+Exponential backoff retry logic
+Better error messages for RPC failures
+Rate limit detection and queuing
+
+
+**Step 3.3: API Response Handling**
+INSPECT:
+
+How API responses are parsed
+Error status code handling (4xx, 5xx)
+Network error handling (timeout, connection refused)
+Null/undefined checks before accessing response data
+
+FLAG ANY:
+
+Missing try-catch blocks around API calls
+Assuming successful responses
+Not handling partial failures
+Crashing on unexpected response structure
+
+
+---
+
+### PHASE 4: DATABASE SYNCHRONIZATION FIX
+
+**Step 4.1: Identify Database Divergence**
+INSPECT:
+
+Database connection strings (dev vs prod)
+Schema differences between environments
+Data seeding scripts
+Migration files and their execution status
+
+DOCUMENT:
+
+Which tables/collections exist in each environment
+Schema version in dev vs prod
+Last migration applied in each environment
+Any manual data changes in production
+
+
+**Step 4.2: Connection Management**
+INSPECT:
+
+How database connections are opened/closed
+Connection pooling configuration
+Environment-specific connection parameters
+SSL/TLS requirements for production
+Timeout and retry settings
+
+FLAG ANY:
+
+Hardcoded database URLs
+Missing connection error handling
+Connection leaks (not closing connections)
+Different connection settings between environments
+
+
+**Step 4.3: Propose Sync Solution**
+RECOMMENDATION:
+
+Safe migration path to sync schemas
+Data migration script if needed (with backup first)
+Connection string validation
+Environment parity checklist
+
+
+---
+
+### PHASE 5: NETLIFY DEPLOYMENT RESOLUTION
+
+**Step 5.1: Build Configuration Audit**
+INSPECT FILES:
+
+netlify.toml (if exists)
+vite.config.js
+package.json (scripts and engines)
+tsconfig.json or jsconfig.json (if exists)
+.nvmrc or .node-version
+
+CHECK:
+
+Node.js version specified matches project requirements
+Build command is correct
+Output directory matches actual build output
+Environment variables are set in Netlify dashboard
+Base directory is correct (if monorepo)
+
+
+**Step 5.2: Dependency Resolution**
+INSPECT:
+
+package.json dependencies vs devDependencies
+Package lock file (package-lock.json or yarn.lock)
+Peer dependency warnings
+Conflicting version ranges
+
+CHECK FOR:
+
+Missing dependencies in production
+Solana web3.js version compatibility
+Vite plugin conflicts
+Node.js polyfill requirements (Buffer, crypto, etc.)
+
+
+**Step 5.3: Build Error Analysis**
+IF BUILD FAILS:
+
+Inspect actual error message from Netlify logs
+Identify failing build step (install, build, deploy)
+Check for missing environment variables
+Verify Solana dependencies build correctly
+Test build locally with same Node version
+
+PROPOSE:
+
+Exact fix for build configuration
+Missing dependencies to add
+Environment variables needed
+Node.js version specification
+
+
+---
+
+### PHASE 6: NODE.JS VERSION & DEPENDENCY CONFLICTS
+
+**Step 6.1: Version Compatibility Matrix**
+CHECK:
+
+Node.js version required by dependencies
+Vite version compatibility with Node.js
+Solana web3.js version requirements
+React version compatibility
+
+CREATE:
+
+Compatible version matrix
+Recommended Node.js version
+Updated package.json engines field
+
+
+**Step 6.2: Resolve Dependency Conflicts**
+INSPECT:
+
+npm install warnings/errors
+Peer dependency mismatches
+Duplicate dependencies at different versions
+
+PROPOSE:
+
+Dependency version updates (minimal, safe upgrades)
+Resolutions field in package.json if needed
+npm overrides for conflicts
+
+
+---
+
+## OUTPUT FORMAT FOR EACH ISSUE
+═══════════════════════════════════════════════════
+ISSUE #[N]: [Concise Title]
+═══════════════════════════════════════════════════
+SEVERITY: [Critical/High/Medium/Low]
+CATEGORY: [Security/Bug/Config/Deployment]
+FILE(S):
+
+path/to/file.js:line_number
+path/to/other.js:line_number
+
+PROBLEM:
+[2-3 sentence description of what's wrong]
+PRODUCTION RISK:
+[What will break in production if not fixed]
+ROOT CAUSE:
+[Technical explanation of why this fails]
+MINIMAL FIX:
+````code_block_with_exact_changes```
+TESTING STEPS:
+
+[Specific action to verify fix]
+[Expected result]
+[How to confirm no regression]
+
+ROLLBACK PLAN:
+[Git command or steps to undo if this breaks]
+═══════════════════════════════════════════════════
+
+---
+
+## EXECUTION PROTOCOL
+
+### Before Each Fix:
+1. Ask: "Ready to apply Issue #[N] fix?"
+2. Wait for my GO/STOP response
+3. If GO → provide exact code changes
+4. If STOP → skip to next issue
+
+### After Each Fix:
+1. I will test the change
+2. I will report: PASS or FAIL
+3. If PASS → you proceed to next issue
+4. If FAIL → you analyze why and propose alternative fix
+
+### Emergency Stop:
+If I say "ROLLBACK" at any point:
+1. Stop immediately
+2. Provide git commands to revert all changes since last working state
+3. Summarize what we learned from the failure
+
+---
+
+## START THE AUDIT
+
+Begin with Phase 1, Step 1.1: Inspect the project root directory and document the architecture.
+
+**REMEMBER**: 
+- Read files before making claims
+- One fix at a time
+- Wait for test results
+- No speculation about unread code
+
+How to Use This Prompt
+
+Open Claude Opus 4.5 (via API, Claude Code, or claude.ai with Opus 4.5 selected)
+Enable Extended Thinking (if using API):
+
+javascript{
+  model: "claude-opus-4-5-20251101",
+  thinking: {
+    type: "enabled",
+    budget_tokens: 10000
+  },
+  messages: [{ role: "user", content: "[paste prompt above]" }]
+}
+
+Have Ready:
+
+Access to your codebase (local or Replit)
+Terminal for testing changes
+Git for version control and rollbacks
+Netlify logs (if applicable)
+Recent error messages/stack traces
+
+
+Work Through Phases:
+
+Phase 1: Let Claude map everything (15-20 minutes)
+Phase 2-6: Apply fixes incrementally (test after each)
+Commit working changes immediately
+Rollback failures without hesitation
+
+
+After Audit Complete:
+
+Review all changes in Git history
+Run full integration test suite
+Deploy to staging environment first
+Monitor production for 24-48 hours post-launch
+
+
+
+
+Additional Safeguards
+Pre-Audit Backup
+bash# Create safety branch
+git checkout -b pre-audit-backup
+git push origin pre-audit-backup
+
+# Create audit branch for changes
+git checkout -b audit-fixes
+Testing Checklist After Audit
+bash# 1. Build succeeds
+npm run build
+
+# 2. Local dev works
+npm run dev
+
+# 3. Production build works locally
+npm run preview
+
+# 4. All API endpoints respond
+# [Test each endpoint manually]
+
+# 5. Database connections work
+# [Verify dev and prod databases accessible]
+
+# 6. Solana integration works
+# [Test wallet connection, RPC calls, transactions]
