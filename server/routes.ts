@@ -685,10 +685,10 @@ export async function registerRoutes(
         console.error("[Gallery] Database error fetching featured:", err);
         return [];
       });
-      res.json(items.length > 0 ? items[0] : null);
+      res.json(items);
     } catch (error) {
-      console.error("[Gallery] Unexpected error fetching featured item:", error);
-      res.status(500).json({ error: "Failed to fetch featured item" });
+      console.error("[Gallery] Unexpected error fetching featured items:", error);
+      res.status(500).json({ error: "Failed to fetch featured items" });
     }
   });
 
