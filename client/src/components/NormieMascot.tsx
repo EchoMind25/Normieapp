@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface NormieMascotProps {
   priceChange?: number;
   className?: string;
+  onClickSound?: () => void;
 }
 
 type MascotMood = "pumping" | "neutral" | "dipping" | "diamond";
@@ -13,10 +15,26 @@ const getMoodFromChange = (change: number): MascotMood => {
   return "neutral";
 };
 
-export function NormieMascot({ priceChange = 0, className = "" }: NormieMascotProps) {
+const moodMessages: Record<MascotMood, string[]> = {
+  pumping: ["LFG! We're pumping!", "To the moon!", "Number go up!", "Wagmi fren!"],
+  dipping: ["HODL strong!", "Diamond hands!", "Buy the dip!", "Patience pays!"],
+  neutral: ["Chillin...", "Steady as she goes", "Comfy hold", "Just normie things"],
+  diamond: ["DIAMOND HANDS ACTIVATED!", "Unshakeable!", "Never selling!", "Hands of pure diamond!"],
+};
+
+export function NormieMascot({ priceChange = 0, className = "", onClickSound }: NormieMascotProps) {
   const [mood, setMood] = useState<MascotMood>("neutral");
   const [isAnimating, setIsAnimating] = useState(false);
+  const [clickBounce, setClickBounce] = useState(false);
   const prevChangeRef = useRef(priceChange);
+  const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const newMood = getMoodFromChange(priceChange);
@@ -105,16 +123,35 @@ export function NormieMascot({ priceChange = 0, className = "" }: NormieMascotPr
     }
   };
 
+  const handleClick = () => {
+    const messages = moodMessages[mood];
+    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    
+    toast({
+      title: randomMessage,
+      description: `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}% in 24h`,
+    });
+    
+    setClickBounce(true);
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+    clickTimeoutRef.current = setTimeout(() => setClickBounce(false), 300);
+    
+    onClickSound?.();
+  };
+
   return (
-    <div
-      className={`relative ${className}`}
+    <button
+      type="button"
+      onClick={handleClick}
+      className={`relative cursor-pointer transition-transform active:scale-95 ${className}`}
       data-testid="normie-mascot"
-      title={`Mood: ${mood} (${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%)`}
+      title={`Click me! Mood: ${mood} (${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%)`}
+      aria-label={`Normie mascot showing ${mood} mood`}
     >
       <svg
         viewBox="0 0 100 100"
         className={`w-full h-full transition-transform duration-300 ${
-          isAnimating ? "scale-110" : "scale-100"
+          isAnimating || clickBounce ? "scale-110" : "scale-100"
         } ${mood === "pumping" ? "animate-bounce" : ""}`}
       >
         <circle
@@ -143,6 +180,6 @@ export function NormieMascot({ priceChange = 0, className = "" }: NormieMascotPr
           </>
         )}
       </svg>
-    </div>
+    </button>
   );
 }

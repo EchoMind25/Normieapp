@@ -93,6 +93,7 @@ export default function Home() {
         <NormieMascot
           priceChange={metrics?.priceChange24h || 0}
           className="w-16 h-16 sm:w-20 sm:h-20"
+          onClickSound={() => playSound("milestone")}
         />
       </div>
       
