@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Image, 
   Upload, 
@@ -23,7 +24,8 @@ import {
   Loader2,
   Sparkles,
   Grid3X3,
-  Trophy
+  Trophy,
+  LogIn
 } from "lucide-react";
 import type { GalleryItem, GalleryComment } from "@shared/schema";
 
@@ -339,16 +341,15 @@ interface ItemDetailsProps {
 
 function ItemDetails({ item, onClose }: ItemDetailsProps) {
   const [newComment, setNewComment] = useState("");
-  const [commentName, setCommentName] = useState("");
   const { toast } = useToast();
-  const visitorId = getVisitorId();
+  const { user, isAuthenticated } = useAuth();
 
   const { data: comments = [], refetch: refetchComments } = useQuery<GalleryComment[]>({
     queryKey: ["/api/gallery", item.id, "comments"],
   });
 
   const commentMutation = useMutation({
-    mutationFn: async (data: { content: string; visitorName: string }) => {
+    mutationFn: async (data: { content: string }) => {
       return apiRequest("POST", `/api/gallery/${item.id}/comments`, data);
     },
     onSuccess: () => {
@@ -356,16 +357,15 @@ function ItemDetails({ item, onClose }: ItemDetailsProps) {
       refetchComments();
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to post comment.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to post comment. Please sign in first.", variant: "destructive" });
     },
   });
 
   const handleSubmitComment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !isAuthenticated) return;
     commentMutation.mutate({
       content: newComment,
-      visitorName: commentName || "Anonymous",
     });
   };
 
@@ -433,30 +433,35 @@ function ItemDetails({ item, onClose }: ItemDetailsProps) {
             Comments ({comments.length})
           </h3>
           
-          <form onSubmit={handleSubmitComment} className="flex gap-2 mb-4">
-            <Input
-              value={commentName}
-              onChange={(e) => setCommentName(e.target.value)}
-              placeholder="Name"
-              className="w-24 font-mono text-sm"
-              data-testid="input-comment-name"
-            />
-            <Input
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add a comment..."
-              className="flex-1 font-mono text-sm"
-              data-testid="input-comment-content"
-            />
-            <Button 
-              type="submit" 
-              size="icon" 
-              disabled={commentMutation.isPending}
-              data-testid="button-submit-comment"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </form>
+          {isAuthenticated ? (
+            <form onSubmit={handleSubmitComment} className="flex gap-2 mb-4">
+              <span className="text-xs text-muted-foreground self-center font-mono whitespace-nowrap">
+                {user?.username}
+              </span>
+              <Input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                className="flex-1 font-mono text-sm"
+                data-testid="input-comment-content"
+              />
+              <Button 
+                type="submit" 
+                size="icon" 
+                disabled={commentMutation.isPending}
+                data-testid="button-submit-comment"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+          ) : (
+            <div className="flex items-center gap-2 mb-4 p-3 bg-muted rounded-lg">
+              <LogIn className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground font-mono">
+                Sign in to leave a comment
+              </span>
+            </div>
+          )}
           
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {comments.length === 0 ? (

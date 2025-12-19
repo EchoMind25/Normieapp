@@ -10,7 +10,7 @@ import authRoutes from "./authRoutes";
 import { db, verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
 import { manualDevBuys, users, sessions } from "@shared/schema";
 import { eq, desc, and, gt, sql } from "drizzle-orm";
-import { verifyJWT, isReservedUsername } from "./auth";
+import { verifyJWT, isReservedUsername, authMiddleware, AuthRequest } from "./auth";
 import { z } from "zod";
 import { storage } from "./storage";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
@@ -792,19 +792,23 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/gallery/:id/comments", async (req, res) => {
+  app.post("/api/gallery/:id/comments", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const { content, visitorName, userId } = req.body;
+      const { content } = req.body;
       
       if (!content) {
         return res.status(400).json({ error: "Comment content is required" });
       }
       
+      if (!req.user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
       const comment = await storage.createGalleryComment({
         galleryItemId: req.params.id,
         content,
-        visitorName: visitorName || "Anonymous",
-        userId,
+        visitorName: req.user.username,
+        userId: req.user.id,
       });
       
       res.json(comment);
@@ -940,9 +944,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/chat/rooms/:roomId/messages", async (req, res) => {
+  app.post("/api/chat/rooms/:roomId/messages", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const { content, senderName, userId } = req.body;
+      const { content } = req.body;
       
       if (!content || content.trim().length === 0) {
         return res.status(400).json({ error: "Message content is required" });
@@ -952,27 +956,15 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Message too long (max 500 chars)" });
       }
       
-      // Block reserved sender names UNLESS the userId is an admin
-      let validatedSenderName = senderName || "Anonymous";
-      let isAdminUser = false;
-      
-      if (userId) {
-        const user = await storage.getUser(userId);
-        if (user && user.role === "admin") {
-          isAdminUser = true;
-        }
-      }
-      
-      // Only strip reserved names for non-admin users
-      if (isReservedUsername(validatedSenderName) && !isAdminUser) {
-        validatedSenderName = "Anonymous";
+      if (!req.user) {
+        return res.status(401).json({ error: "Authentication required" });
       }
       
       const message = await storage.createChatMessage({
         roomId: req.params.roomId,
         content: content.trim(),
-        senderId: userId || null,
-        senderName: validatedSenderName,
+        senderId: req.user.id,
+        senderName: req.user.username,
       });
       
       res.json(message);

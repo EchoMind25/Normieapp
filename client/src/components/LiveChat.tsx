@@ -7,23 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Send, Users, Loader2, Hash, Crown, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { MessageSquare, Send, Users, Loader2, Hash, Crown, ShieldCheck, LogIn } from "lucide-react";
 import type { ChatRoom, ChatMessage } from "@shared/schema";
 
 const DEFAULT_ROOM_ID = "00000000-0000-0000-0000-000000000001";
-
-function getVisitorName(): string {
-  let name = localStorage.getItem("normie_chat_name");
-  if (!name) {
-    name = `Normie_${Math.random().toString(36).substr(2, 6)}`;
-    localStorage.setItem("normie_chat_name", name);
-  }
-  return name;
-}
-
-function setVisitorName(name: string): void {
-  localStorage.setItem("normie_chat_name", name);
-}
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -34,13 +22,6 @@ interface ChatMessageItemProps {
 function isNormieAdmin(name: string | null | undefined): boolean {
   if (!name) return false;
   return name.toLowerCase() === "normie";
-}
-
-// Check if a username is reserved (for client-side validation)
-function isReservedName(name: string): boolean {
-  const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const reserved = ["normie", "normieceo", "thenormie", "normienation", "n0rmie", "normi3"];
-  return reserved.includes(normalized);
 }
 
 function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
@@ -80,10 +61,8 @@ function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
 
 export function LiveChat() {
   const [message, setMessage] = useState("");
-  const [userName, setUserName] = useState(getVisitorName());
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState(userName);
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
 
   const { data: messages = [], isLoading, refetch } = useQuery<ChatMessage[]>({
     queryKey: ["/api/chat/rooms", DEFAULT_ROOM_ID, "messages"],
@@ -93,8 +72,7 @@ export function LiveChat() {
   const sendMutation = useMutation({
     mutationFn: async (content: string) => {
       return apiRequest("POST", `/api/chat/rooms/${DEFAULT_ROOM_ID}/messages`, { 
-        content, 
-        senderName: userName 
+        content
       });
     },
     onSuccess: () => {
@@ -102,32 +80,14 @@ export function LiveChat() {
       refetch();
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to send message. Please sign in first.", variant: "destructive" });
     },
   });
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || !isAuthenticated) return;
     sendMutation.mutate(message);
-  };
-
-  const handleNameSave = () => {
-    const trimmedName = tempName.trim();
-    if (trimmedName) {
-      // Block reserved names
-      if (isReservedName(trimmedName)) {
-        toast({ 
-          title: "Reserved Name", 
-          description: "This name is reserved for official use only", 
-          variant: "destructive" 
-        });
-        return;
-      }
-      setUserName(trimmedName);
-      setVisitorName(trimmedName);
-    }
-    setIsEditingName(false);
   };
 
   return (
@@ -143,36 +103,14 @@ export function LiveChat() {
             general
           </Badge>
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs text-muted-foreground">Your name:</span>
-          {isEditingName ? (
-            <div className="flex items-center gap-1">
-              <Input
-                value={tempName}
-                onChange={(e) => setTempName(e.target.value)}
-                className="h-6 w-28 text-xs font-mono"
-                maxLength={20}
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && handleNameSave()}
-                data-testid="input-chat-name-edit"
-              />
-              <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={handleNameSave}>
-                Save
-              </Button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                setTempName(userName);
-                setIsEditingName(true);
-              }}
-              className="text-xs font-mono text-primary hover:underline"
-              data-testid="button-edit-name"
-            >
-              {userName}
-            </button>
-          )}
-        </div>
+        {isAuthenticated && user && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs text-muted-foreground">Chatting as:</span>
+            <span className="text-xs font-mono text-primary font-semibold">
+              {user.username}
+            </span>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-1 flex flex-col overflow-hidden p-3">
         <ScrollArea className="flex-1 pr-2">
@@ -192,36 +130,45 @@ export function LiveChat() {
                 <ChatMessageItem
                   key={msg.id}
                   message={msg}
-                  isOwnMessage={msg.senderName === userName}
+                  isOwnMessage={isAuthenticated && user?.username === msg.senderName}
                 />
               ))}
             </div>
           )}
         </ScrollArea>
         
-        <form onSubmit={handleSend} className="flex gap-2 mt-3 pt-3 border-t">
-          <Input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 font-mono text-sm"
-            maxLength={500}
-            disabled={sendMutation.isPending}
-            data-testid="input-chat-message"
-          />
-          <Button 
-            type="submit" 
-            size="icon" 
-            disabled={sendMutation.isPending || !message.trim()}
-            data-testid="button-send-message"
-          >
-            {sendMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
-        </form>
+        {isAuthenticated ? (
+          <form onSubmit={handleSend} className="flex gap-2 mt-3 pt-3 border-t">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 font-mono text-sm"
+              maxLength={500}
+              disabled={sendMutation.isPending}
+              data-testid="input-chat-message"
+            />
+            <Button 
+              type="submit" 
+              size="icon" 
+              disabled={sendMutation.isPending || !message.trim()}
+              data-testid="button-send-message"
+            >
+              {sendMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </form>
+        ) : (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t p-3 bg-muted rounded-lg">
+            <LogIn className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground font-mono">
+              Sign in to chat
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
