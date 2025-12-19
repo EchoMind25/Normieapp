@@ -25,6 +25,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound } from "lucide-react";
+import { NotificationSettings } from "@/components/NotificationSettings";
 
 const profileSchema = z.object({
   username: z
@@ -432,6 +433,8 @@ export default function Profile() {
             </CardContent>
           </Card>
         )}
+
+        <NotificationSettings />
 
         <div className="text-center text-xs text-muted-foreground font-mono pb-8">
           Member since {new Date(user.createdAt).toLocaleDateString()}

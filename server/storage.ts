@@ -19,6 +19,7 @@ import {
   galleryVotes,
   galleryComments,
   notifications,
+  pushSubscriptions,
   type User,
   type InsertUser,
   type Session,
@@ -56,6 +57,8 @@ import {
   type InsertGalleryComment,
   type Notification,
   type InsertNotification,
+  type PushSubscription,
+  type InsertPushSubscription,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -159,6 +162,14 @@ export interface IStorage {
   markNotificationRead(id: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
+  
+  // Push Subscriptions
+  createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
+  getPushSubscriptionsByUser(userId: string): Promise<PushSubscription[]>;
+  getAllPushSubscriptions(): Promise<PushSubscription[]>;
+  getPushSubscriptionsForNewPolls(): Promise<Array<PushSubscription & { user: User }>>;
+  deletePushSubscription(endpoint: string): Promise<void>;
+  deletePushSubscriptionsByUser(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -651,6 +662,89 @@ export class DatabaseStorage implements IStorage {
       score: r.messageCount,
       rank: i + 1,
     }));
+  }
+
+  // Notifications
+  async getUserNotifications(userId: string, limit: number = 50): Promise<Notification[]> {
+    return db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return result[0]?.count || 0;
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async createBroadcastNotification(notification: Omit<InsertNotification, "userId">): Promise<void> {
+    const allUsers = await this.getAllUsers();
+    const notificationValues = allUsers.map(user => ({
+      ...notification,
+      userId: user.id,
+    }));
+    if (notificationValues.length > 0) {
+      await db.insert(notifications).values(notificationValues);
+    }
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
+  // Push Subscriptions
+  async createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription> {
+    // Delete existing subscription for this endpoint first
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, subscription.endpoint));
+    const [created] = await db.insert(pushSubscriptions).values(subscription).returning();
+    return created;
+  }
+
+  async getPushSubscriptionsByUser(userId: string): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async getAllPushSubscriptions(): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions);
+  }
+
+  async getPushSubscriptionsForNewPolls(): Promise<Array<PushSubscription & { user: User }>> {
+    const results = await db
+      .select({
+        subscription: pushSubscriptions,
+        user: users,
+      })
+      .from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(eq(users.notifyNewPolls, true));
+    
+    return results.map(r => ({ ...r.subscription, user: r.user }));
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  }
+
+  async deletePushSubscriptionsByUser(userId: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
   }
 }
 

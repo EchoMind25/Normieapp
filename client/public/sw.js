@@ -90,21 +90,37 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('push', (event) => {
   if (event.data) {
-    const data = event.data.json();
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Normie Nation', {
+    try {
+      const data = event.data.json();
+      const options = {
         body: data.body || 'New update available!',
-        icon: '/favicon.png',
-        badge: '/favicon.png',
-        tag: 'normie-notification'
-      })
-    );
+        icon: data.icon || '/favicon.png',
+        badge: data.badge || '/favicon.png',
+        tag: data.tag || 'normie-notification',
+        data: { url: data.url || '/' },
+        vibrate: [100, 50, 100],
+      };
+      event.waitUntil(
+        self.registration.showNotification(data.title || 'Normie Nation', options)
+      );
+    } catch (error) {
+      console.error('[SW] Push error:', error);
+    }
   }
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const url = event.notification.data?.url || '/';
   event.waitUntil(
-    clients.openWindow('/')
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
   );
 });

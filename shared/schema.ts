@@ -101,6 +101,9 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 20 }).default("user"),
   holdingsVisible: boolean("holdings_visible").default(false),
   passwordChanged: boolean("password_changed").default(true),
+  notifyNewPolls: boolean("notify_new_polls").default(true),
+  notifyPollResults: boolean("notify_poll_results").default(true),
+  notifyAnnouncements: boolean("notify_announcements").default(true),
   bannedAt: timestamp("banned_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -151,6 +154,22 @@ export const notifications = pgTable("notifications", {
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, isRead: true });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+// Push notification subscriptions
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  endpoint: text("endpoint").notNull(),
+  p256dhKey: text("p256dh_key").notNull(),
+  authKey: text("auth_key").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_push_subs_user").on(table.userId),
+]);
+
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 
 // Password reset tokens
 export const passwordResetTokens = pgTable("password_reset_tokens", {

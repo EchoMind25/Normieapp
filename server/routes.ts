@@ -14,6 +14,7 @@ import { verifyJWT, isReservedUsername, authMiddleware, AuthRequest } from "./au
 import { z } from "zod";
 import { storage } from "./storage";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { initializePushNotifications, getVapidPublicKey, isPushEnabled, sendPushNotificationForNewPoll } from "./pushNotifications";
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -108,6 +109,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   app.use(cookieParser());
+  
+  // Initialize push notifications
+  initializePushNotifications();
   
   app.use("/api/auth", authLimiter, authRoutes);
   
@@ -528,6 +532,11 @@ export async function registerRoutes(
         { question, isActive: true, createdBy: (req as any).userId, endsAt },
         options
       );
+      
+      // Send push notifications for new poll (async, don't wait)
+      sendPushNotificationForNewPoll(poll.id, question).catch(err => {
+        console.error("[Admin] Error sending push notifications:", err);
+      });
       
       res.json(poll);
     } catch (error) {
@@ -1115,6 +1124,111 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error(`[Sticker] Unexpected proxy error for ${stickerId}:`, error.message);
       res.status(500).json({ error: "Failed to proxy sticker" });
+    }
+  });
+
+  // =====================================================
+  // Push Notifications & In-App Notifications
+  // =====================================================
+
+  // Get VAPID public key for push subscription
+  app.get("/api/push/vapid-key", (_req, res) => {
+    res.json({ 
+      publicKey: getVapidPublicKey(),
+      enabled: isPushEnabled()
+    });
+  });
+
+  // Subscribe to push notifications
+  app.post("/api/push/subscribe", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { endpoint, keys } = req.body;
+      
+      if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        return res.status(400).json({ error: "Invalid subscription data" });
+      }
+
+      await storage.createPushSubscription({
+        userId: req.user!.id,
+        endpoint,
+        p256dhKey: keys.p256dh,
+        authKey: keys.auth,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Push] Subscribe error:", error);
+      res.status(500).json({ error: "Failed to subscribe" });
+    }
+  });
+
+  // Unsubscribe from push notifications
+  app.post("/api/push/unsubscribe", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { endpoint } = req.body;
+      
+      if (endpoint) {
+        await storage.deletePushSubscription(endpoint);
+      } else {
+        await storage.deletePushSubscriptionsByUser(req.user!.id);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Push] Unsubscribe error:", error);
+      res.status(500).json({ error: "Failed to unsubscribe" });
+    }
+  });
+
+  // Get user notifications
+  app.get("/api/notifications", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const notifications = await storage.getUserNotifications(req.user!.id);
+      const unreadCount = await storage.getUnreadNotificationCount(req.user!.id);
+      res.json({ notifications, unreadCount });
+    } catch (error) {
+      console.error("[Notifications] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read
+  app.post("/api/notifications/:id/read", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      await storage.markNotificationRead(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Notifications] Error marking read:", error);
+      res.status(500).json({ error: "Failed to mark as read" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.post("/api/notifications/read-all", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      await storage.markAllNotificationsRead(req.user!.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Notifications] Error marking all read:", error);
+      res.status(500).json({ error: "Failed to mark all as read" });
+    }
+  });
+
+  // Update notification preferences
+  app.patch("/api/user/notification-settings", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { notifyNewPolls, notifyPollResults, notifyAnnouncements } = req.body;
+      
+      const updateData: Record<string, boolean> = {};
+      if (typeof notifyNewPolls === "boolean") updateData.notifyNewPolls = notifyNewPolls;
+      if (typeof notifyPollResults === "boolean") updateData.notifyPollResults = notifyPollResults;
+      if (typeof notifyAnnouncements === "boolean") updateData.notifyAnnouncements = notifyAnnouncements;
+
+      const updated = await storage.updateUser(req.user!.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("[User] Error updating notification settings:", error);
+      res.status(500).json({ error: "Failed to update settings" });
     }
   });
 
