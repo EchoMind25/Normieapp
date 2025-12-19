@@ -177,6 +177,36 @@ export function CommunityHub() {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  const formatTimeRemaining = (endsAt: string | undefined): { text: string; isExpired: boolean; isUrgent: boolean } => {
+    if (!endsAt) return { text: "No time limit", isExpired: false, isUrgent: false };
+    
+    const now = Date.now();
+    const endTime = new Date(endsAt).getTime();
+    const diffMs = endTime - now;
+    
+    if (diffMs <= 0) return { text: "Poll Ended", isExpired: true, isUrgent: false };
+    
+    const seconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    const isUrgent = hours < 1;
+    
+    if (days > 0) {
+      const remainingHours = hours % 24;
+      return { text: `${days}d ${remainingHours}h left`, isExpired: false, isUrgent };
+    }
+    if (hours > 0) {
+      const remainingMinutes = minutes % 60;
+      return { text: `${hours}h ${remainingMinutes}m left`, isExpired: false, isUrgent };
+    }
+    if (minutes > 0) {
+      return { text: `${minutes}m left`, isExpired: false, isUrgent };
+    }
+    return { text: `${seconds}s left`, isExpired: false, isUrgent: true };
+  };
+
   return (
     <section id="community" className="py-8 lg:py-12 px-4 lg:px-8 bg-muted/30">
       <div className="max-w-7xl mx-auto">
@@ -223,11 +253,29 @@ export function CommunityHub() {
               <Card key={poll.id} className="p-4" data-testid={`card-poll-${poll.id}`}>
                 <div className="flex items-start justify-between gap-2 mb-4">
                   <h4 className="font-mono font-medium">{poll.question}</h4>
-                  {poll.isActive && (
-                    <Badge variant="outline" className="text-xs">
-                      Live
-                    </Badge>
-                  )}
+                  {(() => {
+                    const timeInfo = formatTimeRemaining(poll.endsAt);
+                    if (timeInfo.isExpired) {
+                      return (
+                        <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Poll Ended
+                        </Badge>
+                      );
+                    }
+                    if (poll.isActive) {
+                      return (
+                        <Badge 
+                          variant={timeInfo.isUrgent ? "destructive" : "outline"} 
+                          className="text-xs flex items-center gap-1"
+                        >
+                          <Clock className="h-3 w-3" />
+                          {timeInfo.text}
+                        </Badge>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div className="space-y-3">
                   {poll.options.map((option) => {

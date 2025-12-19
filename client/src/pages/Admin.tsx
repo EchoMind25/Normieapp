@@ -13,8 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { 
   ArrowLeft, Users, Shield, Activity, Settings, Plus, Trash2, TrendingUp, Calendar,
-  Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3
+  Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3, Bell, Send, ExternalLink
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import type { GalleryItem, Poll } from "@shared/schema";
 
 interface ManualDevBuy {
@@ -41,6 +42,10 @@ export default function Admin() {
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollDuration, setPollDuration] = useState("24");
   
+  const [streamTitle, setStreamTitle] = useState("Normie Nation Stream Alert");
+  const [streamMessage, setStreamMessage] = useState("");
+  const [streamUrl, setStreamUrl] = useState("https://pump.fun/coin/FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump");
+  
   const [adminArtTitle, setAdminArtTitle] = useState("");
   const [adminArtDescription, setAdminArtDescription] = useState("");
   const [adminArtFile, setAdminArtFile] = useState<File | null>(null);
@@ -65,6 +70,11 @@ export default function Admin() {
 
   const { data: polls = [], refetch: refetchPolls } = useQuery<Poll[]>({
     queryKey: ["/api/admin/polls"],
+    enabled: isAuthenticated && user?.role === "admin",
+  });
+
+  const { data: stats, isLoading: loadingStats } = useQuery<{ totalUsers: number }>({
+    queryKey: ["/api/admin/stats"],
     enabled: isAuthenticated && user?.role === "admin",
   });
 
@@ -202,6 +212,44 @@ export default function Admin() {
       toast({ title: "Error", description: "Failed to delete poll", variant: "destructive" });
     },
   });
+
+  const sendStreamNotificationMutation = useMutation({
+    mutationFn: async (data: { title: string; message: string; streamUrl?: string }) => {
+      const res = await apiRequest("POST", "/api/admin/stream-notification", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to send notification");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Notification Sent!", 
+        description: `Sent to ${data.sent} subscribers` 
+      });
+      setStreamMessage("");
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const handleSendStreamNotification = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!streamTitle.trim() || !streamMessage.trim()) {
+      toast({ title: "Error", description: "Title and message are required", variant: "destructive" });
+      return;
+    }
+    sendStreamNotificationMutation.mutate({
+      title: streamTitle.trim(),
+      message: streamMessage.trim(),
+      streamUrl: streamUrl.trim() || undefined,
+    });
+  };
 
   const adminUploadArtworkMutation = useMutation({
     mutationFn: async (data: { title: string; description: string; imageUrl: string; tags: string[] }) => {
@@ -353,6 +401,10 @@ export default function Admin() {
               <BarChart3 className="w-4 h-4 mr-2" />
               Polls
             </TabsTrigger>
+            <TabsTrigger value="notifications" data-testid="tab-admin-notifications">
+              <Bell className="w-4 h-4 mr-2" />
+              Notifications
+            </TabsTrigger>
             <TabsTrigger value="settings" data-testid="tab-admin-settings">
               <Settings className="w-4 h-4 mr-2" />
               Settings
@@ -367,7 +419,13 @@ export default function Admin() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold font-mono">--</div>
+                  <div className="text-2xl font-bold font-mono">
+                    {loadingStats ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      (stats?.totalUsers ?? 0).toLocaleString()
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">Registered accounts</p>
                 </CardContent>
               </Card>
@@ -914,6 +972,95 @@ export default function Admin() {
                       ))}
                     </div>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Stream Notifications
+                </CardTitle>
+                <CardDescription>
+                  Send push notifications to users about PumpFun streams
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSendStreamNotification} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stream-title">Notification Title</Label>
+                    <Input
+                      id="stream-title"
+                      value={streamTitle}
+                      onChange={(e) => setStreamTitle(e.target.value)}
+                      placeholder="Normie Nation Stream Alert"
+                      maxLength={100}
+                      data-testid="input-stream-title"
+                    />
+                    <p className="text-xs text-muted-foreground">{streamTitle.length}/100 characters</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stream-message">Message</Label>
+                    <Textarea
+                      id="stream-message"
+                      value={streamMessage}
+                      onChange={(e) => setStreamMessage(e.target.value)}
+                      placeholder="Join us for a live stream on PumpFun!"
+                      className="resize-none"
+                      rows={3}
+                      maxLength={500}
+                      data-testid="input-stream-message"
+                    />
+                    <p className="text-xs text-muted-foreground">{streamMessage.length}/500 characters</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stream-url">Stream URL (optional)</Label>
+                    <Input
+                      id="stream-url"
+                      value={streamUrl}
+                      onChange={(e) => setStreamUrl(e.target.value)}
+                      placeholder="https://pump.fun/coin/..."
+                      data-testid="input-stream-url"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Clicking the notification will open this link. Defaults to $NORMIE on PumpFun.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 pt-2">
+                    <Button 
+                      type="submit" 
+                      disabled={sendStreamNotificationMutation.isPending || !streamTitle.trim() || !streamMessage.trim()}
+                      data-testid="button-send-stream-notification"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      {sendStreamNotificationMutation.isPending ? "Sending..." : "Send Notification"}
+                    </Button>
+                    
+                    <a
+                      href={streamUrl || "https://pump.fun/coin/FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-muted-foreground flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Preview Link
+                    </a>
+                  </div>
+                </form>
+
+                <div className="mt-6 pt-4 border-t">
+                  <h4 className="font-medium mb-2">How it works</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>Notifications are sent to all users who enabled "Announcements" in their notification preferences</li>
+                    <li>Users must have push notifications enabled in their browser</li>
+                    <li>Clicking the notification opens the stream URL directly</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>

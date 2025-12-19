@@ -15,6 +15,8 @@ import {
   Lock,
   Activity,
   Clock,
+  AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -620,6 +622,26 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
                   Waiting for price data...
                 </div>
               )}
+            </div>
+            <div className="mt-4 pt-4 border-t space-y-3">
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-yellow-500" />
+                <p className="font-mono">
+                  Normie Nation data may vary 1-5% from PumpFun due to refresh intervals. For real-time precision, check PumpFun directly.
+                </p>
+              </div>
+              <a
+                href="https://pump.fun/coin/FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block"
+                data-testid="link-pumpfun"
+              >
+                <Button variant="outline" size="sm" className="font-mono gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  View on PumpFun
+                </Button>
+              </a>
             </div>
           </Card>
 

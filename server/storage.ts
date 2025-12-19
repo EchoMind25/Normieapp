@@ -71,6 +71,7 @@ export interface IStorage {
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   banUser(id: string): Promise<void>;
   unbanUser(id: string): Promise<void>;
+  countUsers(): Promise<number>;
   
   // Sessions
   createSession(session: InsertSession): Promise<Session>;
@@ -168,6 +169,7 @@ export interface IStorage {
   getPushSubscriptionsByUser(userId: string): Promise<PushSubscription[]>;
   getAllPushSubscriptions(): Promise<PushSubscription[]>;
   getPushSubscriptionsForNewPolls(): Promise<Array<PushSubscription & { user: User }>>;
+  getPushSubscriptionsForAnnouncements(): Promise<Array<PushSubscription & { userId: string }>>;
   deletePushSubscription(endpoint: string): Promise<void>;
   deletePushSubscriptionsByUser(userId: string): Promise<void>;
 }
@@ -214,6 +216,11 @@ export class DatabaseStorage implements IStorage {
 
   async unbanUser(id: string): Promise<void> {
     await db.update(users).set({ bannedAt: null }).where(eq(users.id, id));
+  }
+
+  async countUsers(): Promise<number> {
+    const [result] = await db.select({ count: sql<number>`count(*)` }).from(users);
+    return Number(result?.count || 0);
   }
 
   // Sessions
@@ -737,6 +744,19 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.notifyNewPolls, true));
     
     return results.map(r => ({ ...r.subscription, user: r.user }));
+  }
+
+  async getPushSubscriptionsForAnnouncements(): Promise<Array<PushSubscription & { userId: string }>> {
+    const results = await db
+      .select({
+        subscription: pushSubscriptions,
+        user: users,
+      })
+      .from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(eq(users.notifyAnnouncements, true));
+    
+    return results.map(r => ({ ...r.subscription, userId: r.user.id }));
   }
 
   async deletePushSubscription(endpoint: string): Promise<void> {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/use-upload";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 import {
   Form,
   FormControl,
@@ -24,7 +26,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound } from "lucide-react";
+import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon } from "lucide-react";
 import { NotificationSettings } from "@/components/NotificationSettings";
 
 const profileSchema = z.object({
@@ -66,6 +68,27 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { uploadFile, isUploading, progress, error: uploadError } = useUpload({
+    onSuccess: (response) => {
+      const publicUrl = `/api/storage/public/${response.objectPath}`;
+      profileForm.setValue("avatarUrl", publicUrl);
+      setAvatarPreview(publicUrl);
+      toast({
+        title: "Image uploaded",
+        description: "Your avatar has been uploaded successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -158,6 +181,43 @@ export default function Profile() {
 
   const onPasswordSubmit = (data: PasswordFormData) => {
     changePasswordMutation.mutate(data);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPEG, PNG, GIF, or WebP image",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+    await uploadFile(file);
+  };
+
+  const clearAvatar = () => {
+    profileForm.setValue("avatarUrl", "");
+    setAvatarPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const hasEmailAuth = !!user.email;
@@ -277,16 +337,60 @@ export default function Profile() {
                   name="avatarUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Avatar URL</FormLabel>
+                      <FormLabel>Profile Picture</FormLabel>
                       <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="https://example.com/avatar.png"
-                          className="font-mono"
-                          data-testid="input-avatar-url"
-                        />
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-4">
+                            <Avatar className="h-20 w-20 border-2 border-border">
+                              <AvatarImage src={avatarPreview || field.value || undefined} />
+                              <AvatarFallback className="bg-muted">
+                                <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col gap-2">
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/gif,image/webp"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                                data-testid="input-avatar-file"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                data-testid="button-upload-avatar"
+                              >
+                                <Upload className="h-4 w-4 mr-2" />
+                                {isUploading ? "Uploading..." : "Upload Image"}
+                              </Button>
+                              {(field.value || avatarPreview) && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={clearAvatar}
+                                  disabled={isUploading}
+                                  data-testid="button-clear-avatar"
+                                >
+                                  <X className="h-4 w-4 mr-2" />
+                                  Remove
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                          {isUploading && (
+                            <div className="space-y-1">
+                              <Progress value={progress} className="h-2" />
+                              <p className="text-xs text-muted-foreground">Uploading... {progress}%</p>
+                            </div>
+                          )}
+                        </div>
                       </FormControl>
-                      <FormDescription>Direct link to your profile picture</FormDescription>
+                      <FormDescription>JPEG, PNG, GIF, or WebP. Max 5MB.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

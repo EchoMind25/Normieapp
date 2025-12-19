@@ -14,7 +14,7 @@ import { verifyJWT, isReservedUsername, authMiddleware, AuthRequest } from "./au
 import { z } from "zod";
 import { storage } from "./storage";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
-import { initializePushNotifications, getVapidPublicKey, isPushEnabled, sendPushNotificationForNewPoll } from "./pushNotifications";
+import { initializePushNotifications, getVapidPublicKey, isPushEnabled, sendPushNotificationForNewPoll, sendStreamNotification } from "./pushNotifications";
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -490,6 +490,17 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Get user stats
+  app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
+    try {
+      const totalUsers = await storage.countUsers();
+      res.json({ totalUsers });
+    } catch (error) {
+      console.error("[Admin] Error fetching stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
   // Admin: Get all polls (including inactive)
   app.get("/api/admin/polls", requireAdmin, async (_req, res) => {
     try {
@@ -554,6 +565,36 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error deleting poll:", error);
       res.status(500).json({ error: "Failed to delete poll" });
+    }
+  });
+
+  // Admin: Send stream notification
+  app.post("/api/admin/stream-notification", requireAdmin, async (req, res) => {
+    try {
+      const { title, message, streamUrl } = req.body;
+      
+      if (!title || !message) {
+        return res.status(400).json({ error: "Title and message are required" });
+      }
+      
+      if (title.length > 100) {
+        return res.status(400).json({ error: "Title must be 100 characters or less" });
+      }
+      
+      if (message.length > 500) {
+        return res.status(400).json({ error: "Message must be 500 characters or less" });
+      }
+      
+      const result = await sendStreamNotification(title, message, streamUrl);
+      res.json({ 
+        success: true, 
+        sent: result.sent, 
+        failed: result.failed,
+        message: `Notification sent to ${result.sent} subscribers` 
+      });
+    } catch (error) {
+      console.error("[Admin] Error sending stream notification:", error);
+      res.status(500).json({ error: "Failed to send stream notification" });
     }
   });
 

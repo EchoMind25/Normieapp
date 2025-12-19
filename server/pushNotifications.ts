@@ -120,3 +120,64 @@ export async function sendPushNotificationForNewPoll(
     relatedId: pollId,
   });
 }
+
+export async function sendStreamNotification(
+  title: string,
+  message: string,
+  streamUrl?: string
+): Promise<{ sent: number; failed: number }> {
+  if (!pushEnabled) {
+    console.log("[Push] Notifications disabled, skipping stream notification");
+    return { sent: 0, failed: 0 };
+  }
+
+  const subscriptions = await storage.getPushSubscriptionsForAnnouncements();
+  console.log(`[Push] Sending stream notification to ${subscriptions.length} subscribers`);
+
+  const pumpFunUrl = streamUrl || "https://pump.fun/coin/FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump";
+  
+  const payload: PushPayload = {
+    title: title || "Normie Nation Stream Alert",
+    body: message || "A live stream is happening now! Click to join.",
+    icon: "/normie-icon.png",
+    badge: "/normie-badge.png",
+    url: pumpFunUrl,
+    tag: `stream-${Date.now()}`,
+  };
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dhKey,
+            auth: sub.authKey,
+          },
+        },
+        JSON.stringify(payload)
+      );
+      sent++;
+    } catch (error: any) {
+      console.error(`[Push] Failed to send to user ${sub.userId}:`, error.message);
+      failed++;
+      if (error.statusCode === 410 || error.statusCode === 404) {
+        await storage.deletePushSubscription(sub.endpoint);
+        console.log("[Push] Removed expired subscription");
+      }
+    }
+  }
+
+  await storage.createBroadcastNotification({
+    type: "announcement",
+    title: title,
+    message: message,
+    relatedId: pumpFunUrl,
+  });
+
+  console.log(`[Push] Stream notification sent: ${sent} success, ${failed} failed`);
+  return { sent, failed };
+}
