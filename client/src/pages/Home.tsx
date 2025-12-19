@@ -47,8 +47,19 @@ export default function Home() {
   const passedMilestonesRef = useRef<Set<number>>(new Set());
 
   // Scroll to top on mount to ensure we start at the dashboard
+  // Disable browser scroll restoration and force scroll to top
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    
+    // Also scroll after a small delay to override any lazy-load effects
+    const timeoutId = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   useEffect(() => {
