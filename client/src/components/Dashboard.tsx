@@ -256,12 +256,17 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       {
         label: "Dev Buys",
         data: devBuyPoints,
-        borderColor: "transparent",
-        backgroundColor: "hsl(45 90% 55%)",
-        pointRadius: devBuyPoints.map((p) => (p !== null ? 8 : 0)),
+        borderColor: "hsl(142 76% 36%)",
+        backgroundColor: "hsl(142 72% 45%)",
+        pointRadius: devBuyPoints.map((p) => (p !== null ? 7 : 0)),
         pointHoverRadius: 10,
-        pointStyle: "triangle",
+        pointBorderWidth: 2,
+        pointBorderColor: "hsl(142 76% 26%)",
+        pointStyle: "circle",
         showLine: false,
+        pointHoverBorderWidth: 3,
+        pointHoverBackgroundColor: "hsl(142 72% 55%)",
+        pointHoverBorderColor: "hsl(120 5% 90%)",
       },
     ],
   };
@@ -300,9 +305,9 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
                   : amount >= 1000
                   ? `${(amount / 1000).toFixed(1)}K`
                   : amount.toLocaleString();
-                return `Dev Buy: ${formattedAmount} $NORMIE`;
+                return `DEV BUY: ${formattedAmount} $NORMIE`;
               }
-              return null;
+              return "";
             }
             return `${label}: ${formatPrice(context.raw)}`;
           },
@@ -336,7 +341,6 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       axis: "x" as const,
       intersect: false,
     },
-    events: ["mousemove", "mouseout", "click", "touchstart", "touchmove", "touchend"],
     hover: {
       mode: "nearest" as const,
       intersect: false,

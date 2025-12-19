@@ -136,14 +136,16 @@ export async function fetchDevBuys(): Promise<DevBuy[]> {
     const conn = getConnection();
     const devPubkey = new PublicKey(DEV_WALLET);
     
-    const signatures = await conn.getSignaturesForAddress(devPubkey, { limit: 50 });
+    // Fetch more signatures to capture historical buys
+    const signatures = await conn.getSignaturesForAddress(devPubkey, { limit: 200 });
     
     if (signatures.length > 0) {
       console.log(`[Solana] Found ${signatures.length} dev wallet transactions`);
       
       const recentBuys: DevBuy[] = [];
       
-      for (const sig of signatures.slice(0, 10)) {
+      // Process more transactions to get better coverage
+      for (const sig of signatures.slice(0, 50)) {
         if (!sig.blockTime) continue;
         
         try {
@@ -154,26 +156,59 @@ export async function fetchDevBuys(): Promise<DevBuy[]> {
           if (tx && tx.meta && !tx.meta.err) {
             const preBalances = tx.meta.preBalances || [];
             const postBalances = tx.meta.postBalances || [];
+            const preTokenBalances = tx.meta.preTokenBalances || [];
+            const postTokenBalances = tx.meta.postTokenBalances || [];
             
-            if (postBalances[0] < preBalances[0]) {
-              const solSpent = (preBalances[0] - postBalances[0]) / 1e9;
-              
-              if (solSpent > 0.01) {
+            // Check for SOL spent
+            const solSpent = (preBalances[0] - postBalances[0]) / 1e9;
+            
+            // Check for NORMIE token received
+            let tokenReceived = 0;
+            for (const postToken of postTokenBalances) {
+              if (postToken.mint === TOKEN_ADDRESS) {
+                const preToken = preTokenBalances.find(
+                  t => t.accountIndex === postToken.accountIndex && t.mint === TOKEN_ADDRESS
+                );
+                const preAmount = preToken?.uiTokenAmount?.uiAmount || 0;
+                const postAmount = postToken.uiTokenAmount?.uiAmount || 0;
+                
+                if (postAmount > preAmount) {
+                  tokenReceived = postAmount - preAmount;
+                  break;
+                }
+              }
+            }
+            
+            // A dev buy: SOL was spent AND tokens were received
+            if (solSpent > 0.005 && tokenReceived > 0) {
+              recentBuys.push({
+                signature: sig.signature,
+                timestamp: sig.blockTime * 1000,
+                amount: tokenReceived,
+                price: currentMetrics?.price || 0,
+              });
+            } else if (solSpent > 0.01 && tokenReceived === 0) {
+              // Fallback: estimate tokens if we can detect it's a swap tx
+              const estimatedTokens = solSpent * (currentMetrics?.price ? 1 / currentMetrics.price : 1000000);
+              if (estimatedTokens > 10000) {
                 recentBuys.push({
                   signature: sig.signature,
                   timestamp: sig.blockTime * 1000,
-                  amount: solSpent * 1000000,
+                  amount: estimatedTokens,
                   price: currentMetrics?.price || 0,
                 });
               }
             }
           }
         } catch (txError) {
-          console.error(`[Solana] Error parsing tx ${sig.signature}:`, txError);
+          // Silently continue on individual tx errors
+          continue;
         }
       }
       
       if (recentBuys.length > 0) {
+        // Sort by timestamp descending
+        recentBuys.sort((a, b) => b.timestamp - a.timestamp);
         devBuys = recentBuys;
         console.log(`[Solana] Identified ${recentBuys.length} dev buys`);
       }
