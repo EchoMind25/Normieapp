@@ -104,36 +104,32 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
           >
             Community
           </Button>
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled
-              className="opacity-60"
-              data-testid="nav-nft-marketplace"
-            >
-              <ShoppingBag className="h-4 w-4 mr-1" />
-              NFTs
-            </Button>
-            <Badge variant="secondary" className="absolute -top-1 -right-1 text-[9px] px-1 py-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            className="opacity-60 gap-1"
+            data-testid="nav-nft-marketplace"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            NFTs
+            <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-1">
               Soon
             </Badge>
-          </div>
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled
-              className="opacity-60"
-              data-testid="nav-private-chats"
-            >
-              <MessageCircle className="h-4 w-4 mr-1" />
-              DMs
-            </Button>
-            <Badge variant="secondary" className="absolute -top-1 -right-1 text-[9px] px-1 py-0">
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            className="opacity-60 gap-1"
+            data-testid="nav-private-chats"
+          >
+            <MessageCircle className="h-4 w-4" />
+            DMs
+            <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-1">
               Soon
             </Badge>
-          </div>
+          </Button>
         </nav>
 
         <div className="flex items-center gap-2">
