@@ -872,6 +872,35 @@ export async function fetchRecentTokenActivity(): Promise<ActivityItem[]> {
             timestamp: new Date(sig.blockTime * 1000).toISOString(),
           });
           
+          // Persist sell to database for leaderboard (all sells >= 100K tokens)
+          if (tokenSold >= 100000) {
+            try {
+              // Get wallet address from transaction accounts (first signer)
+              const message = tx.transaction.message;
+              const accountKeys = message.getAccountKeys?.();
+              const firstKey = accountKeys?.get?.(0) || (message as any).accountKeys?.[0];
+              const walletAddress = firstKey?.toBase58?.() || firstKey?.toString() || "";
+              
+              if (walletAddress) {
+                // Check if already stored
+                const existing = await storage.getJeetSellBySignature(sig.signature);
+                if (!existing) {
+                  await storage.createJeetSell({
+                    signature: sig.signature,
+                    walletAddress,
+                    soldAmount: tokenSold.toFixed(6),
+                    soldValueSol: solReceived.toFixed(9),
+                    slot: tx.slot,
+                    blockTime: new Date(sig.blockTime * 1000),
+                  });
+                  console.log(`[Jeet] Stored sell: ${formatTokenAmount(tokenSold)} $NORMIE by ${walletAddress.slice(0,8)}...`);
+                }
+              }
+            } catch (storeErr) {
+              console.error("[Jeet] Error storing sell:", storeErr);
+            }
+          }
+          
           // Send push notification for jeet sells (only once per transaction)
           if (isJeetSell && !notifiedTransactions.has(sig.signature)) {
             notifiedTransactions.add(sig.signature);

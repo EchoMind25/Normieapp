@@ -1534,6 +1534,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/leaderboard/jeets", async (req, res) => {
+    try {
+      const range = (req.query.range as "24h" | "7d" | "30d" | "all") || "all";
+      const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+      
+      const leaderboard = await storage.getJeetLeaderboard(limit, range);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("[Jeet Leaderboard] Error fetching jeet leaderboard:", error);
+      res.json([]);
+    }
+  });
+
   // =====================================================
   // Art Gallery Routes
   // =====================================================
