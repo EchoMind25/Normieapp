@@ -811,6 +811,41 @@ export type InsertBugReport = z.infer<typeof insertBugReportSchema>;
 export type BugReport = typeof bugReports.$inferSelect;
 
 // =====================================================
+// Jeet Sells Table - Track all sell transactions for leaderboard
+// =====================================================
+
+export const jeetSells = pgTable("jeet_sells", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  signature: varchar("signature", { length: 100 }).unique().notNull(),
+  walletAddress: varchar("wallet_address", { length: 44 }).notNull(),
+  soldAmount: decimal("sold_amount", { precision: 20, scale: 6 }).notNull(),
+  soldValueSol: decimal("sold_value_sol", { precision: 20, scale: 9 }),
+  slot: integer("slot"),
+  blockTime: timestamp("block_time"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_jeet_sells_wallet").on(table.walletAddress),
+  index("idx_jeet_sells_block_time").on(table.blockTime),
+  index("idx_jeet_sells_amount").on(table.soldAmount),
+]);
+
+export const insertJeetSellSchema = createInsertSchema(jeetSells).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertJeetSell = z.infer<typeof insertJeetSellSchema>;
+export type JeetSell = typeof jeetSells.$inferSelect;
+
+// Aggregated jeet leaderboard entry type
+export type JeetLeaderboardEntry = {
+  rank: number;
+  walletAddress: string;
+  totalSold: number;
+  sellCount: number;
+  solscanUrl: string;
+};
+
+// =====================================================
 // Normie token constants
 // =====================================================
 
