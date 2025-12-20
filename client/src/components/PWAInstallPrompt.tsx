@@ -171,7 +171,7 @@ export function PWAInstallPrompt() {
             </Button>
             <Link href="/install">
               <Button
-                variant="link"
+                variant="ghost"
                 size="sm"
                 className="text-xs text-primary gap-1"
                 data-testid="link-full-guide"

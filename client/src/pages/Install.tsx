@@ -142,11 +142,16 @@ export default function Install() {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [activeTab, setActiveTab] = useState(() => getTabValueForDevice(deviceInfo.device));
+  
+  const isPreviewMode = typeof window !== 'undefined' && 
+    new URLSearchParams(window.location.search).get('preview') === 'true';
 
   useEffect(() => {
     captureInstallPrompt();
-    setIsInstalled(isStandalone());
-  }, []);
+    if (!isPreviewMode) {
+      setIsInstalled(isStandalone());
+    }
+  }, [isPreviewMode]);
 
   const handleNativeInstall = useCallback(async () => {
     setIsInstalling(true);
@@ -157,7 +162,7 @@ export default function Install() {
     }
   }, []);
 
-  if (isInstalled) {
+  if (isInstalled && !isPreviewMode) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">

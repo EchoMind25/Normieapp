@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Terminal, Copy, Check, ExternalLink } from "lucide-react";
+import { Terminal, Copy, Check, ExternalLink, Download } from "lucide-react";
 import { SiTelegram, SiX, SiSolana } from "react-icons/si";
 import { NORMIE_TOKEN } from "@shared/schema";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { FeedbackForm } from "./FeedbackForm";
+import { Link } from "wouter";
 
 export function Footer() {
   const [copied, setCopied] = useState(false);
@@ -97,6 +98,14 @@ export function Footer() {
               >
                 Community
               </a>
+              <Link
+                href="/install"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                data-testid="footer-nav-install"
+              >
+                <Download className="h-3 w-3" />
+                Install App
+              </Link>
             </nav>
           </div>
 
