@@ -330,13 +330,9 @@
   animation: scanline-flicker 4s ease-in-out infinite;
 }
 
-/* Light mode adjustments for ambient effects */
-.light .ambient-glow-orb {
-  background: radial-gradient(circle, hsl(var(--primary) / 0.06) 0%, transparent 70%);
-}
-
-.light .ambient-glow-orb-2 {
-  background: radial-gradient(circle, hsl(var(--primary) / 0.04) 0%, transparent 70%);
+/* Light mode: Hide ambient glow orbs - the monogram pattern is the star */
+.light .ambient-background {
+  display: none;
 }
 
 .light .scanline-overlay {
