@@ -108,7 +108,9 @@ Create `ios/App/App/PrivacyInfo.xcprivacy`:
 
 **Category**: Finance
 
-**Age Rating**: 17+ (Unrestricted Web Access, Financial Information)
+**Age Rating**: 18+ (Financial Information, Investment Education)
+
+Note: As of July 2025, Apple uses the new rating system (4+, 9+, 13+, 16+, 18+). The old 17+ rating has been replaced with 18+.
 
 **Keywords**: NFT, Solana, cryptocurrency, blockchain, tracker, memecoin, crypto, price, alert
 
@@ -128,7 +130,7 @@ DISCLAIMER:
 This app provides informational price tracking for educational purposes only. We do not facilitate cryptocurrency or NFT purchases. All trading occurs through external wallets and platforms. Not financial advice - always do your own research.
 
 REQUIREMENTS:
-- Must be 17+ to use due to financial content
+- Must be 18+ to use due to financial content
 - Internet connection required for real-time data
 ```
 
@@ -145,7 +147,7 @@ Key compliance points:
 - NO in-app cryptocurrency purchases
 - NO Apple IAP bypassing  
 - All pricing is informational/educational only
-- Age-gated 17+ due to financial content
+- Age-gated 18+ due to financial content
 - Prominent risk disclaimers throughout app
 - Community features are moderated with reporting functionality
 

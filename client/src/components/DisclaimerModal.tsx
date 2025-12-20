@@ -57,7 +57,7 @@ export function DisclaimerModal() {
               </p>
 
               <p>
-                <strong>Age Requirement:</strong> You must be 17 years or older to use this application due to financial information content.
+                <strong>Age Requirement:</strong> You must be 18 years or older to use this application due to financial information content.
               </p>
             </div>
 
