@@ -52,7 +52,6 @@ function getConnection(): Connection {
     // Prefer Helius RPC if available, otherwise use public endpoint
     const endpoint = HELIUS_API_KEY ? HELIUS_RPC_URL : RPC_ENDPOINT;
     connection = new Connection(endpoint, "confirmed");
-    console.log(`[Solana] Using RPC: ${HELIUS_API_KEY ? 'Helius' : 'PublicNode'}`);
   }
   return connection;
 }
