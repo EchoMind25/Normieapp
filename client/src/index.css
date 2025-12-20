@@ -330,28 +330,10 @@
   animation: scanline-flicker 4s ease-in-out infinite;
 }
 
-/* Light mode: Hide ambient glow orbs - the monogram pattern is the star */
-.light .ambient-background {
-  display: none;
-}
-
+/* Light mode: Hide ambient effects - the monogram pattern is the star */
+.light .ambient-background,
 .light .scanline-overlay {
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    hsl(var(--foreground) / 0.008) 2px,
-    hsl(var(--foreground) / 0.008) 4px
-  );
-}
-
-.light .scanline-overlay::after {
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    hsl(var(--primary) / 0.01) 50%,
-    transparent 100%
-  );
+  display: none;
 }
 
 /* Luxury Monogram Pattern Backdrop */
@@ -367,22 +349,18 @@
   background-size: 100px 100px;
 }
 
-/* Light theme: Semi-transparent glassmorphism cards */
+/* Light theme: Warm cream cards without distracting blur */
 .light .shadcn-card {
-  background-color: hsl(42 58% 86% / 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: hsl(42 58% 88% / 0.95);
 }
 
 .light .bg-card {
-  background-color: hsl(42 58% 86% / 0.85);
+  background-color: hsl(42 58% 88% / 0.95);
 }
 
-/* Light theme sidebar and popover transparency */
+/* Light theme sidebar */
 .light [data-sidebar] {
-  background-color: hsl(42 50% 84% / 0.9);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background-color: hsl(42 50% 85% / 0.95);
 }
 
 /* Light theme: Terracotta/Burnt Orange base with darker pattern */

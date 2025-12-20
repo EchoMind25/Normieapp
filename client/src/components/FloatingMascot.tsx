@@ -200,11 +200,11 @@ export function FloatingMascot({ priceChange = 0, devBuys = [], activity = [] }:
   const getBubbleStyles = () => {
     switch (speechBubble?.type) {
       case "whale":
-        return "bg-primary/95 border-primary text-primary-foreground";
+        return "bg-primary border-primary text-primary-foreground shadow-xl";
       case "jeet":
-        return "bg-destructive/95 border-destructive text-destructive-foreground";
+        return "bg-destructive border-destructive text-destructive-foreground shadow-xl";
       default:
-        return "bg-card/95 border-border text-card-foreground";
+        return "bg-card border-2 border-primary/30 text-card-foreground shadow-lg";
     }
   };
 
