@@ -1004,86 +1004,108 @@ export async function backfillHistoricalJeets(limit: number = 500): Promise<{
   backfillInProgress = true;
   let processed = 0;
   let newSells = 0;
+  const pageSize = 50; // Birdeye page size
+  let offset = 0;
+  let hasMore = true;
   
   try {
     console.log(`[Jeet Backfill] Starting historical backfill (limit: ${limit})...`);
     
-    // Fetch trade history from Birdeye
-    const url = `${BIRDEYE_API}/defi/txs/token?address=${TOKEN_ADDRESS}&offset=0&limit=${Math.min(limit, 100)}&tx_type=swap`;
-    
-    const response = await fetch(url, {
-      headers: {
-        "Accept": "application/json",
-        "X-API-KEY": BIRDEYE_API_KEY,
-        "x-chain": "solana",
-      },
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Jeet Backfill] Birdeye API error ${response.status}: ${errorText}`);
-      backfillInProgress = false;
-      return { success: false, processed: 0, newSells: 0, error: `Birdeye API error: ${response.status}` };
-    }
-    
-    const data = await response.json();
-    
-    if (!data.success || !data.data?.items) {
-      console.log("[Jeet Backfill] No trade data returned from Birdeye");
-      backfillInProgress = false;
-      return { success: true, processed: 0, newSells: 0, error: "No trade data available" };
-    }
-    
-    const trades: BirdeyeTrade[] = data.data.items;
-    console.log(`[Jeet Backfill] Found ${trades.length} trades from Birdeye`);
-    
-    // Process each sell trade
-    for (const trade of trades) {
-      processed++;
+    // Paginate through Birdeye API
+    while (hasMore && processed < limit) {
+      const url = `${BIRDEYE_API}/defi/txs/token?address=${TOKEN_ADDRESS}&offset=${offset}&limit=${pageSize}&tx_type=swap`;
       
-      // Only process sell transactions
-      if (trade.side !== "sell") continue;
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/json",
+          "X-API-KEY": BIRDEYE_API_KEY,
+          "x-chain": "solana",
+        },
+      });
       
-      const tokenAmount = trade.tokenAmount || 0;
-      const solAmount = trade.solAmount || 0;
-      const walletAddress = trade.owner || "";
-      const signature = trade.txHash || "";
-      
-      if (!walletAddress || !signature || tokenAmount <= 0) continue;
-      
-      try {
-        // Check if already stored
-        const existing = await storage.getJeetSellBySignature(signature);
-        if (existing) continue;
-        
-        const sellTime = new Date(trade.blockUnixTime * 1000);
-        
-        // Store individual transaction
-        await storage.createJeetSell({
-          signature,
-          walletAddress,
-          soldAmount: tokenAmount.toFixed(6),
-          soldValueSol: solAmount.toFixed(9),
-          slot: null,
-          blockTime: sellTime,
-        });
-        
-        // Update wallet totals
-        await storage.upsertJeetWalletTotal(
-          walletAddress,
-          tokenAmount,
-          solAmount,
-          sellTime
-        );
-        
-        newSells++;
-        
-        if (newSells % 10 === 0) {
-          console.log(`[Jeet Backfill] Processed ${newSells} new sells...`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Jeet Backfill] Birdeye API error ${response.status}: ${errorText}`);
+        // If rate limited, stop but don't fail - we got some data
+        if (response.status === 429) {
+          console.log(`[Jeet Backfill] Rate limited after ${processed} trades, stopping pagination`);
+          break;
         }
-      } catch (err) {
-        console.error(`[Jeet Backfill] Error storing trade ${signature}:`, err);
+        backfillInProgress = false;
+        return { success: false, processed, newSells, error: `Birdeye API error: ${response.status}` };
       }
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.data?.items || data.data.items.length === 0) {
+        console.log(`[Jeet Backfill] No more trades at offset ${offset}`);
+        hasMore = false;
+        break;
+      }
+      
+      const trades: BirdeyeTrade[] = data.data.items;
+      console.log(`[Jeet Backfill] Page offset=${offset}: ${trades.length} trades`);
+      
+      // Process each sell trade
+      for (const trade of trades) {
+        if (processed >= limit) break;
+        processed++;
+        
+        // Only process sell transactions
+        if (trade.side !== "sell") continue;
+        
+        const tokenAmount = trade.tokenAmount || 0;
+        const solAmount = trade.solAmount || 0;
+        const walletAddress = trade.owner || "";
+        const signature = trade.txHash || "";
+        
+        if (!walletAddress || !signature || tokenAmount <= 0) continue;
+        
+        try {
+          // Check if already stored
+          const existing = await storage.getJeetSellBySignature(signature);
+          if (existing) continue;
+          
+          const sellTime = new Date(trade.blockUnixTime * 1000);
+          
+          // Store individual transaction
+          await storage.createJeetSell({
+            signature,
+            walletAddress,
+            soldAmount: tokenAmount.toFixed(6),
+            soldValueSol: solAmount.toFixed(9),
+            slot: null,
+            blockTime: sellTime,
+          });
+          
+          // Update wallet totals
+          await storage.upsertJeetWalletTotal(
+            walletAddress,
+            tokenAmount,
+            solAmount,
+            sellTime
+          );
+          
+          newSells++;
+          
+          if (newSells % 25 === 0) {
+            console.log(`[Jeet Backfill] Processed ${newSells} new sells...`);
+          }
+        } catch (err) {
+          console.error(`[Jeet Backfill] Error storing trade ${signature}:`, err);
+        }
+      }
+      
+      // Move to next page
+      offset += trades.length;
+      
+      // If we got fewer than pageSize, we've reached the end
+      if (trades.length < pageSize) {
+        hasMore = false;
+      }
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
     
     console.log(`[Jeet Backfill] Complete! Processed ${processed} trades, ${newSells} new sells stored`);
