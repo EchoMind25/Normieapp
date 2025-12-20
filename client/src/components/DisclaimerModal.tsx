@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ export function DisclaimerModal() {
   const [isOpen, setIsOpen] = useState(false);
 
   // Hide on embed pages
-  const isEmbed = window.location.pathname.startsWith('/embed');
+  const isEmbed = useMemo(() => window.location.pathname.startsWith('/embed'), []);
 
   useEffect(() => {
     if (!isEmbed && !hasAcceptedDisclaimer()) {

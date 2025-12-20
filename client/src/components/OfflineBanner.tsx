@@ -1,9 +1,10 @@
+import { useMemo } from 'react';
 import { WifiOff } from 'lucide-react';
 import { useNetworkStatus } from '@/hooks/use-network';
 
 export function OfflineBanner() {
   const { isOffline } = useNetworkStatus();
-  const isEmbed = window.location.pathname.startsWith('/embed');
+  const isEmbed = useMemo(() => window.location.pathname.startsWith('/embed'), []);
 
   if (isEmbed || !isOffline) return null;
 

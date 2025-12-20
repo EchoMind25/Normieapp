@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Share, MoreVertical, Plus, Download, ExternalLink, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -62,7 +62,7 @@ export function PWAInstallPrompt() {
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [deviceInfo] = useState(() => getDeviceInfo());
-  const isEmbed = window.location.pathname.startsWith('/embed');
+  const isEmbed = useMemo(() => window.location.pathname.startsWith('/embed'), []);
 
   useEffect(() => {
     if (isEmbed) return;

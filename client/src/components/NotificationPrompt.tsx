@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +30,7 @@ export function NotificationPrompt() {
   } = usePushNotifications();
 
   const [showPrompt, setShowPrompt] = useState(false);
-  const isEmbed = window.location.pathname.startsWith('/embed');
+  const isEmbed = useMemo(() => window.location.pathname.startsWith('/embed'), []);
 
   useEffect(() => {
     if (isSubscribed && showPrompt) {
