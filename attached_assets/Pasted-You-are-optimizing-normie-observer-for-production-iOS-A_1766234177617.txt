@@ -1,0 +1,953 @@
+You are optimizing normie.observer for production iOS App Store submission while implementing cost-saving backend improvements.
+
+CRITICAL CONTEXT:
+- normie.observer is a Solana memecoin/NFT tracking platform
+- Currently making excessive API calls to external data sources
+- Preparing for iOS App Store submission (strict requirements)
+- Need to reduce infrastructure costs while improving performance
+- Support email: support@tryechomind.net (update everywhere)
+
+YOUR TASKS (3 Major Components):
+
+═══════════════════════════════════════════════════════════════
+TASK 1: API OPTIMIZATION & HISTORICAL DATA STORAGE
+═══════════════════════════════════════════════════════════════
+
+PROBLEM:
+- App currently polls external APIs constantly (expensive, wasteful)
+- No historical data storage (can't show price history without constant API calls)
+- Users see loading states unnecessarily
+
+SOLUTION ARCHITECTURE:
+
+**Backend Data Storage System:**
+
+Create a caching/storage layer that:
+1. Fetches data from external APIs only when data actually changes
+2. Stores historical price/NFT data in database
+3. Serves cached data to frontend
+4. Builds our own historical charts from stored data
+
+**Database Schema:**
+```sql
+-- Price history table
+CREATE TABLE price_history (
+  id SERIAL PRIMARY KEY,
+  token_address VARCHAR(44) NOT NULL,
+  price DECIMAL(20, 10) NOT NULL,
+  volume_24h DECIMAL(20, 2),
+  market_cap DECIMAL(20, 2),
+  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  source VARCHAR(50),
+  INDEX idx_token_time (token_address, timestamp),
+  INDEX idx_timestamp (timestamp)
+);
+
+-- NFT collection data
+CREATE TABLE nft_collections (
+  id SERIAL PRIMARY KEY,
+  collection_address VARCHAR(44) UNIQUE NOT NULL,
+  name VARCHAR(255),
+  floor_price DECIMAL(20, 10),
+  volume_24h DECIMAL(20, 2),
+  total_supply INTEGER,
+  metadata JSONB,
+  last_updated TIMESTAMP DEFAULT NOW(),
+  INDEX idx_updated (last_updated)
+);
+
+-- API cache table
+CREATE TABLE api_cache (
+  id SERIAL PRIMARY KEY,
+  cache_key VARCHAR(255) UNIQUE NOT NULL,
+  data JSONB NOT NULL,
+  etag VARCHAR(100),
+  last_modified TIMESTAMP,
+  expires_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  INDEX idx_key_expires (cache_key, expires_at)
+);
+```
+
+**Smart Polling Implementation:**
+```javascript
+// backend/services/dataFetcher.js
+
+class SmartDataFetcher {
+  constructor() {
+    this.pollInterval = 30000; // 30 seconds default
+    this.adaptiveIntervals = {
+      highVolatility: 15000,    // 15s for active tokens
+      mediumVolatility: 30000,  // 30s for normal
+      lowVolatility: 60000,     // 60s for stable
+      stale: 300000             // 5min for inactive
+    };
+  }
+
+  async fetchWithChangeDetection(endpoint, cacheKey) {
+    // Check cache first
+    const cached = await this.getFromCache(cacheKey);
+    
+    if (cached && !this.isExpired(cached)) {
+      return { data: cached.data, fromCache: true, changed: false };
+    }
+
+    // Fetch with ETag/Last-Modified headers
+    const headers = {};
+    if (cached?.etag) headers['If-None-Match'] = cached.etag;
+    if (cached?.last_modified) headers['If-Modified-Since'] = cached.last_modified;
+
+    const response = await fetch(endpoint, { headers });
+
+    // 304 Not Modified - no new data
+    if (response.status === 304) {
+      await this.updateCacheExpiry(cacheKey);
+      return { data: cached.data, fromCache: true, changed: false };
+    }
+
+    // New data detected
+    const newData = await response.json();
+    const changed = this.detectChanges(cached?.data, newData);
+
+    if (changed) {
+      await this.saveToCache(cacheKey, newData, response.headers);
+      await this.saveToHistory(newData); // Store historical data
+    }
+
+    return { data: newData, fromCache: false, changed };
+  }
+
+  detectChanges(oldData, newData) {
+    if (!oldData) return true;
+    
+    // Compare critical fields only
+    const oldHash = this.hashCriticalFields(oldData);
+    const newHash = this.hashCriticalFields(newData);
+    
+    return oldHash !== newHash;
+  }
+
+  hashCriticalFields(data) {
+    // Only hash fields that matter for display
+    const critical = {
+      price: data.price,
+      volume: data.volume_24h,
+      floor: data.floor_price
+    };
+    return JSON.stringify(critical);
+  }
+
+  async saveToHistory(data) {
+    // Store in price_history table
+    await db.query(`
+      INSERT INTO price_history (token_address, price, volume_24h, market_cap, source)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [data.token_address, data.price, data.volume_24h, data.market_cap, 'external_api']);
+  }
+}
+```
+
+**Adaptive Polling Intervals:**
+```javascript
+// Adjust poll frequency based on volatility
+class AdaptivePollManager {
+  async determinePollInterval(tokenAddress) {
+    // Get recent price volatility
+    const recentPrices = await db.query(`
+      SELECT price, timestamp 
+      FROM price_history 
+      WHERE token_address = $1 
+      AND timestamp > NOW() - INTERVAL '1 hour'
+      ORDER BY timestamp DESC
+    `, [tokenAddress]);
+
+    const volatility = this.calculateVolatility(recentPrices.rows);
+
+    if (volatility > 10) return this.adaptiveIntervals.highVolatility;
+    if (volatility > 5) return this.adaptiveIntervals.mediumVolatility;
+    if (volatility > 1) return this.adaptiveIntervals.lowVolatility;
+    return this.adaptiveIntervals.stale;
+  }
+
+  calculateVolatility(prices) {
+    if (prices.length < 2) return 0;
+    
+    const changes = [];
+    for (let i = 1; i < prices.length; i++) {
+      const change = Math.abs((prices[i].price - prices[i-1].price) / prices[i-1].price * 100);
+      changes.push(change);
+    }
+    
+    return changes.reduce((a, b) => a + b, 0) / changes.length;
+  }
+}
+```
+
+**WebSocket Alternative (Even Better):**
+```javascript
+// If external API supports WebSockets, use those instead
+class WebSocketDataStream {
+  constructor() {
+    this.ws = null;
+    this.subscriptions = new Set();
+  }
+
+  connect(wsEndpoint) {
+    this.ws = new WebSocket(wsEndpoint);
+    
+    this.ws.on('message', async (message) => {
+      const data = JSON.parse(message);
+      
+      // Only save if data actually changed
+      if (this.hasChanged(data)) {
+        await this.saveToHistory(data);
+        this.broadcastToClients(data); // Send to connected frontend clients
+      }
+    });
+  }
+
+  // Client only gets updates when data actually changes
+  broadcastToClients(data) {
+    io.emit('price-update', data); // Socket.io to frontend
+  }
+}
+```
+
+**Frontend Smart Refresh:**
+```javascript
+// frontend/services/dataService.js
+
+// Instead of constant polling
+setInterval(() => fetchPrices(), 5000); // ❌ BAD
+
+// Use server-sent events or WebSocket
+const eventSource = new EventSource('/api/price-stream');
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  updateChart(data); // ✅ GOOD - only updates when server sends new data
+};
+
+// Or long-polling with change detection
+async function smartFetch() {
+  const response = await fetch('/api/prices?waitForChange=true');
+  const data = await response.json();
+  
+  if (data.changed) {
+    updateChart(data);
+  }
+  
+  smartFetch(); // Recursive, but server holds connection until data changes
+}
+```
+
+**Historical Chart Generation:**
+```javascript
+// API endpoint to get historical data from OUR database
+app.get('/api/chart/:tokenAddress', async (req, res) => {
+  const { tokenAddress } = req.params;
+  const { timeframe = '24h' } = req.query;
+
+  const interval = {
+    '1h': '1 minute',
+    '24h': '5 minutes',
+    '7d': '1 hour',
+    '30d': '4 hours'
+  }[timeframe];
+
+  // Aggregate from our stored data
+  const chartData = await db.query(`
+    SELECT 
+      date_trunc($1, timestamp) as time,
+      AVG(price) as price,
+      MAX(price) as high,
+      MIN(price) as low,
+      FIRST(price) as open,
+      LAST(price) as close
+    FROM price_history
+    WHERE token_address = $2
+    AND timestamp > NOW() - INTERVAL $3
+    GROUP BY time
+    ORDER BY time ASC
+  `, [interval, tokenAddress, timeframe]);
+
+  res.json(chartData.rows);
+});
+```
+
+**Cost Savings Estimate:**
+
+Before:
+- 100 users × 1 request/5s = 20 requests/second
+- 20 req/s × 3600s = 72,000 requests/hour
+- External API cost: $X per 1M requests
+
+After:
+- 1 backend poll/30s (when data changes) = ~2 requests/minute
+- 2 req/min × 60min = 120 requests/hour
+- **Cost reduction: 99.8%**
+
+═══════════════════════════════════════════════════════════════
+TASK 2: iOS APP STORE SUBMISSION AUDIT
+═══════════════════════════════════════════════════════════════
+
+Perform comprehensive audit and fix ALL issues before submission:
+
+**AUDIT CATEGORIES:**
+
+1. **App Store Compliance:**
+   - [ ] No cryptocurrency purchases via Apple IAP
+   - [ ] Age rating set to 17+ (financial content)
+   - [ ] All external links show Apple's disclosure screen
+   - [ ] Privacy Policy accessible and complete
+   - [ ] Terms of Service linked
+   - [ ] Support URL works: support@tryechomind.net
+   - [ ] Risk disclaimers on all price displays
+   - [ ] No "get rich quick" messaging
+   - [ ] Content moderation system (if community features)
+
+2. **Security Vulnerabilities:**
+   - [ ] No API keys exposed in frontend code
+   - [ ] All API endpoints require authentication
+   - [ ] Input validation on all forms
+   - [ ] SQL injection prevention (parameterized queries)
+   - [ ] XSS protection (sanitize user content)
+   - [ ] CSRF tokens on state-changing requests
+   - [ ] Rate limiting on all endpoints
+   - [ ] HTTPS only (no mixed content)
+   - [ ] Secure password storage (bcrypt/argon2)
+   - [ ] No console.log() of sensitive data
+
+3. **Bug Detection:**
+   - [ ] All API error states handled gracefully
+   - [ ] Loading states for all async operations
+   - [ ] Offline mode works (graceful degradation)
+   - [ ] No infinite loops or memory leaks
+   - [ ] All images have alt text (accessibility)
+   - [ ] No broken links (404 errors)
+   - [ ] Chart renders on all screen sizes
+   - [ ] Works on iOS Safari (iOS 15+)
+   - [ ] No layout breaks on iPhone SE (small screen)
+   - [ ] No layout breaks on iPad Pro (large screen)
+
+4. **Performance:**
+   - [ ] Initial load under 3 seconds
+   - [ ] Time to Interactive under 5 seconds
+   - [ ] No blocking JavaScript
+   - [ ] Images optimized (<200KB each)
+   - [ ] API responses cached appropriately
+   - [ ] No excessive re-renders in React/Vue
+   - [ ] Memory usage under 150MB
+   - [ ] 60fps scrolling and animations
+
+5. **Legal Requirements:**
+   - [ ] Privacy Policy includes:
+       - What data is collected
+       - How data is used
+       - Third-party services
+       - Data retention policy
+       - User rights (GDPR/CCPA)
+       - Contact: support@tryechomind.net
+   - [ ] Terms of Service includes:
+       - Acceptable use
+       - Disclaimers
+       - Limitation of liability
+       - Governing law
+   - [ ] Copyright notices
+   - [ ] Third-party license attributions
+
+**SPECIFIC FIXES REQUIRED:**
+
+Update ALL instances of support email:
+```javascript
+// Find and replace everywhere:
+OLD: support@normie.observer
+NEW: support@tryechomind.net
+
+Files to check:
+- package.json (homepage, bugs.url)
+- capacitor.config.ts
+- Info.plist (support URL)
+- Privacy Policy
+- Terms of Service
+- About page
+- Contact forms
+- Error messages
+- Footer
+- README
+```
+
+**Security Scan Implementation:**
+```javascript
+// Run automated security audit
+const securityChecks = [
+  {
+    name: 'API Keys in Frontend',
+    test: () => {
+      const frontendFiles = glob.sync('src/**/*.{js,jsx,ts,tsx}');
+      const violations = [];
+      
+      frontendFiles.forEach(file => {
+        const content = fs.readFileSync(file, 'utf8');
+        if (content.match(/sk_[a-zA-Z0-9]{32,}/)) {
+          violations.push(`Potential API key in ${file}`);
+        }
+      });
+      
+      return violations.length === 0 ? 'PASS' : `FAIL: ${violations.join(', ')}`;
+    }
+  },
+  {
+    name: 'SQL Injection Prevention',
+    test: () => {
+      const backendFiles = glob.sync('backend/**/*.js');
+      const violations = [];
+      
+      backendFiles.forEach(file => {
+        const content = fs.readFileSync(file, 'utf8');
+        // Check for string interpolation in SQL queries
+        if (content.match(/db\.query\(`.*\$\{.*\}`/)) {
+          violations.push(`Potential SQL injection in ${file}`);
+        }
+      });
+      
+      return violations.length === 0 ? 'PASS' : `FAIL: ${violations.join(', ')}`;
+    }
+  },
+  // ... more checks
+];
+
+// Generate audit report
+const auditReport = securityChecks.map(check => ({
+  check: check.name,
+  result: check.test()
+}));
+
+console.table(auditReport);
+```
+
+**Create SECURITY_AUDIT.md:**
+
+Document all findings and fixes:
+```markdown
+# Security & Compliance Audit Report
+
+## Critical Issues (Must Fix Before Submission)
+- [ ] Issue 1: Description and fix
+- [ ] Issue 2: Description and fix
+
+## Medium Priority
+- [ ] Issue 3: Description and fix
+
+## Low Priority / Enhancements
+- [ ] Issue 4: Description and fix
+
+## Compliance Checklist
+- [x] Age rating: 17+
+- [x] Privacy Policy: ✓
+- [x] Support email: support@tryechomind.net
+- [ ] ... etc
+```
+
+═══════════════════════════════════════════════════════════════
+TASK 3: BUG REPORT FEATURE WITH VISUAL PAGE AUDIT
+═══════════════════════════════════════════════════════════════
+
+**REQUIREMENTS:**
+
+Create a bug reporting system that:
+1. Opens from profile dropdown menu
+2. Captures current page screenshot
+3. Validates all images are loading
+4. Allows user to annotate/highlight issues
+5. Submits to backend with context
+6. Sends email to support@tryechomind.net
+
+**IMPLEMENTATION:**
+
+**Frontend Component:**
+```javascript
+// components/BugReportModal.jsx
+
+import { useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
+
+export default function BugReportModal({ isOpen, onClose }) {
+  const [screenshot, setScreenshot] = useState(null);
+  const [imageAudit, setImageAudit] = useState([]);
+  const [bugDescription, setBugDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      capturePageScreenshot();
+      auditPageImages();
+    }
+  }, [isOpen]);
+
+  const capturePageScreenshot = async () => {
+    try {
+      const canvas = await html2canvas(document.body, {
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#000000'
+      });
+      
+      const screenshotData = canvas.toDataURL('image/png');
+      setScreenshot(screenshotData);
+    } catch (error) {
+      console.error('Screenshot failed:', error);
+    }
+  };
+
+  const auditPageImages = () => {
+    const images = document.querySelectorAll('img');
+    const audit = [];
+
+    images.forEach((img, index) => {
+      const status = {
+        index,
+        src: img.src,
+        alt: img.alt || 'NO ALT TEXT',
+        loaded: img.complete && img.naturalHeight > 0,
+        visible: img.offsetWidth > 0 && img.offsetHeight > 0,
+        size: `${img.naturalWidth}×${img.naturalHeight}`
+      };
+
+      if (!status.loaded) {
+        status.error = 'Failed to load';
+      } else if (!status.visible) {
+        status.error = 'Hidden/not visible';
+      } else if (!img.alt) {
+        status.error = 'Missing alt text (accessibility issue)';
+      }
+
+      audit.push(status);
+    });
+
+    setImageAudit(audit);
+  };
+
+  const submitBugReport = async () => {
+    setIsSubmitting(true);
+
+    const reportData = {
+      description: bugDescription,
+      screenshot: screenshot,
+      pageUrl: window.location.href,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+      imageAudit: imageAudit,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      },
+      brokenImages: imageAudit.filter(img => !img.loaded),
+      performanceMetrics: getPerformanceMetrics()
+    };
+
+    try {
+      await fetch('/api/bug-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reportData)
+      });
+
+      alert('Bug report submitted successfully!');
+      onClose();
+    } catch (error) {
+      alert('Failed to submit report. Please email support@tryechomind.net');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getPerformanceMetrics = () => {
+    const perf = performance.getEntriesByType('navigation')[0];
+    return {
+      loadTime: perf?.loadEventEnd - perf?.fetchStart,
+      domInteractive: perf?.domInteractive,
+      resources: performance.getEntriesByType('resource').length
+    };
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="bug-report-modal">
+      <div className="modal-content">
+        <h2>Report a Bug</h2>
+        
+        {/* Screenshot Preview */}
+        <div className="screenshot-preview">
+          <h3>Page Snapshot</h3>
+          {screenshot ? (
+            <img src={screenshot} alt="Page screenshot" style={{maxWidth: '100%'}} />
+          ) : (
+            <p>Capturing screenshot...</p>
+          )}
+        </div>
+
+        {/* Image Audit Results */}
+        <div className="image-audit">
+          <h3>Image Status ({imageAudit.length} total)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Status</th>
+                <th>Size</th>
+                <th>Alt Text</th>
+              </tr>
+            </thead>
+            <tbody>
+              {imageAudit.map((img, i) => (
+                <tr key={i} className={!img.loaded ? 'error' : ''}>
+                  <td><a href={img.src} target="_blank">{img.src.substring(0, 50)}...</a></td>
+                  <td>{img.loaded ? '✓ Loaded' : '✗ ' + img.error}</td>
+                  <td>{img.size}</td>
+                  <td>{img.alt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Bug Description */}
+        <div className="bug-description">
+          <h3>Describe the Issue</h3>
+          <textarea
+            value={bugDescription}
+            onChange={(e) => setBugDescription(e.target.value)}
+            placeholder="What went wrong? What were you trying to do?"
+            rows={5}
+            required
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="modal-actions">
+          <button onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </button>
+          <button 
+            onClick={submitBugReport} 
+            disabled={isSubmitting || !bugDescription}
+            className="primary"
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Report'}
+          </button>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .bug-report-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+        }
+
+        .modal-content {
+          background: #1a1a1a;
+          border: 2px solid #00ff88;
+          border-radius: 12px;
+          padding: 24px;
+          max-width: 800px;
+          max-height: 90vh;
+          overflow-y: auto;
+          width: 90%;
+        }
+
+        .image-audit table {
+          width: 100%;
+          margin-top: 12px;
+          border-collapse: collapse;
+        }
+
+        .image-audit th,
+        .image-audit td {
+          padding: 8px;
+          text-align: left;
+          border-bottom: 1px solid #333;
+        }
+
+        .image-audit tr.error {
+          background: rgba(255, 0, 0, 0.1);
+          color: #ff6b6b;
+        }
+
+        textarea {
+          width: 100%;
+          background: #0a0a0a;
+          border: 1px solid #333;
+          color: #fff;
+          padding: 12px;
+          border-radius: 8px;
+          font-family: inherit;
+        }
+
+        .modal-actions {
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+          margin-top: 24px;
+        }
+
+        button {
+          padding: 10px 20px;
+          border-radius: 8px;
+          border: 1px solid #333;
+          background: #0a0a0a;
+          color: #fff;
+          cursor: pointer;
+        }
+
+        button.primary {
+          background: #00ff88;
+          color: #000;
+          border: none;
+        }
+
+        button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      `}</style>
+    </div>
+  );
+}
+```
+
+**Add to Profile Dropdown:**
+```javascript
+// components/ProfileDropdown.jsx
+
+import { useState } from 'react';
+import BugReportModal from './BugReportModal';
+
+export default function ProfileDropdown() {
+  const [showBugReport, setShowBugReport] = useState(false);
+
+  return (
+    <>
+      <div className="profile-dropdown">
+        <button onClick={() => {/* profile stuff */}}>
+          My Profile
+        </button>
+        <button onClick={() => {/* settings */}}>
+          Settings
+        </button>
+        <button onClick={() => setShowBugReport(true)} className="bug-report-btn">
+          🐛 Report a Bug
+        </button>
+        <button onClick={() => {/* logout */}}>
+          Logout
+        </button>
+      </div>
+
+      <BugReportModal 
+        isOpen={showBugReport}
+        onClose={() => setShowBugReport(false)}
+      />
+    </>
+  );
+}
+```
+
+**Backend Handler:**
+```javascript
+// backend/routes/bugReport.js
+
+const nodemailer = require('nodemailer');
+const fs = require('fs').promises;
+
+app.post('/api/bug-report', async (req, res) => {
+  const { description, screenshot, pageUrl, userAgent, imageAudit, brokenImages, viewport, performanceMetrics, timestamp } = req.body;
+
+  // Save to database
+  const reportId = await db.query(`
+    INSERT INTO bug_reports (
+      description, page_url, user_agent, screenshot_data, 
+      image_audit, broken_images_count, viewport, performance_metrics, created_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING id
+  `, [
+    description,
+    pageUrl,
+    userAgent,
+    screenshot, // base64 string
+    JSON.stringify(imageAudit),
+    brokenImages.length,
+    JSON.stringify(viewport),
+    JSON.stringify(performanceMetrics),
+    timestamp
+  ]);
+
+  // Send email to support
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+
+  const emailHTML = `
+    <h2>New Bug Report #${reportId.rows[0].id}</h2>
+    
+    <h3>Description:</h3>
+    <p>${description}</p>
+    
+    <h3>Page Info:</h3>
+    <ul>
+      <li>URL: ${pageUrl}</li>
+      <li>User Agent: ${userAgent}</li>
+      <li>Viewport: ${viewport.width}×${viewport.height}</li>
+      <li>Timestamp: ${timestamp}</li>
+    </ul>
+    
+    <h3>Broken Images:</h3>
+    ${brokenImages.length > 0 ? `
+      <ul>
+        ${brokenImages.map(img => `<li>${img.src} - ${img.error}</li>`).join('')}
+      </ul>
+    ` : '<p>No broken images detected</p>'}
+    
+    <h3>Performance:</h3>
+    <ul>
+      <li>Load Time: ${performanceMetrics.loadTime}ms</li>
+      <li>DOM Interactive: ${performanceMetrics.domInteractive}ms</li>
+      <li>Resources: ${performanceMetrics.resources}</li>
+    </ul>
+    
+    <p><strong>Screenshot attached</strong></p>
+    
+    <p>View full report: <a href="${process.env.APP_URL}/admin/bug-reports/${reportId.rows[0].id}">Admin Panel</a></p>
+  `;
+
+  // Convert base64 screenshot to attachment
+  const screenshotBuffer = Buffer.from(screenshot.split(',')[1], 'base64');
+
+  await transporter.sendMail({
+    from: 'noreply@normie.observer',
+    to: 'support@tryechomind.net',
+    subject: `Bug Report #${reportId.rows[0].id} - ${pageUrl}`,
+    html: emailHTML,
+    attachments: [
+      {
+        filename: `screenshot-${reportId.rows[0].id}.png`,
+        content: screenshotBuffer
+      }
+    ]
+  });
+
+  res.json({ success: true, reportId: reportId.rows[0].id });
+});
+```
+
+**Database Schema:**
+```sql
+CREATE TABLE bug_reports (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  description TEXT NOT NULL,
+  page_url TEXT NOT NULL,
+  user_agent TEXT,
+  screenshot_data TEXT, -- base64
+  image_audit JSONB,
+  broken_images_count INTEGER DEFAULT 0,
+  viewport JSONB,
+  performance_metrics JSONB,
+  status VARCHAR(20) DEFAULT 'open', -- open, investigating, resolved
+  created_at TIMESTAMP DEFAULT NOW(),
+  resolved_at TIMESTAMP,
+  INDEX idx_status (status),
+  INDEX idx_created (created_at)
+);
+```
+
+═══════════════════════════════════════════════════════════════
+DELIVERABLES
+═══════════════════════════════════════════════════════════════
+
+Provide:
+
+1. **API Optimization:**
+   - SmartDataFetcher class (complete)
+   - Database schema SQL files
+   - Migration scripts
+   - API endpoint refactoring
+   - Cost comparison report (before/after)
+
+2. **iOS Audit:**
+   - SECURITY_AUDIT.md (comprehensive report)
+   - Fixed code files (all violations addressed)
+   - Updated support email everywhere
+   - Privacy Policy template
+   - Terms of Service template
+   - App Store submission checklist
+
+3. **Bug Report Feature:**
+   - BugReportModal component (complete)
+   - Backend API handler
+   - Email notification setup
+   - Admin panel to view reports (bonus)
+   - Testing instructions
+
+4. **Documentation:**
+   - API_OPTIMIZATION.md (how new system works)
+   - DEPLOYMENT.md (how to deploy changes)
+   - MONITORING.md (how to track API usage reduction)
+
+═══════════════════════════════════════════════════════════════
+TESTING REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+Before considering this complete, test:
+
+**API Optimization:**
+- [ ] Data only fetches when external API data changes
+- [ ] Historical charts load from database, not external API
+- [ ] Adaptive polling adjusts based on volatility
+- [ ] API call count reduced by >90%
+
+**iOS Audit:**
+- [ ] All security vulnerabilities fixed
+- [ ] No API keys in frontend code
+- [ ] All SQL queries use parameterized queries
+- [ ] All forms validate input
+- [ ] support@tryechomind.net appears everywhere
+- [ ] Privacy Policy loads correctly
+- [ ] App works offline
+
+**Bug Report:**
+- [ ] Modal opens from profile dropdown
+- [ ] Screenshot captures correctly
+- [ ] Broken images detected
+- [ ] Form submits successfully
+- [ ] Email received at support@tryechomind.net
+- [ ] Screenshot attachment works
+- [ ] Report saved to database
+
+═══════════════════════════════════════════════════════════════
+CONSTRAINTS
+═══════════════════════════════════════════════════════════════
+
+- Do NOT break existing functionality
+- Maintain backward compatibility
+- Keep UI/UX consistent
+- Support email MUST be support@tryechomind.net everywhere
+- Database migrations must be reversible
+- All changes must be production-ready
+- Code must pass security audit
+- Must work on iOS Safari 15+
+
+Build this as production-ready code optimized for App Store submission and cost reduction.Claude is AI and can make mistakes. Please double-check responses.
