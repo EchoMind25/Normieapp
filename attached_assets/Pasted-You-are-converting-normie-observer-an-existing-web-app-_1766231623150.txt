@@ -1,0 +1,292 @@
+You are converting normie.observer (an existing web app) into an iOS App Store-ready application using Capacitor.
+
+CRITICAL CONTEXT:
+- normie.observer is ALREADY BUILT as a web app (React/Vue/vanilla JS)
+- DO NOT rebuild the app from scratch
+- USE Capacitor to wrap the existing web app in a native iOS shell
+- Maintain 100% of current functionality
+- Add native iOS features for App Store approval
+
+WHAT CAPACITOR DOES:
+Capacitor wraps your existing web code in a native iOS container, giving you:
+- Native app shell (not a browser WebView)
+- Access to native iOS APIs (camera, notifications, haptics)
+- Xcode project for App Store submission
+- Ability to keep web version AND iOS version in sync
+
+YOUR TASK:
+Set up Capacitor for the existing normie.observer codebase and prepare for App Store submission.
+
+DELIVERABLES:
+
+1. **Capacitor Installation & Config**
+   - Install Capacitor dependencies
+   - Create capacitor.config.ts with proper settings
+   - Configure iOS platform
+   - Set app name, bundle ID, version
+
+2. **iOS Native Features (App Store Approval Boosters)**
+   - Splash screen (native, not HTML)
+   - App icon (all required sizes)
+   - Push notifications capability
+   - Haptic feedback on interactions
+   - Native share functionality
+   - Status bar styling (dark/light)
+   - Offline detection and fallback
+
+3. **App Store Compliance Additions**
+   - Age restriction: 17+ (financial content)
+   - Prominent disclaimers (no IAP for crypto)
+   - Privacy manifest (iOS 17+ requirement)
+   - Terms of Service + Privacy Policy links
+   - Risk warnings on price displays
+   - Content moderation (if community features)
+
+4. **Build Configuration**
+   - Production build script
+   - Code signing setup instructions
+   - Xcode project configuration
+   - App Store Connect metadata
+
+CAPACITOR PLUGINS TO INSTALL:
+
+Required:
+- @capacitor/core
+- @capacitor/cli
+- @capacitor/ios
+- @capacitor/splash-screen
+- @capacitor/status-bar
+- @capacitor/app
+- @capacitor/haptics
+- @capacitor/share
+- @capacitor/network (offline detection)
+
+Optional (for future updates):
+- @capacitor/push-notifications
+- @capacitor/camera (if NFT scanning)
+- @capacitor/browser (external links)
+- @capacitor/preferences (local storage)
+
+CONFIGURATION FILE (capacitor.config.ts):
+```typescript
+import { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.normie.observer',  // MUST be unique
+  appName: 'Normie Observer',
+  webDir: 'dist',  // Or 'build' - wherever your build output goes
+  bundledWebRuntime: false,
+  ios: {
+    contentInset: 'automatic',
+    scrollEnabled: true,
+    backgroundColor: '#000000',  // Match your dark theme
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      backgroundColor: '#000000',
+      showSpinner: false,
+    },
+    StatusBar: {
+      style: 'dark',
+      backgroundColor: '#000000',
+    },
+  },
+};
+
+export default config;
+```
+
+NATIVE ENHANCEMENTS TO ADD:
+
+1. **Splash Screen:**
+   - Create splash.png (2732x2732)
+   - Place in ios/App/App/Assets.xcassets/Splash.imageset/
+   - Configure in capacitor.config.ts
+
+2. **App Icon:**
+   - Create 1024x1024 icon (no transparency)
+   - Use https://www.appicon.co to generate all sizes
+   - Place in ios/App/App/Assets.xcassets/AppIcon.appiconset/
+
+3. **Haptic Feedback:**
+   Add to key interactions:
+```javascript
+   import { Haptics, ImpactStyle } from '@capacitor/haptics';
+   
+   // On button press
+   await Haptics.impact({ style: ImpactStyle.Light });
+   
+   // On success
+   await Haptics.notification({ type: 'SUCCESS' });
+```
+
+4. **Network Detection:**
+```javascript
+   import { Network } from '@capacitor/network';
+   
+   Network.addListener('networkStatusChange', status => {
+     if (!status.connected) {
+       showOfflineMessage();
+     }
+   });
+```
+
+5. **Share Functionality:**
+```javascript
+   import { Share } from '@capacitor/share';
+   
+   await Share.share({
+     title: 'Check out this NFT',
+     url: 'https://normie.observer/nft/123',
+   });
+```
+
+APP STORE REQUIREMENTS:
+
+1. **Info.plist Additions:**
+   Add to ios/App/App/Info.plist:
+```xml
+   <key>NSUserTrackingUsageDescription</key>
+   <string>We use data to improve your experience</string>
+   
+   <key>NSCameraUsageDescription</key>
+   <string>Scan NFT QR codes</string>
+   
+   <key>NSPhotoLibraryUsageDescription</key>
+   <string>Save NFT images</string>
+```
+
+2. **Privacy Manifest (PrivacyInfo.xcprivacy):**
+   Required for iOS 17+, details what data you collect
+
+3. **Disclaimers:**
+   Add to app on launch:
+```javascript
+   // Show once on first launch
+   if (!localStorage.getItem('disclaimerAccepted')) {
+     showModal({
+       title: 'Important Notice',
+       message: 'This app provides informational price tracking only. Not financial advice. You must be 17+ to use this app.',
+       acceptText: 'I Understand'
+     });
+   }
+```
+
+BUILD PROCESS:
+
+1. Install Capacitor:
+```bash
+   npm install @capacitor/core @capacitor/cli
+   npm install @capacitor/ios
+   npx cap init
+```
+
+2. Configure for iOS:
+```bash
+   npx cap add ios
+```
+
+3. Build web app:
+```bash
+   npm run build
+```
+
+4. Sync to iOS:
+```bash
+   npx cap sync ios
+```
+
+5. Open in Xcode:
+```bash
+   npx cap open ios
+```
+
+6. In Xcode:
+   - Set bundle ID (com.normie.observer)
+   - Set version (1.0.0)
+   - Set minimum iOS version (15.0)
+   - Configure signing (automatic or manual)
+   - Archive for App Store
+
+TESTING CHECKLIST:
+
+- [ ] App launches under 3 seconds
+- [ ] Works offline (gracefully degrades)
+- [ ] Splash screen displays correctly
+- [ ] Status bar matches app theme
+- [ ] Haptics work on interactions
+- [ ] Share functionality works
+- [ ] Push notifications prompt appears
+- [ ] No console errors in Safari Web Inspector
+- [ ] Disclaimers show on first launch
+- [ ] External links open in Safari (not in-app)
+- [ ] Memory usage under 200MB
+- [ ] No crashes during 10-minute session
+
+APP STORE METADATA:
+
+Provide ready-to-paste metadata:
+- App name: "Normie Observer - Solana Tracker"
+- Subtitle: "NFT & Memecoin Price Tracking"
+- Keywords: NFT, Solana, cryptocurrency, blockchain, tracker
+- Category: Finance
+- Age rating: 17+ (Unrestricted Web Access, Financial Information)
+- Privacy Policy URL: [provide]
+- Support URL: [provide]
+
+SUBMISSION NOTES FOR APP REVIEW:
+This app provides educational price tracking for Solana NFTs and memecoins.
+Key compliance points:
+
+No in-app cryptocurrency purchases
+No Apple IAP bypassing
+All pricing is informational/educational only
+Age-gated 17+ due to financial content
+Prominent risk disclaimers throughout app
+Community features (if any) are moderated
+
+Test Account:
+Email: reviewer@normie.observer
+Password: [secure password]
+The app is built with Capacitor to provide native iOS features while maintaining our web codebase. All cryptocurrency transactions happen externally through user's own wallets - we do not facilitate purchases.
+
+CONSTRAINTS:
+
+- Do NOT change existing normie.observer functionality
+- Do NOT rebuild the web app from scratch
+- Do NOT add cryptocurrency purchase flows (instant rejection)
+- Bundle size must be under 100MB
+- Minimum iOS version: 15.0
+- Must work offline with cached data
+
+OUTPUT:
+
+Provide:
+1. Exact terminal commands to run (in order)
+2. capacitor.config.ts file
+3. Required Info.plist additions
+4. Code snippets for haptics/share/network
+5. Xcode configuration checklist
+6. App Store metadata (copy-paste ready)
+7. Troubleshooting guide for common Capacitor issues
+
+Build this assuming the existing normie.observer code is already working perfectly. We're WRAPPING it, not rebuilding it.
+
+Alternative: If Capacitor Feels Too Technical
+Use Replit's agent to just generate these files for you:
+I have a working web app at normie.observer. 
+
+Generate only these files for Capacitor iOS conversion:
+1. package.json (add Capacitor deps)
+2. capacitor.config.ts
+3. ios/App/App/Info.plist additions
+4. Build script in package.json
+
+Do not change my existing source code. Just give me the Capacitor wrapper files.
+Then manually run:
+bashnpm install
+npx cap add ios
+npm run build
+npx cap sync ios
+npx cap open ios
