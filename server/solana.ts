@@ -980,9 +980,14 @@ interface BirdeyeTrade {
   blockUnixTime: number;
   owner: string;
   side: "buy" | "sell";
-  tokenAmount: number;
-  solAmount: number;
-  priceUsd: number;
+  base?: {
+    uiAmount: number;
+    symbol: string;
+  };
+  quote?: {
+    uiAmount: number;
+    symbol: string;
+  };
 }
 
 let backfillInProgress = false;
@@ -1044,7 +1049,8 @@ export async function backfillHistoricalJeets(limit: number = 500): Promise<{
       }
       
       const trades: BirdeyeTrade[] = data.data.items;
-      console.log(`[Jeet Backfill] Page offset=${offset}: ${trades.length} trades`);
+      const sellCount = trades.filter(t => t.side === "sell").length;
+      console.log(`[Jeet Backfill] Page offset=${offset}: ${trades.length} trades (${sellCount} sells)`);
       
       // Process each sell trade
       for (const trade of trades) {
@@ -1054,8 +1060,9 @@ export async function backfillHistoricalJeets(limit: number = 500): Promise<{
         // Only process sell transactions
         if (trade.side !== "sell") continue;
         
-        const tokenAmount = trade.tokenAmount || 0;
-        const solAmount = trade.solAmount || 0;
+        // Extract amounts from Birdeye's nested structure
+        const tokenAmount = trade.base?.uiAmount || 0;
+        const solAmount = trade.quote?.uiAmount || 0;
         const walletAddress = trade.owner || "";
         const signature = trade.txHash || "";
         
@@ -1122,5 +1129,24 @@ export async function backfillHistoricalJeets(limit: number = 500): Promise<{
 export function isBackfillInProgress(): boolean {
   return backfillInProgress;
 }
+
+// Auto-backfill on startup if no jeet data exists
+async function autoBackfillIfEmpty() {
+  try {
+    const count = await storage.getJeetSellCount();
+    if (count === 0) {
+      console.log("[Jeet Backfill] No jeet data found, starting auto-backfill...");
+      const result = await backfillHistoricalJeets(500);
+      console.log(`[Jeet Backfill] Auto-backfill complete:`, result);
+    } else {
+      console.log(`[Jeet Backfill] Found ${count} existing sells, skipping auto-backfill`);
+    }
+  } catch (error) {
+    console.error("[Jeet Backfill] Auto-backfill error:", error);
+  }
+}
+
+// Delay auto-backfill to let the server start first
+setTimeout(autoBackfillIfEmpty, 10000);
 
 initializePriceHistory();
