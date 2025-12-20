@@ -1298,6 +1298,131 @@ async function autoBackfillHoldersIfEmpty() {
 // Delay holder auto-backfill to run after jeet backfill
 setTimeout(autoBackfillHoldersIfEmpty, 30000);
 
+// =====================================================
+// Sync actual holder balances from Helius on-chain data
+// =====================================================
+
+interface HeliusTokenAccount {
+  address: string;
+  mint: string;
+  owner: string;
+  amount: number;
+  delegatedAmount: number;
+  frozen: boolean;
+}
+
+export async function syncHolderBalancesFromHelius(): Promise<{
+  success: boolean;
+  holdersFound: number;
+  holdersUpdated: number;
+  error?: string;
+}> {
+  if (!HELIUS_API_KEY) {
+    return { success: false, holdersFound: 0, holdersUpdated: 0, error: "HELIUS_API_KEY not configured" };
+  }
+
+  let holdersFound = 0;
+  let holdersUpdated = 0;
+
+  try {
+    console.log("[Holder Sync] Fetching all token holders from Helius...");
+    
+    const holdersMap = new Map<string, number>();
+    let cursor: string | undefined = undefined;
+    let requestCount = 0;
+    const maxRequests = 50;
+
+    do {
+      const params: any = {
+        limit: 1000,
+        mint: TOKEN_ADDRESS,
+      };
+
+      if (cursor) {
+        params.cursor = cursor;
+      }
+
+      const response = await fetch(HELIUS_RPC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "getTokenAccounts",
+          id: "helius-sync-holders",
+          params,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error(`[Holder Sync] Helius API error: ${response.status}`);
+        break;
+      }
+
+      const data = await response.json();
+
+      if (!data.result || !data.result.token_accounts || data.result.token_accounts.length === 0) {
+        break;
+      }
+
+      for (const account of data.result.token_accounts as HeliusTokenAccount[]) {
+        if (account.amount > 0) {
+          // Convert from raw amount (6 decimals for NORMIE)
+          const balance = account.amount / 1_000_000;
+          holdersMap.set(account.owner, (holdersMap.get(account.owner) || 0) + balance);
+        }
+      }
+
+      cursor = data.result.cursor;
+      requestCount++;
+
+      // Small delay to respect rate limits
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+    } while (cursor && requestCount < maxRequests);
+
+    holdersFound = holdersMap.size;
+    console.log(`[Holder Sync] Found ${holdersFound} holders from Helius (${requestCount} requests)`);
+
+    // Sync each holder to database
+    for (const [walletAddress, balance] of holdersMap) {
+      try {
+        await storage.upsertHolderWithBalance(walletAddress, balance);
+        holdersUpdated++;
+
+        if (holdersUpdated % 50 === 0) {
+          console.log(`[Holder Sync] Synced ${holdersUpdated}/${holdersFound} holders...`);
+        }
+      } catch (err) {
+        console.error(`[Holder Sync] Error syncing ${walletAddress}:`, err);
+      }
+    }
+
+    console.log(`[Holder Sync] Complete! ${holdersUpdated} holders synced`);
+    return { success: true, holdersFound, holdersUpdated };
+
+  } catch (error) {
+    console.error("[Holder Sync] Error:", error);
+    return { success: false, holdersFound, holdersUpdated, error: String(error) };
+  }
+}
+
+// Check if holder sync is needed (if we have few/no holders with valid firstBuyAt)
+async function autoSyncHoldersIfNeeded() {
+  try {
+    const count = await storage.getWalletHoldingsCount();
+    // If we have no data, sync from Helius first
+    if (count < 10) {
+      console.log("[Holder Sync] Few holders tracked, syncing from Helius...");
+      await syncHolderBalancesFromHelius();
+    }
+  } catch (error) {
+    console.error("[Holder Sync] Auto-sync error:", error);
+  }
+}
+
+// Run holder sync 15 seconds after startup
+setTimeout(autoSyncHoldersIfNeeded, 15000);
+
 // Auto-backfill on startup if no jeet data exists
 async function autoBackfillIfEmpty() {
   try {

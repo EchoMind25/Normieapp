@@ -8,7 +8,7 @@ import fs from "fs";
 import { fetchTokenMetrics, getMetrics, getPriceHistory, addPricePoint, fetchDevBuys, getDevBuys, getConnectionStatus, fetchHistoricalPrices, fetchRecentTokenActivity, getActivityCache, fetchDevWalletHoldings, getDevWalletAddress } from "./solana";
 import authRoutes from "./authRoutes";
 import { db, verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
-import { manualDevBuys, users, sessions, userFeedback, insertUserFeedbackSchema } from "@shared/schema";
+import { manualDevBuys, users, sessions, userFeedback, insertUserFeedbackSchema, walletHoldings } from "@shared/schema";
 import { eq, desc, and, gt, sql } from "drizzle-orm";
 import { verifyJWT, isReservedUsername, authMiddleware, AuthRequest } from "./auth";
 import { z } from "zod";
@@ -1646,6 +1646,35 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Holder backfill error:", error);
       res.status(500).json({ error: "Failed to run holder backfill" });
+    }
+  });
+
+  // Sync holder balances from Helius on-chain data (admin only)
+  app.post("/api/admin/holders/sync", requireAdmin, async (req, res) => {
+    try {
+      const { syncHolderBalancesFromHelius } = await import("./solana");
+      
+      console.log(`[Admin] Starting holder sync from Helius...`);
+      const result = await syncHolderBalancesFromHelius();
+      
+      res.json(result);
+    } catch (error) {
+      console.error("[Admin] Holder sync error:", error);
+      res.status(500).json({ error: "Failed to sync holders" });
+    }
+  });
+
+  // Clear and reset holder data (admin only)
+  app.post("/api/admin/holders/reset", requireAdmin, async (req, res) => {
+    try {
+      // Clear wallet_holdings table
+      await db.delete(walletHoldings);
+      
+      console.log(`[Admin] Cleared all holder data`);
+      res.json({ success: true, message: "Holder data cleared" });
+    } catch (error) {
+      console.error("[Admin] Holder reset error:", error);
+      res.status(500).json({ error: "Failed to reset holders" });
     }
   });
 

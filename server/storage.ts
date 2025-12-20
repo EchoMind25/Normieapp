@@ -297,6 +297,9 @@ export interface IStorage {
   getWalletBuyBySignature(signature: string): Promise<WalletBuy | undefined>;
   upsertWalletHolding(walletAddress: string, boughtAmount: number, buyTime: Date): Promise<void>;
   updateWalletHoldingOnSell(walletAddress: string, soldAmount: number, sellTime: Date): Promise<void>;
+  syncWalletBalance(walletAddress: string, actualBalance: number): Promise<void>;
+  upsertHolderWithBalance(walletAddress: string, balance: number): Promise<void>;
+  getAllTrackedWallets(): Promise<string[]>;
   getDiamondHandsLeaderboard(limit?: number): Promise<DiamondHandsEntry[]>;
   getWhalesLeaderboard(limit?: number): Promise<WhaleEntry[]>;
   getWalletHolding(walletAddress: string): Promise<WalletHolding | undefined>;
@@ -1471,11 +1474,57 @@ export class DatabaseStorage implements IStorage {
         set: {
           currentBalance: sql`CAST(${walletHoldings.currentBalance} AS NUMERIC) + ${boughtAmount}`,
           totalBought: sql`CAST(${walletHoldings.totalBought} AS NUMERIC) + ${boughtAmount}`,
-          lastBuyAt: buyTime,
+          // Keep the EARLIEST buy time for firstBuyAt and holdStartAt
+          firstBuyAt: sql`LEAST(${walletHoldings.firstBuyAt}, ${buyTime})`,
+          holdStartAt: sql`LEAST(${walletHoldings.holdStartAt}, ${buyTime})`,
+          // Keep the LATEST buy time for lastBuyAt
+          lastBuyAt: sql`GREATEST(${walletHoldings.lastBuyAt}, ${buyTime})`,
           buyCount: sql`${walletHoldings.buyCount} + 1`,
           updatedAt: new Date(),
         },
       });
+  }
+
+  // Sync wallet balance directly from on-chain data (Helius)
+  async syncWalletBalance(walletAddress: string, actualBalance: number): Promise<void> {
+    await db
+      .update(walletHoldings)
+      .set({
+        currentBalance: actualBalance.toString(),
+        updatedAt: new Date(),
+      })
+      .where(eq(walletHoldings.walletAddress, walletAddress));
+  }
+
+  // Create or update holder with actual on-chain balance
+  async upsertHolderWithBalance(walletAddress: string, balance: number): Promise<void> {
+    await db
+      .insert(walletHoldings)
+      .values({
+        walletAddress,
+        currentBalance: balance.toString(),
+        totalBought: balance.toString(),
+        totalSold: "0",
+        firstBuyAt: null,
+        lastBuyAt: null,
+        holdStartAt: null,
+        buyCount: 0,
+        sellCount: 0,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: walletHoldings.walletAddress,
+        set: {
+          currentBalance: balance.toString(),
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  // Get all tracked wallet addresses
+  async getAllTrackedWallets(): Promise<string[]> {
+    const results = await db.select({ walletAddress: walletHoldings.walletAddress }).from(walletHoldings);
+    return results.map(r => r.walletAddress);
   }
 
   async updateWalletHoldingOnSell(walletAddress: string, soldAmount: number, sellTime: Date): Promise<void> {
