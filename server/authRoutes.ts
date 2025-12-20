@@ -575,7 +575,7 @@ router.patch(
       .optional({ nullable: true })
       .custom((value) => {
         if (value === null || value === "") return true;
-        // Allow relative paths (e.g., /api/storage/public/...) or absolute URLs
+        // Allow relative paths (e.g., /objects/...) or absolute URLs
         if (typeof value === "string" && value.startsWith("/")) return true;
         try {
           new URL(value);

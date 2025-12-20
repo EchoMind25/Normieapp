@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/queryClient";
+import { normalizeStorageUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,7 +86,8 @@ export default function Profile() {
   
   const { uploadFile, isUploading, progress, error: uploadError } = useUpload({
     onSuccess: (response) => {
-      const publicUrl = `/api/storage/public/${response.objectPath}`;
+      // objectPath already includes /objects/ prefix (e.g., /objects/uploads/uuid)
+      const publicUrl = response.objectPath;
       profileForm.setValue("avatarUrl", publicUrl);
       setAvatarPreview(publicUrl);
       toast({
@@ -284,7 +286,7 @@ export default function Profile() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={user.avatarUrl || undefined} />
+                <AvatarImage src={normalizeStorageUrl(user.avatarUrl) || undefined} />
                 <AvatarFallback className="bg-primary/20 text-primary font-mono text-xl">
                   {user.username.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
@@ -374,7 +376,7 @@ export default function Profile() {
                         <div className="space-y-3">
                           <div className="flex items-center gap-4">
                             <Avatar className="h-20 w-20 border-2 border-border">
-                              <AvatarImage src={avatarPreview || field.value || undefined} />
+                              <AvatarImage src={avatarPreview || normalizeStorageUrl(field.value) || undefined} />
                               <AvatarFallback className="bg-muted">
                                 <ImageIcon className="h-8 w-8 text-muted-foreground" />
                               </AvatarFallback>

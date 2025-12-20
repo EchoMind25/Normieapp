@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { normalizeStorageUrl } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -781,7 +782,7 @@ export default function Admin() {
                               <div className="flex items-center gap-3 min-w-0 flex-1">
                                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                                   {u.avatarUrl ? (
-                                    <img src={u.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                                    <img src={normalizeStorageUrl(u.avatarUrl)} alt="" className="w-8 h-8 rounded-full object-cover" />
                                   ) : (
                                     <Users className="w-4 h-4 text-muted-foreground" />
                                   )}
