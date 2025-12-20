@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, Share, MoreVertical, Plus, Download, Smartphone, Check, ExternalLink, Monitor, Apple } from 'lucide-react';
+import { ArrowLeft, Share, MoreVertical, Download, Smartphone, Check, ExternalLink, Monitor, Apple } from 'lucide-react';
 import { SiAndroid } from 'react-icons/si';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,37 +15,36 @@ import {
   type DeviceType
 } from '@/lib/pwa-utils';
 
+import iosHomepage from '@assets/image_1766229343927.png';
+import iosShareMenu from '@assets/image_1766229336344.png';
+import iosHomeScreen from '@assets/image_1766229330948.png';
+
 interface InstallStep {
   icon: typeof Share;
   title: string;
   description: string;
   screenshotPlaceholder?: string;
+  screenshotImage?: string;
 }
 
 const IOS_STEPS: InstallStep[] = [
   {
     icon: Share,
     title: 'Open in Safari',
-    description: 'Make sure you\'re viewing this site in Safari. The install option is only available in Safari on iOS.',
-    screenshotPlaceholder: '/install-screenshots/ios-safari.png'
+    description: 'Make sure you\'re viewing normie.observer in Safari. The install option is only available in Safari on iOS.',
+    screenshotImage: iosHomepage
   },
   {
     icon: Share,
     title: 'Tap the Share Button',
-    description: 'Tap the Share button at the bottom of your Safari browser (the square with an arrow pointing up).',
-    screenshotPlaceholder: '/install-screenshots/ios-share.png'
-  },
-  {
-    icon: Plus,
-    title: 'Add to Home Screen',
-    description: 'Scroll down in the share menu and tap "Add to Home Screen".',
-    screenshotPlaceholder: '/install-screenshots/ios-add.png'
+    description: 'Tap the Share button at the bottom of your Safari browser and select "Add to Home Screen".',
+    screenshotImage: iosShareMenu
   },
   {
     icon: Check,
-    title: 'Confirm Installation',
-    description: 'Tap "Add" in the top right corner. The app will now appear on your home screen!',
-    screenshotPlaceholder: '/install-screenshots/ios-confirm.png'
+    title: 'Find it on Your Home Screen',
+    description: 'The Normie Nation app will now appear on your home screen ready to use!',
+    screenshotImage: iosHomeScreen
   }
 ];
 
@@ -53,20 +52,17 @@ const ANDROID_STEPS: InstallStep[] = [
   {
     icon: MoreVertical,
     title: 'Open the Menu',
-    description: 'Tap the three-dot menu icon in the top right corner of Chrome.',
-    screenshotPlaceholder: '/install-screenshots/android-menu.png'
+    description: 'Tap the three-dot menu icon in the top right corner of Chrome.'
   },
   {
     icon: Download,
     title: 'Install App',
-    description: 'Look for "Install app" or "Add to Home Screen" in the menu and tap it.',
-    screenshotPlaceholder: '/install-screenshots/android-install.png'
+    description: 'Look for "Install app" or "Add to Home Screen" in the menu and tap it.'
   },
   {
     icon: Check,
     title: 'Confirm Installation',
-    description: 'Tap "Install" in the popup to add the app to your home screen.',
-    screenshotPlaceholder: '/install-screenshots/android-confirm.png'
+    description: 'Tap "Install" in the popup to add the app to your home screen.'
   }
 ];
 
@@ -125,7 +121,16 @@ function StepCard({ step, stepNumber }: { step: InstallStep; stepNumber: number 
           <h3 className="font-mono font-semibold uppercase tracking-wide">{step.title}</h3>
         </div>
         <p className="text-sm text-muted-foreground">{step.description}</p>
-        {step.screenshotPlaceholder && (
+        {step.screenshotImage && (
+          <div className="mt-3 flex justify-center">
+            <img 
+              src={step.screenshotImage} 
+              alt={step.title}
+              className="max-w-[200px] rounded-md border border-border/50 shadow-lg"
+            />
+          </div>
+        )}
+        {step.screenshotPlaceholder && !step.screenshotImage && (
           <div className="mt-3 aspect-video rounded-md bg-muted/50 border border-border/50 flex items-center justify-center">
             <span className="text-xs text-muted-foreground font-mono">
               Screenshot: {step.screenshotPlaceholder}
