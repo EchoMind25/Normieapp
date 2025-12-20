@@ -163,6 +163,9 @@ export const ADMIN_EMAIL = "admin@normienation.com";
 export const ADMIN2_USERNAME = "Echo_Dev";
 export const ADMIN2_EMAIL = "echodev@normienation.com";
 
+export const ADMIN3_USERNAME = "cryptoWilliams";
+export const ADMIN3_EMAIL = "sulexy777@gmail.com";
+
 export async function authMiddleware(
   req: AuthRequest,
   res: Response,

@@ -5,7 +5,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { hashPassword, ADMIN_USERNAME, ADMIN_EMAIL, ADMIN2_USERNAME, ADMIN2_EMAIL } from "./auth";
+import { hashPassword, ADMIN_USERNAME, ADMIN_EMAIL, ADMIN2_USERNAME, ADMIN2_EMAIL, ADMIN3_USERNAME, ADMIN3_EMAIL } from "./auth";
 import { verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
 
 const app = express();
@@ -148,6 +148,31 @@ async function seedAdminAccount() {
 
       log(`Admin account "${ADMIN2_USERNAME}" created successfully (id: ${newAdmin2.id})`, "seed");
       log(`Admin email: ${ADMIN2_EMAIL}`, "seed");
+      log(`Password changed flag: false (will require password reset on first login)`, "seed");
+    }
+
+    // Seed third admin account (cryptoWilliams)
+    log(`Checking for admin account "${ADMIN3_USERNAME}"...`, "seed");
+    
+    const existingAdmin3 = await storage.getUserByUsername(ADMIN3_USERNAME);
+    if (existingAdmin3) {
+      log(`Admin account "${ADMIN3_USERNAME}" already exists (id: ${existingAdmin3.id}) - SKIPPING (password NOT modified)`, "seed");
+    } else if (!process.env.CRYPTO_WILLIAMS_PASSWORD) {
+      log(`Admin account "${ADMIN3_USERNAME}" not created - CRYPTO_WILLIAMS_PASSWORD environment variable required`, "seed");
+    } else {
+      const passwordHash3 = await hashPassword(process.env.CRYPTO_WILLIAMS_PASSWORD);
+
+      const newAdmin3 = await storage.createUser({
+        username: ADMIN3_USERNAME,
+        email: ADMIN3_EMAIL,
+        passwordHash: passwordHash3,
+        role: "admin",
+        walletAddress: null,
+        passwordChanged: false,
+      });
+
+      log(`Admin account "${ADMIN3_USERNAME}" created successfully (id: ${newAdmin3.id})`, "seed");
+      log(`Admin email: ${ADMIN3_EMAIL}`, "seed");
       log(`Password changed flag: false (will require password reset on first login)`, "seed");
     }
   } catch (error: any) {
