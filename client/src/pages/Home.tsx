@@ -119,6 +119,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
+      <div className="monogram-backdrop" aria-hidden="true" />
       <div className="ambient-background" aria-hidden="true">
         <div className="ambient-glow-orb ambient-glow-orb-1" />
         <div className="ambient-glow-orb ambient-glow-orb-2" />

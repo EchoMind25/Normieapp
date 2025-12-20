@@ -357,6 +357,26 @@
   );
 }
 
+/* Luxury Monogram Pattern Backdrop */
+.monogram-backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+  /* Dark theme (default): Obsidian Gold - near-black base with muted gold/bronze pattern */
+  background-color: hsl(40 8% 6%);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cstyle%3E.n-letter %7B fill: %23a08050; font-family: Georgia, serif; font-weight: bold; font-size: 18px; %7D .diamond %7B fill: %23a08050; %7D .flower %7B fill: %23a08050; %7D%3C/style%3E%3C/defs%3E%3Ctext class='n-letter' x='10' y='22'%3EN%3C/text%3E%3Ctext class='n-letter' x='60' y='72'%3EN%3C/text%3E%3C!-- Diamond motifs --%3E%3Cpath class='diamond' d='M35 10 L40 15 L35 20 L30 15 Z'/%3E%3Cpath class='diamond' d='M85 60 L90 65 L85 70 L80 65 Z'/%3E%3C!-- Flower/Star motifs --%3E%3Cg class='flower' transform='translate(75, 15)'%3E%3Ccircle r='2' cx='0' cy='0'/%3E%3Ccircle r='1.5' cx='5' cy='0'/%3E%3Ccircle r='1.5' cx='-5' cy='0'/%3E%3Ccircle r='1.5' cx='0' cy='5'/%3E%3Ccircle r='1.5' cx='0' cy='-5'/%3E%3C/g%3E%3Cg class='flower' transform='translate(25, 65)'%3E%3Ccircle r='2' cx='0' cy='0'/%3E%3Ccircle r='1.5' cx='5' cy='0'/%3E%3Ccircle r='1.5' cx='-5' cy='0'/%3E%3Ccircle r='1.5' cx='0' cy='5'/%3E%3Ccircle r='1.5' cx='0' cy='-5'/%3E%3C/g%3E%3C!-- Small diamond accents --%3E%3Cpath class='diamond' d='M50 35 L53 38 L50 41 L47 38 Z'/%3E%3Cpath class='diamond' d='M0 85 L3 88 L0 91 L-3 88 Z'/%3E%3C/svg%3E");
+  background-size: 100px 100px;
+}
+
+/* Light theme: Terracotta/Burnt Orange base with darker pattern */
+.light .monogram-backdrop {
+  background-color: hsl(12 70% 42%);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cstyle%3E.n-letter %7B fill: %23a03a20; font-family: Georgia, serif; font-weight: bold; font-size: 18px; %7D .diamond %7B fill: %23a03a20; %7D .flower %7B fill: %23a03a20; %7D%3C/style%3E%3C/defs%3E%3Ctext class='n-letter' x='10' y='22'%3EN%3C/text%3E%3Ctext class='n-letter' x='60' y='72'%3EN%3C/text%3E%3C!-- Diamond motifs --%3E%3Cpath class='diamond' d='M35 10 L40 15 L35 20 L30 15 Z'/%3E%3Cpath class='diamond' d='M85 60 L90 65 L85 70 L80 65 Z'/%3E%3C!-- Flower/Star motifs --%3E%3Cg class='flower' transform='translate(75, 15)'%3E%3Ccircle r='2' cx='0' cy='0'/%3E%3Ccircle r='1.5' cx='5' cy='0'/%3E%3Ccircle r='1.5' cx='-5' cy='0'/%3E%3Ccircle r='1.5' cx='0' cy='5'/%3E%3Ccircle r='1.5' cx='0' cy='-5'/%3E%3C/g%3E%3Cg class='flower' transform='translate(25, 65)'%3E%3Ccircle r='2' cx='0' cy='0'/%3E%3Ccircle r='1.5' cx='5' cy='0'/%3E%3Ccircle r='1.5' cx='-5' cy='0'/%3E%3Ccircle r='1.5' cx='0' cy='5'/%3E%3Ccircle r='1.5' cx='0' cy='-5'/%3E%3C/g%3E%3C!-- Small diamond accents --%3E%3Cpath class='diamond' d='M50 35 L53 38 L50 41 L47 38 Z'/%3E%3Cpath class='diamond' d='M0 85 L3 88 L0 91 L-3 88 Z'/%3E%3C/svg%3E");
+  background-size: 100px 100px;
+}
+
 /**
  * Using the elevate system.
  */
