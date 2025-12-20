@@ -167,7 +167,7 @@ export function MemeGenerator() {
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
-  const upscalerRef = useRef<Upscaler | null>(null);
+  const upscalerRef = useRef<typeof Upscaler.prototype | null>(null);
 
   const { data: metrics, isLoading: metricsLoading } = useQuery<TokenMetrics>({
     queryKey: ["/api/metrics"],
