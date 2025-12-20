@@ -1537,13 +1537,32 @@ export async function registerRoutes(
   app.get("/api/leaderboard/jeets", async (req, res) => {
     try {
       const range = (req.query.range as "24h" | "7d" | "30d" | "all") || "all";
-      const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
       
-      const leaderboard = await storage.getJeetLeaderboard(limit, range);
+      // For "all" time, use the fast aggregated wallet totals table
+      // For time-filtered queries, use the transaction-based aggregation
+      const leaderboard = range === "all" 
+        ? await storage.getJeetWalletTotalsLeaderboard(limit)
+        : await storage.getJeetLeaderboard(limit, range);
+      
       res.json(leaderboard);
     } catch (error) {
       console.error("[Jeet Leaderboard] Error fetching jeet leaderboard:", error);
       res.json([]);
+    }
+  });
+  
+  // Get jeet tracking stats
+  app.get("/api/leaderboard/jeets/stats", async (_req, res) => {
+    try {
+      const sellCount = await storage.getJeetSellCount();
+      res.json({ 
+        totalSellsTracked: sellCount,
+        status: sellCount > 0 ? "tracking" : "awaiting_data"
+      });
+    } catch (error) {
+      console.error("[Jeet Stats] Error:", error);
+      res.json({ totalSellsTracked: 0, status: "error" });
     }
   });
 
