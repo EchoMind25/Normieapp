@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle, ExternalLink } from "lucide-react";
+import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle, ExternalLink, Bug } from "lucide-react";
 import { SoundToggle } from "@/components/SoundEffects";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SiTelegram, SiX } from "react-icons/si";
@@ -18,6 +18,7 @@ import { NORMIE_TOKEN } from "@shared/schema";
 import type { TokenMetrics } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthModal } from "./AuthModal";
+import { BugReportModal } from "./BugReportModal";
 
 interface IconData {
   id: string;
@@ -36,6 +37,7 @@ const DEFAULT_FAVICON_URL = "https://res.cloudinary.com/dmt4dpsnw/image/upload/w
 export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
   const [, setLocation] = useLocation();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showBugReportModal, setShowBugReportModal] = useState(false);
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
   const { data: icons = [] } = useQuery<IconData[]>({
@@ -238,6 +240,11 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowBugReportModal(true)} data-testid="menu-bug-report">
+                  <Bug className="h-4 w-4 mr-2" />
+                  Report a Bug
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} data-testid="menu-logout">
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
@@ -260,6 +267,7 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
       </div>
 
       <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} />
+      <BugReportModal open={showBugReportModal} onOpenChange={setShowBugReportModal} />
 
       <div className="overflow-hidden border-t border-border">
         <div className="ticker-wrapper py-1.5">

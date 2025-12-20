@@ -4,7 +4,7 @@ import { storage } from "./storage";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
-const VAPID_EMAIL = process.env.VAPID_EMAIL || "mailto:admin@normienation.app";
+const VAPID_EMAIL = process.env.VAPID_EMAIL || "mailto:support@tryechomind.net";
 
 let pushEnabled = false;
 

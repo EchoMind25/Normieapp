@@ -158,7 +158,7 @@ export default function Privacy() {
               If you have questions about this Privacy Policy or wish to exercise your rights, please contact us:
             </p>
             <div className="mt-4 p-4 rounded-md bg-muted/30">
-              <p className="text-sm font-mono">Email: privacy@normie.observer</p>
+              <p className="text-sm font-mono">Email: support@tryechomind.net</p>
               <p className="text-sm font-mono">Website: https://normie.observer</p>
             </div>
           </CardContent>

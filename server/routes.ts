@@ -17,6 +17,14 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { initializePushNotifications, getVapidPublicKey, isPushEnabled, sendPushNotificationForNewPoll, sendStreamNotification } from "./pushNotifications";
 import { smartDataFetcher } from "./smartDataFetcher";
 import { bugReports, insertBugReportSchema, NORMIE_TOKEN } from "@shared/schema";
+import sgMail from "@sendgrid/mail";
+
+const SUPPORT_EMAIL = "support@tryechomind.net";
+const BUG_REPORT_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || "noreply@normie.observer";
+
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -325,18 +333,70 @@ export async function registerRoutes(
       const result = await smartDataFetcher.fetchTokenMetrics();
       const interval = await smartDataFetcher.determinePollInterval(NORMIE_TOKEN.address);
       
+      // Parse DexScreener response format
+      const pair = result.data?.pairs?.[0];
+      if (!pair) {
+        return res.status(503).json({ error: "Token data unavailable" });
+      }
+      
       res.json({
-        ...result,
+        price: parseFloat(pair.priceUsd || "0"),
+        priceChange24h: parseFloat(pair.priceChange?.h24 || "0"),
+        marketCap: parseFloat(pair.marketCap || pair.fdv || "0"),
+        volume24h: parseFloat(pair.volume?.h24 || "0"),
+        liquidity: parseFloat(pair.liquidity?.usd || "0"),
+        fromCache: result.fromCache,
+        changed: result.changed,
         recommendedPollInterval: interval,
+        lastUpdated: new Date().toISOString(),
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch metrics" });
     }
   });
 
+  // HTML escape helper for safe email content
+  function escapeHtml(str: string): string {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // Bug report validation schema
+  const bugReportRequestSchema = z.object({
+    description: z.string().min(1).max(5000),
+    pageUrl: z.string().url().max(2000),
+    screenshot: z.string().max(5000000).optional(),
+    userAgent: z.string().max(500).optional(),
+    imageAudit: z.object({
+      totalImages: z.number(),
+      brokenImages: z.array(z.object({ src: z.string(), alt: z.string() })),
+      timestamp: z.number(),
+    }).optional(),
+    brokenImages: z.array(z.object({ src: z.string(), alt: z.string() })).optional(),
+    viewport: z.object({
+      width: z.number(),
+      height: z.number(),
+      devicePixelRatio: z.number().optional(),
+    }).optional(),
+    performanceMetrics: z.object({
+      memory: z.number().optional(),
+      timing: z.number().optional(),
+    }).optional(),
+  });
+
   // Bug report submission endpoint
   app.post("/api/bug-report", apiLimiter, async (req, res) => {
     try {
+      const validation = bugReportRequestSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid request data", details: validation.error.issues });
+      }
+
       const {
         description,
         screenshot,
@@ -346,11 +406,7 @@ export async function registerRoutes(
         brokenImages,
         viewport,
         performanceMetrics,
-      } = req.body;
-
-      if (!description || !pageUrl) {
-        return res.status(400).json({ error: "Description and page URL are required" });
-      }
+      } = validation.data;
 
       const [report] = await db
         .insert(bugReports)
@@ -366,6 +422,42 @@ export async function registerRoutes(
           status: "open",
         })
         .returning();
+
+      // Send email notification via SendGrid with sanitized content
+      if (process.env.SENDGRID_API_KEY) {
+        try {
+          const viewportStr = viewport ? `${viewport.width}x${viewport.height}` : "unknown";
+          const brokenCount = brokenImages?.length || 0;
+          const safeDescription = escapeHtml(description);
+          const safePageUrl = escapeHtml(pageUrl);
+          const safeUserAgent = escapeHtml(userAgent || "unknown");
+
+          await sgMail.send({
+            to: SUPPORT_EMAIL,
+            from: BUG_REPORT_FROM_EMAIL,
+            subject: `[Bug Report] normie.observer - ${report.id.slice(0, 8)}`,
+            html: `
+              <div style="font-family: system-ui, sans-serif; padding: 20px;">
+                <h2 style="color: #00ff00;">New Bug Report</h2>
+                <p><strong>Report ID:</strong> ${report.id}</p>
+                <p><strong>Page:</strong> ${safePageUrl}</p>
+                <p><strong>Viewport:</strong> ${viewportStr}</p>
+                <p><strong>Broken Images:</strong> ${brokenCount}</p>
+                <hr style="border: 1px solid #333; margin: 20px 0;" />
+                <h3>Description:</h3>
+                <p style="background: #f5f5f5; padding: 15px; border-radius: 8px;">${safeDescription}</p>
+                <hr style="border: 1px solid #333; margin: 20px 0;" />
+                <p style="font-size: 12px; color: #666;">
+                  <strong>User Agent:</strong><br/>${safeUserAgent}
+                </p>
+                ${screenshot ? '<p style="font-size: 12px; color: #666;">Screenshot attached to database record.</p>' : ""}
+              </div>
+            `,
+          });
+        } catch (emailError) {
+          // Email failure shouldn't fail the report submission
+        }
+      }
 
       res.json({ success: true, reportId: report.id });
     } catch (error) {
