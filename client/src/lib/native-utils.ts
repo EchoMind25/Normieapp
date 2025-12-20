@@ -204,22 +204,44 @@ export async function hideSplashScreen(): Promise<void> {
 }
 
 const DISCLAIMER_KEY = 'normie_disclaimer_accepted';
-const DISCLAIMER_VERSION = '1.0';
+// Update this version when Terms of Use or Privacy Policy is modified
+// Format: YYYY-MM-DD to match the "Last updated" dates on Terms/Privacy pages
+export const POLICY_VERSION = '2025-12-20';
 
 export function hasAcceptedDisclaimer(): boolean {
   if (typeof window === 'undefined') return true;
   try {
     const accepted = localStorage.getItem(DISCLAIMER_KEY);
-    return accepted === DISCLAIMER_VERSION;
+    return accepted === POLICY_VERSION;
   } catch {
     return true;
+  }
+}
+
+export function hasPreviouslyAccepted(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const accepted = localStorage.getItem(DISCLAIMER_KEY);
+    // Returns true if they accepted any version before (but not current)
+    return accepted !== null && accepted !== POLICY_VERSION;
+  } catch {
+    return false;
+  }
+}
+
+export function getAcceptedVersion(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(DISCLAIMER_KEY);
+  } catch {
+    return null;
   }
 }
 
 export function acceptDisclaimer(): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(DISCLAIMER_KEY, DISCLAIMER_VERSION);
+    localStorage.setItem(DISCLAIMER_KEY, POLICY_VERSION);
   } catch {
     console.debug('localStorage not available');
   }
