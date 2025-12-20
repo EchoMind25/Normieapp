@@ -9,6 +9,7 @@ import { SoundProvider } from "@/components/SoundEffects";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { DynamicFavicon } from "@/components/DynamicFavicon";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
@@ -21,6 +22,7 @@ const NftDetail = lazy(() => import("@/pages/NftDetail"));
 const MyNfts = lazy(() => import("@/pages/MyNfts"));
 const CollectionDetail = lazy(() => import("@/pages/CollectionDetail"));
 const EmbedChart = lazy(() => import("@/pages/EmbedChart"));
+const Install = lazy(() => import("@/pages/Install"));
 
 function PageLoader() {
   return (
@@ -48,6 +50,7 @@ function Router() {
         <Route path="/marketplace/my-nfts" component={MyNfts} />
         <Route path="/marketplace/collection/:id" component={CollectionDetail} />
         <Route path="/embed/chart" component={EmbedChart} />
+        <Route path="/install" component={Install} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
@@ -64,6 +67,7 @@ function App() {
             <Toaster />
             <ForcePasswordChange />
             <NotificationPrompt />
+            <PWAInstallPrompt />
             <Router />
           </TooltipProvider>
         </SoundProvider>
