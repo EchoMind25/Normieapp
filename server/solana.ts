@@ -1384,7 +1384,7 @@ export async function syncHolderBalancesFromHelius(): Promise<{
     console.log(`[Holder Sync] Found ${holdersFound} holders from Helius (${requestCount} requests)`);
 
     // Sync each holder to database
-    for (const [walletAddress, balance] of holdersMap) {
+    for (const [walletAddress, balance] of Array.from(holdersMap.entries())) {
       try {
         await storage.upsertHolderWithBalance(walletAddress, balance);
         holdersUpdated++;
@@ -1406,14 +1406,18 @@ export async function syncHolderBalancesFromHelius(): Promise<{
   }
 }
 
-// Check if holder sync is needed (if we have few/no holders with valid firstBuyAt)
+// Check if holder sync is needed - sync if tracked count is less than actual holder count
 async function autoSyncHoldersIfNeeded() {
   try {
-    const count = await storage.getWalletHoldingsCount();
-    // If we have no data, sync from Helius first
-    if (count < 10) {
-      console.log("[Holder Sync] Few holders tracked, syncing from Helius...");
+    const trackedCount = await storage.getWalletHoldingsCount();
+    const actualCount = await fetchHolderCount();
+    
+    // If we're tracking less than 80% of actual holders, run a full sync
+    if (trackedCount < actualCount * 0.8) {
+      console.log(`[Holder Sync] Tracking ${trackedCount}/${actualCount} holders (${Math.round(trackedCount/actualCount*100)}%), syncing from Helius...`);
       await syncHolderBalancesFromHelius();
+    } else {
+      console.log(`[Holder Sync] Tracking ${trackedCount}/${actualCount} holders - sufficient coverage`);
     }
   } catch (error) {
     console.error("[Holder Sync] Auto-sync error:", error);
