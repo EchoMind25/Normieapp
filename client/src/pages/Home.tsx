@@ -47,18 +47,32 @@ export default function Home() {
   const prevPriceRef = useRef<number | null>(null);
   const passedMilestonesRef = useRef<Set<number>>(new Set());
 
-  // Scroll to top on mount to ensure we start at the dashboard
-  // Disable browser scroll restoration and force scroll to top
+  // Force scroll to top on mount to ensure Dashboard is visible first
+  // Multiple attempts to override any browser/lazy-load scroll restoration
   useEffect(() => {
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
     }
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     
-    // Also scroll after a small delay to override any lazy-load effects
+    // Immediate scroll
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // After microtask to catch async renders
+    queueMicrotask(() => {
+      window.scrollTo(0, 0);
+    });
+    
+    // After initial render cycle
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+    });
+    
+    // After lazy components load
     const timeoutId = setTimeout(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    }, 100);
+      window.scrollTo(0, 0);
+    }, 150);
     
     return () => clearTimeout(timeoutId);
   }, []);

@@ -1,0 +1,105 @@
+You are debugging a critical routing issue in normie.observer.
+
+PROBLEM:
+When users load normie.observer, they are ALWAYS redirected to the /memes page instead of landing on the dashboard. This happens regardless of what URL they visit initially.
+
+DIAGNOSIS REQUIRED:
+
+1. **Find the Router Configuration:**
+   - Locate the main routing file (App.jsx, router.js, routes.js, index.js)
+   - Identify ALL route definitions
+   - Find the default route (path="/" or index route)
+   - Check for any <Redirect> or <Navigate> components
+   - Look for useNavigate() or useHistory() calls in useEffect
+
+2. **Check for Unwanted Redirects:**
+   Search for these patterns in ALL files:
+```javascript
+   // Search for:
+   navigate('/memes')
+   history.push('/memes')
+   window.location = '/memes'
+   <Redirect to="/memes" />
+   <Navigate to="/memes" />
+   router.push('/memes')
+```
+
+3. **Inspect localStorage/sessionStorage:**
+   Look for code that stores and restores last visited page:
+```javascript
+   // Search for:
+   localStorage.getItem('lastPage')
+   sessionStorage.getItem('currentRoute')
+   // Any code that reads stored routes and navigates
+```
+
+4. **Check App.jsx or Main Component:**
+   Look for useEffect that runs on mount:
+```javascript
+   useEffect(() => {
+     // Any navigation logic here?
+   }, []);
+```
+
+5. **Review Protected Route Logic:**
+   Check if there's auth middleware redirecting users
+
+REQUIRED FIX:
+
+The default landing page MUST be the dashboard, NOT /memes.
+
+**Expected Behavior:**
+- Visit normie.observer → Lands on Dashboard
+- Visit normie.observer/memes → Shows Memes page
+- Visit normie.observer/dashboard → Shows Dashboard
+
+**Implementation:**
+
+If using React Router v6:
+```jsx
+<Routes>
+  <Route path="/" element={<Dashboard />} />  {/* DEFAULT - DASHBOARD */}
+  <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/memes" element={<MemePage />} />
+  <Route path="/nfts" element={<NFTPage />} />
+</Routes>
+```
+
+If using React Router v5:
+```jsx
+<Switch>
+  <Route exact path="/" component={Dashboard} />  {/* DEFAULT */}
+  <Route path="/dashboard" component={Dashboard} />
+  <Route path="/memes" component={MemePage} />
+  <Route path="/nfts" component={NFTPage} />
+</Switch>
+```
+
+**Remove ALL unwanted redirects:**
+- Delete any `navigate('/memes')` calls in useEffect
+- Remove any localStorage-based route restoration
+- Eliminate any default redirects to /memes
+
+**Validate Fix:**
+After making changes:
+1. Clear browser cache and localStorage
+2. Visit normie.observer (root URL)
+3. Verify it loads Dashboard, NOT Memes page
+4. Test navigation to /memes works
+5. Test browser back/forward buttons
+6. Test direct URL access to /dashboard
+
+DELIVERABLES:
+
+1. Identify the exact file and line number causing the redirect
+2. Show the current (broken) routing configuration
+3. Provide the fixed routing configuration
+4. List all files modified
+5. Explain what was causing the issue
+
+DO NOT:
+- Change the Memes page itself
+- Break existing navigation between pages
+- Remove the /memes route (it should still be accessible)
+
+The goal is ONLY to change the default landing page from Memes to Dashboard.
