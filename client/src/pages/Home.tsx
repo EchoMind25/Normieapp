@@ -4,6 +4,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { CommunityHub } from "@/components/CommunityHub";
 import { ArtGallery } from "@/components/ArtGallery";
 import { LiveChat } from "@/components/LiveChat";
+import { BiggestJeetLeaderboard } from "@/components/BiggestJeetLeaderboard";
 import { Footer } from "@/components/Footer";
 import { TransactionBubbles } from "@/components/TransactionBubbles";
 import { FloatingMascot } from "@/components/FloatingMascot";
@@ -179,6 +180,10 @@ export default function Home() {
               <ArtGallery />
               <LiveChat />
             </div>
+          </section>
+          
+          <section id="jeet-leaderboard" className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+            <BiggestJeetLeaderboard />
           </section>
           
           <CommunityHub />
