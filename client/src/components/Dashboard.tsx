@@ -131,7 +131,18 @@ const TIME_RANGES = [
   { id: "6h", label: "6h", description: "Last 6 hours" },
   { id: "24h", label: "24h", description: "Last 24 hours" },
   { id: "7d", label: "7d", description: "Last 7 days" },
+  { id: "all", label: "All", description: "All time history" },
 ];
+
+interface ChartMarker {
+  type: "dev" | "whale";
+  signature: string;
+  timestamp: number;
+  amount: number;
+  price: number;
+  walletAddress?: string;
+  percentOfSupply?: number;
+}
 
 export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnected }: DashboardProps) {
   const [timeRange, setTimeRange] = useState("24h");
@@ -139,6 +150,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   const lastFetchRef = useRef<{ range: string; timestamp: number } | null>(null);
   const chartDataRef = useRef<PricePoint[]>([]);
+  const [chartMarkers, setChartMarkers] = useState<ChartMarker[]>([]);
 
   const fetchChartData = useCallback(async (range: string, force = false) => {
     if (range === "live") {
@@ -213,6 +225,23 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
     }
   }, [priceHistory, timeRange]);
 
+  // Fetch chart markers (whale buys + stored dev buys) when time range changes
+  useEffect(() => {
+    const fetchMarkers = async () => {
+      try {
+        const apiRange = timeRange === "live" ? "24h" : timeRange;
+        const response = await fetch(`/api/chart-markers?range=${apiRange}`);
+        if (response.ok) {
+          const markers: ChartMarker[] = await response.json();
+          setChartMarkers(markers);
+        }
+      } catch (error) {
+        console.error("[Chart] Error fetching markers:", error);
+      }
+    };
+    fetchMarkers();
+  }, [timeRange]);
+
   const formatPrice = (price: number) => {
     if (price < 0.00001) {
       return price.toFixed(10);
@@ -238,7 +267,9 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
 
   const formatChartLabel = (timestamp: number) => {
     const date = new Date(timestamp);
-    if (timeRange === "7d") {
+    if (timeRange === "all") {
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" });
+    } else if (timeRange === "7d") {
       return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     } else if (timeRange === "24h" || timeRange === "6h") {
       return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
@@ -267,6 +298,8 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
           return 2 * 60 * 60 * 1000;
         case "7d":
           return 12 * 60 * 60 * 1000;
+        case "all":
+          return 24 * 60 * 60 * 1000; // 24 hour tolerance for all time view
         default:
           return 60 * 60 * 1000;
       }
@@ -295,6 +328,62 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
     return { devBuyPoints: result, devBuyAmounts: amounts };
   }, [chartData, devBuys, timeRange]);
 
+  // Calculate whale buy marker points from chart markers
+  const { whaleBuyPoints, whaleBuyAmounts } = useMemo(() => {
+    if (chartData.length === 0 || chartMarkers.length === 0) {
+      return { whaleBuyPoints: [], whaleBuyAmounts: {} as Record<number, { amount: number; percent: number }> };
+    }
+    
+    const result: (number | null)[] = new Array(chartData.length).fill(null);
+    const amounts: Record<number, { amount: number; percent: number }> = {};
+    
+    const getToleranceMs = () => {
+      switch (timeRange) {
+        case "live":
+        case "5m":
+          return 60 * 1000;
+        case "1h":
+          return 5 * 60 * 1000;
+        case "6h":
+          return 30 * 60 * 1000;
+        case "24h":
+          return 2 * 60 * 60 * 1000;
+        case "7d":
+          return 12 * 60 * 60 * 1000;
+        case "all":
+          return 24 * 60 * 60 * 1000;
+        default:
+          return 60 * 60 * 1000;
+      }
+    };
+    
+    const toleranceMs = getToleranceMs();
+    const whaleMarkers = chartMarkers.filter(m => m.type === "whale");
+    
+    whaleMarkers.forEach((marker) => {
+      let closestIndex = -1;
+      let closestDiff = Infinity;
+      
+      chartData.forEach((p, index) => {
+        const diff = Math.abs(marker.timestamp - p.timestamp);
+        if (diff < closestDiff) {
+          closestDiff = diff;
+          closestIndex = index;
+        }
+      });
+      
+      if (closestIndex !== -1 && closestDiff < toleranceMs) {
+        result[closestIndex] = chartData[closestIndex].price;
+        amounts[closestIndex] = {
+          amount: marker.amount,
+          percent: marker.percentOfSupply || 0,
+        };
+      }
+    });
+    
+    return { whaleBuyPoints: result, whaleBuyAmounts: amounts };
+  }, [chartData, chartMarkers, timeRange]);
+
   const priceChartData = useMemo(() => ({
     labels: chartData.map((p) => formatChartLabel(p.timestamp)),
     datasets: [
@@ -314,18 +403,33 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
         data: devBuyPoints,
         borderColor: "hsl(142 76% 36%)",
         backgroundColor: "hsl(142 72% 45%)",
-        pointRadius: devBuyPoints.map((p) => (p !== null ? 7 : 0)),
-        pointHoverRadius: 10,
+        pointRadius: devBuyPoints.map((p) => (p !== null ? 8 : 0)),
+        pointHoverRadius: 12,
         pointBorderWidth: 2,
         pointBorderColor: "hsl(142 76% 26%)",
-        pointStyle: "circle",
+        pointStyle: "triangle",
         showLine: false,
         pointHoverBorderWidth: 3,
         pointHoverBackgroundColor: "hsl(142 72% 55%)",
         pointHoverBorderColor: "hsl(120 5% 90%)",
       },
+      {
+        label: "Whale Buys",
+        data: whaleBuyPoints,
+        borderColor: "hsl(210 80% 50%)",
+        backgroundColor: "hsl(210 80% 60%)",
+        pointRadius: whaleBuyPoints.map((p) => (p !== null ? 10 : 0)),
+        pointHoverRadius: 14,
+        pointBorderWidth: 2,
+        pointBorderColor: "hsl(210 80% 30%)",
+        pointStyle: "rectRot",
+        showLine: false,
+        pointHoverBorderWidth: 3,
+        pointHoverBackgroundColor: "hsl(210 80% 70%)",
+        pointHoverBorderColor: "hsl(120 5% 90%)",
+      },
     ],
-  }), [chartData, devBuyPoints, timeRange]);
+  }), [chartData, devBuyPoints, whaleBuyPoints, timeRange]);
 
   const priceChartOptions = useMemo(() => ({
     responsive: true,
@@ -335,12 +439,18 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
     },
     plugins: {
       legend: {
-        display: devBuys.length > 0,
+        display: devBuys.length > 0 || whaleBuyPoints.some(p => p !== null),
         position: "top" as const,
         labels: {
           color: "hsl(120 3% 55%)",
           font: { family: "JetBrains Mono, monospace", size: 10 },
           usePointStyle: true,
+          filter: (legendItem: any, chartData: any) => {
+            // Only show legend items that have data
+            const datasetIndex = legendItem.datasetIndex;
+            const dataset = chartData.datasets[datasetIndex];
+            return dataset.data.some((d: any) => d !== null);
+          },
         },
       },
       tooltip: {
@@ -365,6 +475,18 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
                   ? `${(amount / 1000).toFixed(1)}K`
                   : amount.toLocaleString();
                 return `DEV BUY: ${formattedAmount} $NORMIE`;
+              }
+              return "";
+            }
+            if (label === "Whale Buys") {
+              const whaleData = whaleBuyAmounts[context.dataIndex];
+              if (whaleData !== undefined) {
+                const formattedAmount = whaleData.amount >= 1000000
+                  ? `${(whaleData.amount / 1000000).toFixed(2)}M`
+                  : whaleData.amount >= 1000
+                  ? `${(whaleData.amount / 1000).toFixed(1)}K`
+                  : whaleData.amount.toLocaleString();
+                return `WHALE BUY: ${formattedAmount} $NORMIE (${whaleData.percent.toFixed(1)}% of supply)`;
               }
               return "";
             }
@@ -404,7 +526,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       mode: "nearest" as const,
       intersect: false,
     },
-  }), [devBuys.length, devBuyAmounts]);
+  }), [devBuys.length, devBuyAmounts, whaleBuyPoints, whaleBuyAmounts]);
 
   const totalRemoved = metrics
     ? metrics.burnedTokens + metrics.lockedTokens

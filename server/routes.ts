@@ -457,6 +457,115 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to get status" });
     }
   });
+
+  // Get whale buys for chart display
+  app.get("/api/whale-buys", async (req, res) => {
+    try {
+      res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+      res.set("Pragma", "no-cache");
+      
+      const limit = parseInt(req.query.limit as string) || 50;
+      const whaleBuys = await storage.getWhaleBuys(limit);
+      
+      const formatted = whaleBuys.map(buy => ({
+        signature: buy.signature,
+        walletAddress: buy.walletAddress,
+        timestamp: new Date(buy.timestamp).getTime(),
+        amount: parseFloat(buy.amount),
+        price: parseFloat(buy.price),
+        solSpent: buy.solSpent ? parseFloat(buy.solSpent) : null,
+        percentOfSupply: parseFloat(buy.percentOfSupply),
+      }));
+      
+      res.json(formatted);
+    } catch (error) {
+      console.error("[WhaleBuys] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch whale buys" });
+    }
+  });
+
+  // Get stored dev buys (from database, for historical view)
+  app.get("/api/stored-dev-buys", async (req, res) => {
+    try {
+      res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+      res.set("Pragma", "no-cache");
+      
+      const limit = parseInt(req.query.limit as string) || 50;
+      const storedBuys = await storage.getStoredDevBuys(limit);
+      
+      const formatted = storedBuys.map(buy => ({
+        signature: buy.signature,
+        timestamp: new Date(buy.timestamp).getTime(),
+        amount: parseFloat(buy.amount),
+        price: parseFloat(buy.price),
+        solSpent: buy.solSpent ? parseFloat(buy.solSpent) : null,
+        isDevBuy: true,
+      }));
+      
+      res.json(formatted);
+    } catch (error) {
+      console.error("[StoredDevBuys] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch stored dev buys" });
+    }
+  });
+
+  // Get all chart markers (dev buys + whale buys combined)
+  app.get("/api/chart-markers", async (req, res) => {
+    try {
+      res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+      res.set("Pragma", "no-cache");
+      
+      const range = req.query.range as string;
+      let startDate: Date | undefined;
+      
+      if (range === "all") {
+        // No date filter for all-time view
+        startDate = undefined;
+      } else if (range) {
+        const now = new Date();
+        switch (range) {
+          case "24h": startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+          case "7d": startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+          case "30d": startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+          default: startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        }
+      }
+      
+      // Fetch dev buys
+      const devBuys = startDate 
+        ? await storage.getStoredDevBuysInRange(startDate, new Date())
+        : await storage.getAllStoredDevBuys();
+      
+      // Fetch whale buys
+      const whaleBuys = startDate
+        ? await storage.getWhaleBuysInRange(startDate, new Date())
+        : await storage.getAllWhaleBuys();
+      
+      const markers = [
+        ...devBuys.map(buy => ({
+          type: "dev" as const,
+          signature: buy.signature,
+          timestamp: new Date(buy.timestamp).getTime(),
+          amount: parseFloat(buy.amount),
+          price: parseFloat(buy.price),
+        })),
+        ...whaleBuys.map(buy => ({
+          type: "whale" as const,
+          signature: buy.signature,
+          walletAddress: buy.walletAddress,
+          timestamp: new Date(buy.timestamp).getTime(),
+          amount: parseFloat(buy.amount),
+          price: parseFloat(buy.price),
+          percentOfSupply: parseFloat(buy.percentOfSupply),
+        })),
+      ].sort((a, b) => a.timestamp - b.timestamp);
+      
+      res.json(markers);
+    } catch (error) {
+      console.error("[ChartMarkers] Error fetching:", error);
+      res.status(500).json({ error: "Failed to fetch chart markers" });
+    }
+  });
   
   app.get("/api/token", (_req, res) => {
     res.json({

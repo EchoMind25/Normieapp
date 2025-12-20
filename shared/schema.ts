@@ -210,6 +210,51 @@ export const insertManualDevBuySchema = createInsertSchema(manualDevBuys).omit({
 export type InsertManualDevBuy = z.infer<typeof insertManualDevBuySchema>;
 export type ManualDevBuy = typeof manualDevBuys.$inferSelect;
 
+// Stored dev buys - automatically detected dev wallet transactions
+export const storedDevBuys = pgTable("stored_dev_buys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  signature: varchar("signature", { length: 100 }).unique().notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  amount: decimal("amount", { precision: 20, scale: 6 }).notNull(),
+  price: decimal("price", { precision: 20, scale: 10 }).notNull(),
+  solSpent: decimal("sol_spent", { precision: 20, scale: 9 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_stored_dev_buys_timestamp").on(table.timestamp),
+  index("idx_stored_dev_buys_sig").on(table.signature),
+]);
+
+export const insertStoredDevBuySchema = createInsertSchema(storedDevBuys).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertStoredDevBuy = z.infer<typeof insertStoredDevBuySchema>;
+export type StoredDevBuy = typeof storedDevBuys.$inferSelect;
+
+// Whale buys - transactions where >2% of supply was purchased
+export const whaleBuys = pgTable("whale_buys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  signature: varchar("signature", { length: 100 }).unique().notNull(),
+  walletAddress: varchar("wallet_address", { length: 44 }).notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  amount: decimal("amount", { precision: 20, scale: 6 }).notNull(),
+  price: decimal("price", { precision: 20, scale: 10 }).notNull(),
+  solSpent: decimal("sol_spent", { precision: 20, scale: 9 }),
+  percentOfSupply: decimal("percent_of_supply", { precision: 5, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_whale_buys_timestamp").on(table.timestamp),
+  index("idx_whale_buys_wallet").on(table.walletAddress),
+  index("idx_whale_buys_sig").on(table.signature),
+]);
+
+export const insertWhaleBuySchema = createInsertSchema(whaleBuys).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertWhaleBuy = z.infer<typeof insertWhaleBuySchema>;
+export type WhaleBuy = typeof whaleBuys.$inferSelect;
+
 // =====================================================
 // PHASE 2: NFT Marketplace Tables
 // =====================================================

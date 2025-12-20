@@ -69,7 +69,17 @@ function formatChartLabel(timestamp: number): string {
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-type TimeRange = "live" | "5m" | "1h" | "6h" | "24h" | "7d";
+type TimeRange = "live" | "5m" | "1h" | "6h" | "24h" | "7d" | "all";
+
+interface ChartMarker {
+  type: "dev" | "whale";
+  signature: string;
+  timestamp: number;
+  amount: number;
+  price: number;
+  walletAddress?: string;
+  percentOfSupply?: number;
+}
 
 interface EmbedConfig {
   theme: "dark" | "light";
@@ -104,6 +114,7 @@ export default function EmbedChart() {
   const [priceChange, setPriceChange] = useState<number | null>(null);
   const [metrics, setMetrics] = useState<TokenMetrics | null>(null);
   const lastFetchRef = useRef<number>(0);
+  const [chartMarkers, setChartMarkers] = useState<ChartMarker[]>([]);
 
   // Fetch token metrics (holders, burned, locked, etc.)
   const fetchMetrics = useCallback(async () => {
@@ -181,6 +192,27 @@ export default function EmbedChart() {
     return () => clearInterval(interval);
   }, [fetchMetrics]);
 
+  // Fetch chart markers (whale buys + dev buys) when time range changes
+  useEffect(() => {
+    const fetchMarkers = async () => {
+      try {
+        const headers: HeadersInit = {};
+        if (config.token) {
+          headers["X-Embed-Token"] = config.token;
+        }
+        const apiRange = timeRange === "live" ? "24h" : timeRange;
+        const response = await fetch(`/api/chart-markers?range=${apiRange}`, { headers });
+        if (response.ok) {
+          const markers: ChartMarker[] = await response.json();
+          setChartMarkers(markers);
+        }
+      } catch (error) {
+        console.error("[EmbedChart] Error fetching markers:", error);
+      }
+    };
+    fetchMarkers();
+  }, [timeRange, config.token]);
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", config.theme === "dark");
     document.body.style.background = config.theme === "dark" ? "hsl(120 6% 8%)" : "#ffffff";
@@ -188,6 +220,73 @@ export default function EmbedChart() {
     document.body.style.padding = "0";
     document.body.style.overflow = "hidden";
   }, [config.theme]);
+
+  // Calculate dev buy and whale buy marker points
+  const { devBuyPoints, whaleBuyPoints, devBuyAmounts, whaleBuyAmounts } = useMemo(() => {
+    if (chartData.length === 0 || chartMarkers.length === 0) {
+      return {
+        devBuyPoints: [] as (number | null)[],
+        whaleBuyPoints: [] as (number | null)[],
+        devBuyAmounts: {} as Record<number, number>,
+        whaleBuyAmounts: {} as Record<number, { amount: number; percent: number }>,
+      };
+    }
+    
+    const devPoints: (number | null)[] = new Array(chartData.length).fill(null);
+    const whalePoints: (number | null)[] = new Array(chartData.length).fill(null);
+    const devAmounts: Record<number, number> = {};
+    const whaleAmounts: Record<number, { amount: number; percent: number }> = {};
+    
+    const getToleranceMs = () => {
+      switch (timeRange) {
+        case "live":
+        case "5m":
+          return 60 * 1000;
+        case "1h":
+          return 5 * 60 * 1000;
+        case "6h":
+          return 30 * 60 * 1000;
+        case "24h":
+          return 2 * 60 * 60 * 1000;
+        case "7d":
+          return 12 * 60 * 60 * 1000;
+        case "all":
+          return 24 * 60 * 60 * 1000;
+        default:
+          return 60 * 60 * 1000;
+      }
+    };
+    
+    const toleranceMs = getToleranceMs();
+    
+    chartMarkers.forEach((marker) => {
+      let closestIndex = -1;
+      let closestDiff = Infinity;
+      
+      chartData.forEach((p, index) => {
+        const diff = Math.abs(marker.timestamp - p.timestamp);
+        if (diff < closestDiff) {
+          closestDiff = diff;
+          closestIndex = index;
+        }
+      });
+      
+      if (closestIndex !== -1 && closestDiff < toleranceMs) {
+        if (marker.type === "dev") {
+          devPoints[closestIndex] = chartData[closestIndex].price;
+          devAmounts[closestIndex] = marker.amount;
+        } else if (marker.type === "whale") {
+          whalePoints[closestIndex] = chartData[closestIndex].price;
+          whaleAmounts[closestIndex] = {
+            amount: marker.amount,
+            percent: marker.percentOfSupply || 0,
+          };
+        }
+      }
+    });
+    
+    return { devBuyPoints: devPoints, whaleBuyPoints: whalePoints, devBuyAmounts: devAmounts, whaleBuyAmounts: whaleAmounts };
+  }, [chartData, chartMarkers, timeRange]);
 
   const priceChartData = useMemo(() => ({
     labels: chartData.map((p) => formatChartLabel(p.timestamp)),
@@ -203,15 +302,54 @@ export default function EmbedChart() {
         pointRadius: 0,
         pointHoverRadius: 4,
       },
+      {
+        label: "Dev Buys",
+        data: devBuyPoints,
+        borderColor: `hsl(${config.accentColor})`,
+        backgroundColor: `hsl(${config.accentColor})`,
+        pointRadius: devBuyPoints.map((p) => (p !== null ? 8 : 0)),
+        pointHoverRadius: 12,
+        pointBorderWidth: 2,
+        pointBorderColor: "hsl(142 76% 26%)",
+        pointStyle: "triangle",
+        showLine: false,
+        pointHoverBorderWidth: 3,
+      },
+      {
+        label: "Whale Buys",
+        data: whaleBuyPoints,
+        borderColor: "hsl(210 80% 50%)",
+        backgroundColor: "hsl(210 80% 60%)",
+        pointRadius: whaleBuyPoints.map((p) => (p !== null ? 10 : 0)),
+        pointHoverRadius: 14,
+        pointBorderWidth: 2,
+        pointBorderColor: "hsl(210 80% 30%)",
+        pointStyle: "rectRot",
+        showLine: false,
+        pointHoverBorderWidth: 3,
+      },
     ],
-  }), [chartData, config.accentColor]);
+  }), [chartData, config.accentColor, devBuyPoints, whaleBuyPoints]);
 
   const priceChartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 0 },
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: devBuyPoints.some(p => p !== null) || whaleBuyPoints.some(p => p !== null),
+        position: "top" as const,
+        labels: {
+          color: config.theme === "dark" ? "hsl(120 3% 55%)" : "#666666",
+          font: { size: 10 },
+          usePointStyle: true,
+          filter: (legendItem: any, chartData: any) => {
+            const datasetIndex = legendItem.datasetIndex;
+            const dataset = chartData.datasets[datasetIndex];
+            return dataset.data.some((d: any) => d !== null);
+          },
+        },
+      },
       tooltip: {
         mode: "index" as const,
         intersect: false,
@@ -223,7 +361,34 @@ export default function EmbedChart() {
         titleFont: { family: "system-ui, sans-serif" },
         bodyFont: { family: "system-ui, sans-serif" },
         callbacks: {
-          label: (context: any) => `Price: ${formatPrice(context.raw)}`,
+          label: (context: any) => {
+            const label = context.dataset.label || "";
+            if (label === "Dev Buys") {
+              const amount = devBuyAmounts[context.dataIndex];
+              if (amount !== undefined) {
+                const formattedAmount = amount >= 1000000
+                  ? `${(amount / 1000000).toFixed(2)}M`
+                  : amount >= 1000
+                  ? `${(amount / 1000).toFixed(1)}K`
+                  : amount.toLocaleString();
+                return `DEV BUY: ${formattedAmount} $NORMIE`;
+              }
+              return "";
+            }
+            if (label === "Whale Buys") {
+              const whaleData = whaleBuyAmounts[context.dataIndex];
+              if (whaleData !== undefined) {
+                const formattedAmount = whaleData.amount >= 1000000
+                  ? `${(whaleData.amount / 1000000).toFixed(2)}M`
+                  : whaleData.amount >= 1000
+                  ? `${(whaleData.amount / 1000).toFixed(1)}K`
+                  : whaleData.amount.toLocaleString();
+                return `WHALE BUY: ${formattedAmount} (${whaleData.percent.toFixed(1)}%)`;
+              }
+              return "";
+            }
+            return `Price: ${formatPrice(context.raw)}`;
+          },
         },
       },
     },
@@ -258,9 +423,9 @@ export default function EmbedChart() {
       axis: "x" as const,
       intersect: false,
     },
-  }), [config.theme]);
+  }), [config.theme, devBuyPoints, whaleBuyPoints, devBuyAmounts, whaleBuyAmounts]);
 
-  const timeRanges: TimeRange[] = ["live", "5m", "1h", "6h", "24h", "7d"];
+  const timeRanges: TimeRange[] = ["live", "5m", "1h", "6h", "24h", "7d", "all"];
 
   const containerStyle: React.CSSProperties = {
     height: config.height,

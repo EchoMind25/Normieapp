@@ -8,7 +8,7 @@ interface IconData {
   fileUrl: string;
 }
 
-const DEFAULT_FAVICON = "/favicon.ico";
+const DEFAULT_FAVICON = "https://res.cloudinary.com/dmt4dpsnw/image/upload/v1765997164/Normie-Favicon_on9ov0.png";
 
 export function DynamicFavicon() {
   const { user, isAuthenticated } = useAuth();
@@ -21,33 +21,42 @@ export function DynamicFavicon() {
   });
 
   useEffect(() => {
-    const updateFavicon = (iconUrl: string) => {
+    const updateAllFavicons = (iconUrl: string) => {
       if (currentFaviconRef.current === iconUrl) {
         return;
       }
-      
-      let existingLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-      
-      if (!existingLink) {
-        existingLink = document.createElement("link");
-        existingLink.rel = "icon";
-        document.head.appendChild(existingLink);
+
+      const allIconLinks = document.querySelectorAll("link[rel*='icon']");
+      allIconLinks.forEach((link) => {
+        const linkEl = link as HTMLLinkElement;
+        if (linkEl.rel === "apple-touch-icon") {
+          linkEl.href = iconUrl;
+        } else if (linkEl.rel.includes("icon")) {
+          linkEl.href = iconUrl;
+          linkEl.type = iconUrl.endsWith(".svg") ? "image/svg+xml" : "image/png";
+        }
+      });
+
+      if (allIconLinks.length === 0) {
+        const newLink = document.createElement("link");
+        newLink.rel = "icon";
+        newLink.type = iconUrl.endsWith(".svg") ? "image/svg+xml" : "image/png";
+        newLink.href = iconUrl;
+        document.head.appendChild(newLink);
       }
-      
-      existingLink.type = iconUrl.endsWith(".svg") ? "image/svg+xml" : "image/x-icon";
-      existingLink.href = iconUrl;
+
       currentFaviconRef.current = iconUrl;
     };
 
     if (isAuthenticated && user?.selectedIconId && icons.length > 0) {
       const selectedIcon = icons.find(icon => icon.id === user.selectedIconId);
       if (selectedIcon) {
-        updateFavicon(selectedIcon.fileUrl);
+        updateAllFavicons(selectedIcon.fileUrl);
         return;
       }
     }
 
-    updateFavicon(DEFAULT_FAVICON);
+    updateAllFavicons(DEFAULT_FAVICON);
   }, [user?.selectedIconId, icons, isAuthenticated]);
 
   return null;

@@ -3,8 +3,12 @@ import { NORMIE_TOKEN } from "@shared/schema";
 import type { TokenMetrics, PricePoint, DevBuy, ActivityItem } from "@shared/schema";
 import { fetchStreamflowLockedTokens, getLockedTokens } from "./streamflow";
 import { sendWhaleAlertNotification, sendJeetAlarmNotification } from "./pushNotifications";
+import { storage } from "./storage";
 
-const WHALE_BUY_THRESHOLD = 2_000_000;
+// Whale buy threshold: 2% of total supply (1 billion tokens)
+const TOTAL_SUPPLY = 1_000_000_000;
+const WHALE_BUY_PERCENT_THRESHOLD = 2; // 2% of supply = 20M tokens
+const WHALE_BUY_THRESHOLD = TOTAL_SUPPLY * (WHALE_BUY_PERCENT_THRESHOLD / 100); // 20,000,000
 const JEET_SELL_THRESHOLD = 5_000_000;
 const notifiedTransactions = new Set<string>();
 
@@ -284,22 +288,30 @@ export async function fetchDevBuys(): Promise<DevBuy[]> {
             
             // A dev buy: SOL was spent AND tokens were received
             if (solSpent > 0.005 && tokenReceived > 0) {
-              recentBuys.push({
+              const devBuy: DevBuy = {
                 signature: sig.signature,
                 timestamp: sig.blockTime * 1000,
                 amount: tokenReceived,
                 price: currentMetrics?.price || 0,
-              });
+              };
+              recentBuys.push(devBuy);
+              
+              // Store to database if not already stored
+              await storeDevBuyToDatabase(devBuy, solSpent);
             } else if (solSpent > 0.01 && tokenReceived === 0) {
               // Fallback: estimate tokens if we can detect it's a swap tx
               const estimatedTokens = solSpent * (currentMetrics?.price ? 1 / currentMetrics.price : 1000000);
               if (estimatedTokens > 10000) {
-                recentBuys.push({
+                const devBuy: DevBuy = {
                   signature: sig.signature,
                   timestamp: sig.blockTime * 1000,
                   amount: estimatedTokens,
                   price: currentMetrics?.price || 0,
-                });
+                };
+                recentBuys.push(devBuy);
+                
+                // Store to database if not already stored
+                await storeDevBuyToDatabase(devBuy, solSpent);
               }
             }
           }
@@ -322,6 +334,76 @@ export async function fetchDevBuys(): Promise<DevBuy[]> {
   }
   
   return devBuys;
+}
+
+// Store dev buy to database if not already stored
+async function storeDevBuyToDatabase(devBuy: DevBuy, solSpent: number): Promise<void> {
+  try {
+    const existing = await storage.getStoredDevBuyBySignature(devBuy.signature);
+    if (!existing) {
+      await storage.createStoredDevBuy({
+        signature: devBuy.signature,
+        timestamp: new Date(devBuy.timestamp),
+        amount: devBuy.amount.toString(),
+        price: devBuy.price.toString(),
+        solSpent: solSpent.toString(),
+      });
+      console.log(`[DevBuys] Stored new dev buy: ${devBuy.signature.slice(0, 8)}...`);
+    }
+  } catch (error: any) {
+    // Ignore duplicate key errors (already stored)
+    if (!error?.message?.includes("duplicate key")) {
+      console.error("[DevBuys] Error storing to database:", error?.message || error);
+    }
+  }
+}
+
+// Store whale buy to database
+async function storeWhaleBuyToDatabase(
+  signature: string,
+  walletAddress: string,
+  timestamp: number,
+  amount: number,
+  price: number,
+  solSpent: number
+): Promise<void> {
+  try {
+    const existing = await storage.getWhaleBuyBySignature(signature);
+    if (!existing) {
+      const percentOfSupply = (amount / TOTAL_SUPPLY) * 100;
+      await storage.createWhaleBuy({
+        signature,
+        walletAddress,
+        timestamp: new Date(timestamp),
+        amount: amount.toString(),
+        price: price.toString(),
+        solSpent: solSpent.toString(),
+        percentOfSupply: percentOfSupply.toFixed(2),
+      });
+      console.log(`[WhaleBuy] Stored new whale buy: ${signature.slice(0, 8)}... (${percentOfSupply.toFixed(2)}% of supply)`);
+    }
+  } catch (error: any) {
+    // Ignore duplicate key errors
+    if (!error?.message?.includes("duplicate key")) {
+      console.error("[WhaleBuy] Error storing to database:", error?.message || error);
+    }
+  }
+}
+
+// Check if a transaction is a whale buy (>2% of supply) and store it
+export async function checkAndStoreWhaleBuy(
+  signature: string,
+  walletAddress: string,
+  amount: number,
+  timestamp: number,
+  solSpent: number
+): Promise<boolean> {
+  if (amount >= WHALE_BUY_THRESHOLD) {
+    const price = currentMetrics?.price || 0;
+    await storeWhaleBuyToDatabase(signature, walletAddress, timestamp, amount, price, solSpent);
+    return true;
+  }
+  return false;
 }
 
 export function getMetrics(): TokenMetrics | null {
@@ -376,6 +458,7 @@ async function fetchBirdeyeOHLCV(timeRange: string): Promise<PricePoint[] | null
     "6h": { type: "5m", duration: 6 * 60 * 60 },
     "24h": { type: "15m", duration: 24 * 60 * 60 },
     "7d": { type: "1H", duration: 7 * 24 * 60 * 60 },
+    "all": { type: "1D", duration: 365 * 24 * 60 * 60 }, // All time - daily intervals for up to 1 year
   };
   
   const config = rangeConfig[timeRange] || rangeConfig["1h"];
@@ -453,6 +536,7 @@ async function fetchDexScreenerSimulatedPrices(timeRange: string): Promise<Price
     "6h": { duration: 6 * 60 * 60 * 1000, interval: 5 * 60 * 1000 },
     "24h": { duration: 24 * 60 * 60 * 1000, interval: 15 * 60 * 1000 },
     "7d": { duration: 7 * 24 * 60 * 60 * 1000, interval: 60 * 60 * 1000 },
+    "all": { duration: 90 * 24 * 60 * 60 * 1000, interval: 24 * 60 * 60 * 1000 }, // ~90 days with daily intervals
   };
   
   const config = rangeConfig[timeRange] || rangeConfig["1h"];

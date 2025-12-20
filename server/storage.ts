@@ -1,11 +1,13 @@
 import { db } from "./db";
-import { eq, and, gt, desc, sql, or, asc, ilike } from "drizzle-orm";
+import { eq, and, gt, desc, sql, or, asc, ilike, gte, lte } from "drizzle-orm";
 import {
   users,
   sessions,
   passwordResetTokens,
   authChallenges,
   icons,
+  storedDevBuys,
+  whaleBuys,
   nfts,
   nftCollections,
   nftListings,
@@ -35,6 +37,10 @@ import {
   type InsertAuthChallenge,
   type Icon,
   type InsertIcon,
+  type StoredDevBuy,
+  type InsertStoredDevBuy,
+  type WhaleBuy,
+  type InsertWhaleBuy,
   type Nft,
   type InsertNft,
   type NftCollection,
@@ -111,6 +117,20 @@ export interface IStorage {
   createIcon(icon: InsertIcon): Promise<Icon>;
   updateIcon(id: string, data: Partial<InsertIcon>): Promise<Icon | undefined>;
   deleteIcon(id: string): Promise<void>;
+  
+  // Stored Dev Buys (auto-tracked from blockchain)
+  createStoredDevBuy(buy: InsertStoredDevBuy): Promise<StoredDevBuy>;
+  getStoredDevBuyBySignature(signature: string): Promise<StoredDevBuy | undefined>;
+  getStoredDevBuys(limit?: number): Promise<StoredDevBuy[]>;
+  getStoredDevBuysInRange(startDate: Date, endDate: Date): Promise<StoredDevBuy[]>;
+  getAllStoredDevBuys(): Promise<StoredDevBuy[]>;
+  
+  // Whale Buys (>2% of supply purchases)
+  createWhaleBuy(buy: InsertWhaleBuy): Promise<WhaleBuy>;
+  getWhaleBuyBySignature(signature: string): Promise<WhaleBuy | undefined>;
+  getWhaleBuys(limit?: number): Promise<WhaleBuy[]>;
+  getWhaleBuysInRange(startDate: Date, endDate: Date): Promise<WhaleBuy[]>;
+  getAllWhaleBuys(): Promise<WhaleBuy[]>;
   
   // Admin User Management
   getAllUsersWithStats(): Promise<Array<User & { messageCount: number; galleryCount: number }>>;
@@ -400,6 +420,56 @@ export class DatabaseStorage implements IStorage {
     // First, unset this icon from any users using it
     await db.update(users).set({ selectedIconId: null }).where(eq(users.selectedIconId, id));
     await db.delete(icons).where(eq(icons.id, id));
+  }
+
+  // Stored Dev Buys
+  async createStoredDevBuy(buy: InsertStoredDevBuy): Promise<StoredDevBuy> {
+    const [created] = await db.insert(storedDevBuys).values(buy).returning();
+    return created;
+  }
+
+  async getStoredDevBuyBySignature(signature: string): Promise<StoredDevBuy | undefined> {
+    const [buy] = await db.select().from(storedDevBuys).where(eq(storedDevBuys.signature, signature));
+    return buy;
+  }
+
+  async getStoredDevBuys(limit: number = 50): Promise<StoredDevBuy[]> {
+    return db.select().from(storedDevBuys).orderBy(desc(storedDevBuys.timestamp)).limit(limit);
+  }
+
+  async getStoredDevBuysInRange(startDate: Date, endDate: Date): Promise<StoredDevBuy[]> {
+    return db.select().from(storedDevBuys)
+      .where(and(gte(storedDevBuys.timestamp, startDate), lte(storedDevBuys.timestamp, endDate)))
+      .orderBy(desc(storedDevBuys.timestamp));
+  }
+
+  async getAllStoredDevBuys(): Promise<StoredDevBuy[]> {
+    return db.select().from(storedDevBuys).orderBy(desc(storedDevBuys.timestamp));
+  }
+
+  // Whale Buys
+  async createWhaleBuy(buy: InsertWhaleBuy): Promise<WhaleBuy> {
+    const [created] = await db.insert(whaleBuys).values(buy).returning();
+    return created;
+  }
+
+  async getWhaleBuyBySignature(signature: string): Promise<WhaleBuy | undefined> {
+    const [buy] = await db.select().from(whaleBuys).where(eq(whaleBuys.signature, signature));
+    return buy;
+  }
+
+  async getWhaleBuys(limit: number = 50): Promise<WhaleBuy[]> {
+    return db.select().from(whaleBuys).orderBy(desc(whaleBuys.timestamp)).limit(limit);
+  }
+
+  async getWhaleBuysInRange(startDate: Date, endDate: Date): Promise<WhaleBuy[]> {
+    return db.select().from(whaleBuys)
+      .where(and(gte(whaleBuys.timestamp, startDate), lte(whaleBuys.timestamp, endDate)))
+      .orderBy(desc(whaleBuys.timestamp));
+  }
+
+  async getAllWhaleBuys(): Promise<WhaleBuy[]> {
+    return db.select().from(whaleBuys).orderBy(desc(whaleBuys.timestamp));
   }
 
   // Admin User Management
