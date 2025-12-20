@@ -371,6 +371,24 @@
   background-size: 100px 100px;
 }
 
+/* Light theme: Semi-transparent glassmorphism cards */
+.light .shadcn-card {
+  background-color: hsl(42 58% 86% / 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.light .bg-card {
+  background-color: hsl(42 58% 86% / 0.85);
+}
+
+/* Light theme sidebar and popover transparency */
+.light [data-sidebar] {
+  background-color: hsl(42 50% 84% / 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
 /* Light theme: Terracotta/Burnt Orange base with darker pattern */
 .light .monogram-backdrop {
   background-color: hsl(12 70% 42%);
