@@ -152,20 +152,55 @@ export default function EmbedChart() {
   const [chartMarkers, setChartMarkers] = useState<ChartMarker[]>([]);
   const [leaderboardData, setLeaderboardData] = useState<(DiamondHandsEntry | WhaleEntry | JeetEntry)[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  
+  // AbortController refs for cancelling pending fetches
+  const chartAbortRef = useRef<AbortController | null>(null);
+  const leaderboardAbortRef = useRef<AbortController | null>(null);
+  const metricsAbortRef = useRef<AbortController | null>(null);
+  const markersAbortRef = useRef<AbortController | null>(null);
+  
+  // Debounce timer for view switching
+  const viewSwitchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Debounced view setter to prevent rapid switches
+  const handleViewChange = useCallback((newView: ViewMode) => {
+    if (viewSwitchTimeoutRef.current) {
+      clearTimeout(viewSwitchTimeoutRef.current);
+    }
+    viewSwitchTimeoutRef.current = setTimeout(() => {
+      // Cancel any pending fetches before switching views
+      chartAbortRef.current?.abort();
+      leaderboardAbortRef.current?.abort();
+      metricsAbortRef.current?.abort();
+      markersAbortRef.current?.abort();
+      
+      // Clear errors when switching views
+      setError(null);
+      setCurrentView(newView);
+    }, 100);
+  }, []);
 
   // Fetch token metrics (holders, burned, locked, etc.)
   const fetchMetrics = useCallback(async () => {
+    // Abort previous metrics fetch
+    metricsAbortRef.current?.abort();
+    metricsAbortRef.current = new AbortController();
+    
     try {
       const headers: HeadersInit = {};
       if (config.token) {
         headers["X-Embed-Token"] = config.token;
       }
-      const response = await fetch("/api/embed/metrics", { headers });
+      const response = await fetch("/api/embed/metrics", { 
+        headers,
+        signal: metricsAbortRef.current.signal 
+      });
       if (response.ok) {
         const data: TokenMetrics = await response.json();
         setMetrics(data);
       }
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       console.error("Failed to fetch metrics:", err);
     }
   }, [config.token]);
@@ -174,6 +209,10 @@ export default function EmbedChart() {
     const now = Date.now();
     // Only throttle auto-refresh, not manual range changes
     if (!forceRefresh && now - lastFetchRef.current < 5000) return;
+    
+    // Abort previous chart fetch
+    chartAbortRef.current?.abort();
+    chartAbortRef.current = new AbortController();
     
     setIsLoading(true);
     setError(null);
@@ -184,7 +223,10 @@ export default function EmbedChart() {
         headers["X-Embed-Token"] = config.token;
       }
 
-      const response = await fetch(`/api/embed/price-history?range=${range}`, { headers });
+      const response = await fetch(`/api/embed/price-history?range=${range}`, { 
+        headers,
+        signal: chartAbortRef.current.signal 
+      });
       
       if (!response.ok) {
         if (response.status === 401) {
@@ -205,6 +247,7 @@ export default function EmbedChart() {
         setPriceChange(((latestPrice - firstPrice) / firstPrice) * 100);
       }
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Failed to load chart");
     } finally {
       setIsLoading(false);
@@ -240,6 +283,11 @@ export default function EmbedChart() {
   useEffect(() => {
     if (currentView === "chart") return;
     
+    // Abort previous leaderboard fetch
+    leaderboardAbortRef.current?.abort();
+    leaderboardAbortRef.current = new AbortController();
+    const abortController = leaderboardAbortRef.current;
+    
     const fetchLeaderboard = async () => {
       setLeaderboardLoading(true);
       setLeaderboardError(null); // Clear error before fetch
@@ -249,7 +297,10 @@ export default function EmbedChart() {
           headers["X-Embed-Token"] = config.token;
         }
         const endpoint = `/api/embed/leaderboard/${currentView}`;
-        const response = await fetch(endpoint, { headers });
+        const response = await fetch(endpoint, { 
+          headers,
+          signal: abortController.signal 
+        });
         if (response.ok) {
           const data = await response.json();
           setLeaderboardData(data);
@@ -258,6 +309,7 @@ export default function EmbedChart() {
           setLeaderboardError("Failed to fetch leaderboard");
         }
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         setLeaderboardError(err instanceof Error ? err.message : "Failed to load leaderboard");
       } finally {
         setLeaderboardLoading(false);
@@ -267,12 +319,20 @@ export default function EmbedChart() {
     
     fetchLeaderboard();
     const interval = setInterval(fetchLeaderboard, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      abortController.abort();
+    };
   }, [currentView, config.token]);
 
   // Fetch chart markers (whale buys + dev buys) when time range changes (only for chart view)
   useEffect(() => {
     if (currentView !== "chart") return;
+    
+    // Abort previous markers fetch
+    markersAbortRef.current?.abort();
+    markersAbortRef.current = new AbortController();
+    const abortController = markersAbortRef.current;
     
     const fetchMarkers = async () => {
       try {
@@ -281,16 +341,22 @@ export default function EmbedChart() {
           headers["X-Embed-Token"] = config.token;
         }
         const apiRange = timeRange === "live" ? "24h" : timeRange;
-        const response = await fetch(`/api/embed/chart-markers?range=${apiRange}`, { headers });
+        const response = await fetch(`/api/embed/chart-markers?range=${apiRange}`, { 
+          headers,
+          signal: abortController.signal 
+        });
         if (response.ok) {
           const markers: ChartMarker[] = await response.json();
           setChartMarkers(markers);
         }
       } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
         console.error("[EmbedChart] Error fetching markers:", error);
       }
     };
     fetchMarkers();
+    
+    return () => abortController.abort();
   }, [timeRange, config.token, currentView]);
 
   useEffect(() => {
@@ -300,6 +366,19 @@ export default function EmbedChart() {
     document.body.style.padding = "0";
     document.body.style.overflow = "hidden";
   }, [config.theme]);
+
+  // Cleanup all pending fetches and timers on unmount
+  useEffect(() => {
+    return () => {
+      chartAbortRef.current?.abort();
+      leaderboardAbortRef.current?.abort();
+      metricsAbortRef.current?.abort();
+      markersAbortRef.current?.abort();
+      if (viewSwitchTimeoutRef.current) {
+        clearTimeout(viewSwitchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Calculate dev buy and whale buy marker points (aggregate multiple markers per point)
   const { devBuyPoints, whaleBuyPoints, devBuyAmounts, whaleBuyAmounts } = useMemo(() => {
@@ -582,7 +661,7 @@ export default function EmbedChart() {
       {(["chart", "diamond", "whales", "jeets"] as ViewMode[]).map((view) => (
         <button
           key={view}
-          onClick={() => setCurrentView(view)}
+          onClick={() => handleViewChange(view)}
           style={{
             padding: "6px 10px",
             fontSize: "11px",
