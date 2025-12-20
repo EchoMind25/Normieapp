@@ -81,6 +81,8 @@ interface ChartMarker {
   percentOfSupply?: number;
 }
 
+type ViewMode = "chart" | "diamond" | "whales" | "jeets";
+
 interface EmbedConfig {
   theme: "dark" | "light";
   showControls: boolean;
@@ -89,6 +91,37 @@ interface EmbedConfig {
   accentColor: string;
   showBranding: boolean;
   token?: string;
+  view: ViewMode;
+}
+
+interface DiamondHandsEntry {
+  rank: number;
+  walletAddress: string;
+  userId: string | null;
+  username: string | null;
+  currentBalance: number;
+  holdDurationSeconds: number;
+  firstBuyAt: string | null;
+  solscanUrl: string;
+}
+
+interface WhaleEntry {
+  rank: number;
+  walletAddress: string;
+  userId: string | null;
+  username: string | null;
+  currentBalance: number;
+  holdDurationSeconds: number;
+  firstBuyAt: string | null;
+  solscanUrl: string;
+}
+
+interface JeetEntry {
+  rank: number;
+  walletAddress: string;
+  totalSold: number;
+  sellCount: number;
+  solscanUrl: string;
 }
 
 function getQueryParams(): EmbedConfig {
@@ -101,6 +134,7 @@ function getQueryParams(): EmbedConfig {
     accentColor: params.get("color") || "142 72% 45%",
     showBranding: params.get("branding") !== "false",
     token: params.get("token") || undefined,
+    view: (params.get("view") as ViewMode) || "chart",
   };
 }
 
@@ -115,6 +149,8 @@ export default function EmbedChart() {
   const [metrics, setMetrics] = useState<TokenMetrics | null>(null);
   const lastFetchRef = useRef<number>(0);
   const [chartMarkers, setChartMarkers] = useState<ChartMarker[]>([]);
+  const [leaderboardData, setLeaderboardData] = useState<(DiamondHandsEntry | WhaleEntry | JeetEntry)[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   // Fetch token metrics (holders, burned, locked, etc.)
   const fetchMetrics = useCallback(async () => {
@@ -175,6 +211,9 @@ export default function EmbedChart() {
   }, [config.token]);
 
   useEffect(() => {
+    // Only fetch chart data when in chart view mode
+    if (config.view !== "chart") return;
+    
     // Force refresh when time range changes (user clicked a button)
     fetchChartData(timeRange, true);
     
@@ -183,17 +222,57 @@ export default function EmbedChart() {
     }, timeRange === "live" ? 10000 : 60000);
     
     return () => clearInterval(interval);
-  }, [timeRange, fetchChartData]);
+  }, [timeRange, fetchChartData, config.view]);
 
-  // Fetch metrics on mount and refresh periodically
+  // Fetch metrics on mount and refresh periodically (only for chart view)
   useEffect(() => {
+    if (config.view !== "chart") return;
+    
     fetchMetrics();
     const interval = setInterval(fetchMetrics, 30000);
     return () => clearInterval(interval);
-  }, [fetchMetrics]);
+  }, [fetchMetrics, config.view]);
 
-  // Fetch chart markers (whale buys + dev buys) when time range changes
+  // Fetch leaderboard data when in leaderboard view mode
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  
   useEffect(() => {
+    if (config.view === "chart") return;
+    
+    const fetchLeaderboard = async () => {
+      setLeaderboardLoading(true);
+      setLeaderboardError(null); // Clear error before fetch
+      try {
+        const headers: HeadersInit = {};
+        if (config.token) {
+          headers["X-Embed-Token"] = config.token;
+        }
+        const endpoint = `/api/embed/leaderboard/${config.view}`;
+        const response = await fetch(endpoint, { headers });
+        if (response.ok) {
+          const data = await response.json();
+          setLeaderboardData(data);
+          setLeaderboardError(null); // Clear error on success
+        } else {
+          setLeaderboardError("Failed to fetch leaderboard");
+        }
+      } catch (err) {
+        setLeaderboardError(err instanceof Error ? err.message : "Failed to load leaderboard");
+      } finally {
+        setLeaderboardLoading(false);
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLeaderboard();
+    const interval = setInterval(fetchLeaderboard, 60000);
+    return () => clearInterval(interval);
+  }, [config.view, config.token]);
+
+  // Fetch chart markers (whale buys + dev buys) when time range changes (only for chart view)
+  useEffect(() => {
+    if (config.view !== "chart") return;
+    
     const fetchMarkers = async () => {
       try {
         const headers: HeadersInit = {};
@@ -211,7 +290,7 @@ export default function EmbedChart() {
       }
     };
     fetchMarkers();
-  }, [timeRange, config.token]);
+  }, [timeRange, config.token, config.view]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", config.theme === "dark");
@@ -490,7 +569,8 @@ export default function EmbedChart() {
     transition: "all 0.15s ease",
   });
 
-  if (error) {
+  // Only show chart error for chart view
+  if (error && config.view === "chart") {
     return (
       <div style={{ ...containerStyle, justifyContent: "center", alignItems: "center" }}>
         <div style={{ textAlign: "center" }}>
@@ -512,6 +592,167 @@ export default function EmbedChart() {
     );
   }
 
+  const getLeaderboardTitle = () => {
+    switch (config.view) {
+      case "diamond": return "Diamond Hands";
+      case "whales": return "Top Holders";
+      case "jeets": return "Paper Hands";
+      default: return "Leaderboard";
+    }
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    if (days > 0) return `${days}d ${hours}h`;
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  };
+
+  const truncateAddress = (addr: string): string => {
+    return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+  };
+
+  // Leaderboard view rendering
+  if (config.view !== "chart") {
+    // Show leaderboard-specific error
+    if (leaderboardError && leaderboardData.length === 0) {
+      return (
+        <div style={{ ...containerStyle, justifyContent: "center", alignItems: "center" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "14px", marginBottom: "8px", color: "#ef4444" }}>
+              {leaderboardError}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div style={containerStyle} data-testid="embed-leaderboard-container">
+        <div style={{ marginBottom: "12px" }}>
+          <h2 style={{ 
+            margin: 0, 
+            fontSize: "16px", 
+            fontWeight: 600,
+            color: `hsl(${config.accentColor})`,
+          }}>
+            {getLeaderboardTitle()}
+          </h2>
+        </div>
+
+        <div style={{ flex: 1, overflow: "auto" }}>
+          {leaderboardLoading && leaderboardData.length === 0 ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+              <div
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  border: `2px solid hsl(${config.accentColor} / 0.3)`,
+                  borderTopColor: `hsl(${config.accentColor})`,
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+            </div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+              <thead>
+                <tr style={{ 
+                  borderBottom: `1px solid ${config.theme === "dark" ? "hsl(120 5% 20%)" : "#e5e5e5"}`,
+                }}>
+                  <th style={{ textAlign: "left", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>#</th>
+                  <th style={{ textAlign: "left", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>Wallet</th>
+                  {config.view === "jeets" ? (
+                    <>
+                      <th style={{ textAlign: "right", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>Total Sold</th>
+                      <th style={{ textAlign: "right", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>Sells</th>
+                    </>
+                  ) : (
+                    <>
+                      <th style={{ textAlign: "right", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>Balance</th>
+                      <th style={{ textAlign: "right", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>Holding</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboardData.map((entry, index) => (
+                  <tr 
+                    key={index}
+                    style={{ 
+                      borderBottom: `1px solid ${config.theme === "dark" ? "hsl(120 5% 15%)" : "#f0f0f0"}`,
+                    }}
+                  >
+                    <td style={{ padding: "8px 4px", fontWeight: 500 }}>
+                      {index + 1}
+                    </td>
+                    <td style={{ padding: "8px 4px" }}>
+                      <a 
+                        href={(entry as any).solscanUrl || `https://solscan.io/account/${entry.walletAddress}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ 
+                          color: `hsl(${config.accentColor})`, 
+                          textDecoration: "none",
+                          fontFamily: "monospace",
+                        }}
+                        data-testid={`link-wallet-${index}`}
+                      >
+                        {(entry as any).username || truncateAddress(entry.walletAddress)}
+                      </a>
+                    </td>
+                    {config.view === "jeets" ? (
+                      <>
+                        <td style={{ textAlign: "right", padding: "8px 4px", color: "#ef4444" }}>
+                          {formatNumber((entry as JeetEntry).totalSold)}
+                        </td>
+                        <td style={{ textAlign: "right", padding: "8px 4px", opacity: 0.7 }}>
+                          {(entry as JeetEntry).sellCount}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ textAlign: "right", padding: "8px 4px" }}>
+                          {formatNumber((entry as DiamondHandsEntry | WhaleEntry).currentBalance)}
+                        </td>
+                        <td style={{ textAlign: "right", padding: "8px 4px", opacity: 0.7 }}>
+                          {formatDuration((entry as DiamondHandsEntry | WhaleEntry).holdDurationSeconds)}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {config.showBranding && (
+          <div style={{ marginTop: "8px", textAlign: "right", fontSize: "10px", opacity: 0.6 }}>
+            <a
+              href="https://normie.observer"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "inherit", textDecoration: "none" }}
+            >
+              Powered by normie.observer
+            </a>
+          </div>
+        )}
+
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          * { box-sizing: border-box; }
+          tr:hover { background: ${config.theme === "dark" ? "hsl(120 5% 12%)" : "#fafafa"}; }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Chart view rendering (original)
   return (
     <div style={containerStyle} data-testid="embed-chart-container">
       {config.showControls && (

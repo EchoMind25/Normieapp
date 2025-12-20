@@ -301,6 +301,43 @@ export async function registerRoutes(
     }
   });
   
+  // Embed leaderboard endpoints with CORS support
+  app.get("/api/embed/leaderboard/diamond", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=30");
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      const leaderboard = await storage.getDiamondHandsLeaderboard(limit);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("[Embed] Diamond hands leaderboard error:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/embed/leaderboard/whales", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=30");
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      const leaderboard = await storage.getWhalesLeaderboard(limit);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("[Embed] Whales leaderboard error:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/embed/leaderboard/jeets", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=30");
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      const leaderboard = await storage.getJeetLeaderboard(limit, "all");
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("[Embed] Jeets leaderboard error:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
   // Historical chart data from database (optimized - reduces external API calls)
   app.get("/api/chart/:tokenAddress", apiLimiter, async (req, res) => {
     try {
