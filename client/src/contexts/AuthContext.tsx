@@ -175,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [refetch, toast]);
 
-  const requiresPasswordChange = !!(user && user.role === "admin" && user.passwordChanged === false);
+  const requiresPasswordChange = !!(user && user.passwordChanged === false);
 
   const value: AuthContextType = {
     user,
