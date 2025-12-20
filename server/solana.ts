@@ -31,11 +31,11 @@ let cachedBurnedTokens: number = BURNED_TOKENS;
 let connection: Connection | null = null;
 let priceHistory: PricePoint[] = [];
 let historicalPriceData: Map<string, PricePoint[]> = new Map();
+let lastHistoricalFetchByRange: Map<string, number> = new Map();
 let devBuys: DevBuy[] = [];
 let currentMetrics: TokenMetrics | null = null;
 let lastRpcSuccess = Date.now();
 let lastDexScreenerFetch = 0;
-let lastHistoricalFetch = 0;
 
 // Activity cache for real-time token activity tracking
 let activityCache: ActivityItem[] = [];
@@ -677,9 +677,10 @@ async function fetchDexScreenerSimulatedPrices(timeRange: string): Promise<Price
 export async function fetchHistoricalPrices(timeRange: string = "1h"): Promise<PricePoint[]> {
   const now = Date.now();
   
-  // Return cached data if available and recent (2 min cache)
+  // Return cached data if available and recent (60s cache per time range)
   const cached = historicalPriceData.get(timeRange);
-  if (cached && cached.length > 0 && now - lastHistoricalFetch < 120000) {
+  const lastFetchForRange = lastHistoricalFetchByRange.get(timeRange) || 0;
+  if (cached && cached.length > 0 && now - lastFetchForRange < 60000) {
     return cached;
   }
   
@@ -689,14 +690,14 @@ export async function fetchHistoricalPrices(timeRange: string = "1h"): Promise<P
     
     if (birdeyeData && birdeyeData.length > 0) {
       historicalPriceData.set(timeRange, birdeyeData);
-      lastHistoricalFetch = now;
+      lastHistoricalFetchByRange.set(timeRange, now);
       return birdeyeData;
     }
     
     // Fallback to DexScreener simulated data
     const dexScreenerData = await fetchDexScreenerSimulatedPrices(timeRange);
     historicalPriceData.set(timeRange, dexScreenerData);
-    lastHistoricalFetch = now;
+    lastHistoricalFetchByRange.set(timeRange, now);
     return dexScreenerData;
   } catch (error) {
     console.error("[Historical] Error fetching prices:", error);
