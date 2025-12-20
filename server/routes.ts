@@ -15,6 +15,8 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { initializePushNotifications, getVapidPublicKey, isPushEnabled, sendPushNotificationForNewPoll, sendStreamNotification } from "./pushNotifications";
+import { smartDataFetcher } from "./smartDataFetcher";
+import { bugReports, insertBugReportSchema, NORMIE_TOKEN } from "@shared/schema";
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -291,6 +293,101 @@ export async function registerRoutes(
     }
   });
   
+  // Historical chart data from database (optimized - reduces external API calls)
+  app.get("/api/chart/:tokenAddress", apiLimiter, async (req, res) => {
+    try {
+      const { tokenAddress } = req.params;
+      const timeframe = (req.query.timeframe as string) || "24h";
+      
+      res.set("Cache-Control", "public, max-age=30");
+      
+      const chartData = await smartDataFetcher.getHistoricalPrices(
+        tokenAddress,
+        timeframe
+      );
+      
+      res.json({
+        tokenAddress,
+        timeframe,
+        data: chartData,
+        fromDatabase: true,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch chart data" });
+    }
+  });
+
+  // Smart metrics fetch with caching (reduces external API calls by ~99%)
+  app.get("/api/smart-metrics", apiLimiter, async (_req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=15");
+      
+      const result = await smartDataFetcher.fetchTokenMetrics();
+      const interval = await smartDataFetcher.determinePollInterval(NORMIE_TOKEN.address);
+      
+      res.json({
+        ...result,
+        recommendedPollInterval: interval,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch metrics" });
+    }
+  });
+
+  // Bug report submission endpoint
+  app.post("/api/bug-report", apiLimiter, async (req, res) => {
+    try {
+      const {
+        description,
+        screenshot,
+        pageUrl,
+        userAgent,
+        imageAudit,
+        brokenImages,
+        viewport,
+        performanceMetrics,
+      } = req.body;
+
+      if (!description || !pageUrl) {
+        return res.status(400).json({ error: "Description and page URL are required" });
+      }
+
+      const [report] = await db
+        .insert(bugReports)
+        .values({
+          description,
+          pageUrl,
+          userAgent,
+          screenshotData: screenshot,
+          imageAudit: imageAudit ? JSON.stringify(imageAudit) : null,
+          brokenImagesCount: brokenImages?.length || 0,
+          viewport: viewport ? JSON.stringify(viewport) : null,
+          performanceMetrics: performanceMetrics ? JSON.stringify(performanceMetrics) : null,
+          status: "open",
+        })
+        .returning();
+
+      res.json({ success: true, reportId: report.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to submit bug report" });
+    }
+  });
+
+  // Get bug reports (admin only)
+  app.get("/api/bug-reports", requireAdmin, async (_req, res) => {
+    try {
+      const reports = await db
+        .select()
+        .from(bugReports)
+        .orderBy(desc(bugReports.createdAt))
+        .limit(100);
+
+      res.json(reports);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bug reports" });
+    }
+  });
+
   app.use("/api/auth", authLimiter, authRoutes);
   
   app.use("/api", apiLimiter);

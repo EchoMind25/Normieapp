@@ -726,6 +726,81 @@ export type InsertUserFeedback = z.infer<typeof insertUserFeedbackSchema>;
 export type UserFeedback = typeof userFeedback.$inferSelect;
 
 // =====================================================
+// API Optimization: Price History & Caching Tables
+// =====================================================
+
+// Price history table for storing historical price data
+export const priceHistory = pgTable("price_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tokenAddress: varchar("token_address", { length: 44 }).notNull(),
+  price: decimal("price", { precision: 20, scale: 10 }).notNull(),
+  volume24h: decimal("volume_24h", { precision: 20, scale: 2 }),
+  marketCap: decimal("market_cap", { precision: 20, scale: 2 }),
+  source: varchar("source", { length: 50 }),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+}, (table) => [
+  index("idx_price_history_token_time").on(table.tokenAddress, table.timestamp),
+  index("idx_price_history_timestamp").on(table.timestamp),
+]);
+
+export const insertPriceHistorySchema = createInsertSchema(priceHistory).omit({ 
+  id: true, 
+});
+export type InsertPriceHistory = z.infer<typeof insertPriceHistorySchema>;
+export type PriceHistory = typeof priceHistory.$inferSelect;
+
+// API cache table for smart caching with change detection
+export const apiCache = pgTable("api_cache", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  cacheKey: varchar("cache_key", { length: 255 }).unique().notNull(),
+  data: text("data").notNull(),
+  etag: varchar("etag", { length: 100 }),
+  lastModified: timestamp("last_modified"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_api_cache_key_expires").on(table.cacheKey, table.expiresAt),
+]);
+
+export const insertApiCacheSchema = createInsertSchema(apiCache).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertApiCache = z.infer<typeof insertApiCacheSchema>;
+export type ApiCache = typeof apiCache.$inferSelect;
+
+// =====================================================
+// Bug Reports Table
+// =====================================================
+
+export const bugReports = pgTable("bug_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id),
+  description: text("description").notNull(),
+  pageUrl: text("page_url").notNull(),
+  userAgent: text("user_agent"),
+  screenshotData: text("screenshot_data"),
+  imageAudit: text("image_audit"),
+  brokenImagesCount: integer("broken_images_count").default(0),
+  viewport: text("viewport"),
+  performanceMetrics: text("performance_metrics"),
+  status: varchar("status", { length: 20 }).default("open"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_bug_reports_status").on(table.status),
+  index("idx_bug_reports_created").on(table.createdAt),
+]);
+
+export const insertBugReportSchema = createInsertSchema(bugReports).omit({ 
+  id: true, 
+  createdAt: true,
+  resolvedAt: true,
+});
+export type InsertBugReport = z.infer<typeof insertBugReportSchema>;
+export type BugReport = typeof bugReports.$inferSelect;
+
+// =====================================================
 // Normie token constants
 // =====================================================
 
