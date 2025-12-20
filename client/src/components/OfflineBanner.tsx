@@ -3,8 +3,9 @@ import { useNetworkStatus } from '@/hooks/use-network';
 
 export function OfflineBanner() {
   const { isOffline } = useNetworkStatus();
+  const isEmbed = window.location.pathname.startsWith('/embed');
 
-  if (!isOffline) return null;
+  if (isEmbed || !isOffline) return null;
 
   return (
     <>

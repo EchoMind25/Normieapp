@@ -13,16 +13,21 @@ import { hasAcceptedDisclaimer, acceptDisclaimer } from '@/lib/native-utils';
 export function DisclaimerModal() {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Hide on embed pages
+  const isEmbed = window.location.pathname.startsWith('/embed');
+
   useEffect(() => {
-    if (!hasAcceptedDisclaimer()) {
+    if (!isEmbed && !hasAcceptedDisclaimer()) {
       setIsOpen(true);
     }
-  }, []);
+  }, [isEmbed]);
 
   const handleAccept = () => {
     acceptDisclaimer();
     setIsOpen(false);
   };
+
+  if (isEmbed) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>

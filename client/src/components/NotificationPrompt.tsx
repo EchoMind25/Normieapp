@@ -30,6 +30,7 @@ export function NotificationPrompt() {
   } = usePushNotifications();
 
   const [showPrompt, setShowPrompt] = useState(false);
+  const isEmbed = window.location.pathname.startsWith('/embed');
 
   useEffect(() => {
     if (isSubscribed && showPrompt) {
@@ -108,7 +109,7 @@ export function NotificationPrompt() {
     setShowPrompt(false);
   };
 
-  if (!showPrompt) {
+  if (isEmbed || !showPrompt) {
     return null;
   }
 

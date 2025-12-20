@@ -62,8 +62,11 @@ export function PWAInstallPrompt() {
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [deviceInfo] = useState(() => getDeviceInfo());
+  const isEmbed = window.location.pathname.startsWith('/embed');
 
   useEffect(() => {
+    if (isEmbed) return;
+    
     captureInstallPrompt();
     
     const timer = setTimeout(() => {
@@ -80,7 +83,7 @@ export function PWAInstallPrompt() {
       clearTimeout(timer);
       cleanup();
     };
-  }, []);
+  }, [isEmbed]);
 
   const handleDismiss = useCallback(() => {
     setDismissed();
@@ -98,7 +101,7 @@ export function PWAInstallPrompt() {
     }
   }, []);
 
-  if (!isVisible) return null;
+  if (isEmbed || !isVisible) return null;
 
   const steps = getStepsForDevice(deviceInfo.device);
   const showNativeButton = hasNativePrompt() && (deviceInfo.device === 'android' || deviceInfo.device === 'desktop');
