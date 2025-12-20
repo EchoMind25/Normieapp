@@ -91,38 +91,3 @@ export function EasterEggs({ onKonamiCode, onSecretUnlocked }: EasterEggsProps) 
     </div>
   );
 }
-
-interface LogoClickHandlerProps {
-  clickCount: number;
-  onSecretClick: () => void;
-  children: React.ReactNode;
-}
-
-export function LogoClickHandler({ clickCount, onSecretClick, children }: LogoClickHandlerProps) {
-  const [clicks, setClicks] = useState(0);
-  const [lastClickTime, setLastClickTime] = useState(0);
-
-  const handleClick = () => {
-    const now = Date.now();
-    
-    if (now - lastClickTime > 2000) {
-      setClicks(1);
-    } else {
-      const newClicks = clicks + 1;
-      setClicks(newClicks);
-      
-      if (newClicks >= clickCount) {
-        onSecretClick();
-        setClicks(0);
-      }
-    }
-    
-    setLastClickTime(now);
-  };
-
-  return (
-    <div onClick={handleClick} className="cursor-pointer" data-testid="logo-click-handler">
-      {children}
-    </div>
-  );
-}

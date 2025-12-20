@@ -270,14 +270,3 @@ export function FloatingMascot({ priceChange = 0, devBuys = [], activity = [] }:
     </div>
   );
 }
-
-export function triggerJeetAlarm(
-  showMessage: (message: string, type: AlertType) => void,
-  amount: number,
-  playSound: (sound: string) => void
-) {
-  const message = jeetMessages[Math.floor(Math.random() * jeetMessages.length)];
-  const formattedAmount = (amount / 1_000_000).toFixed(2);
-  showMessage(`${message} (${formattedAmount}M $NORMIE sold)`, "jeet");
-  playSound("dump");
-}
