@@ -50,7 +50,7 @@ https://normie.observer/embed/chart
 Query parameters:
 - `theme` - `dark` or `light` (default: `dark`)
 - `height` - Chart height (default: `400px`)
-- `range` - Default time range: `live`, `5m`, `1h`, `6h`, `24h`, `7d` (default: `24h`)
+- `range` - Default time range: `live`, `5m`, `1h`, `6h`, `24h`, `7d`, `all` (default: `24h`)
 - `controls` - Show time range buttons: `true` or `false` (default: `true`)
 - `branding` - Show "Powered by normie.observer": `true` or `false` (default: `true`)
 - `color` - Accent color in HSL: e.g., `142 72% 45%` (default: green)
@@ -138,7 +138,7 @@ Add this to your HTML:
 | `container` | string/element | `'#normie-chart'` | CSS selector or DOM element |
 | `theme` | string | `'dark'` | `'dark'` or `'light'` |
 | `height` | string | `'400px'` | Chart height |
-| `range` | string | `'24h'` | Default range: `'live'`, `'5m'`, `'1h'`, `'6h'`, `'24h'`, `'7d'` |
+| `range` | string | `'24h'` | Default range: `'live'`, `'5m'`, `'1h'`, `'6h'`, `'24h'`, `'7d'`, `'all'` |
 | `controls` | boolean | `true` | Show time range buttons |
 | `branding` | boolean | `true` | Show "Powered by normie.observer" |
 | `color` | string | `'142 72% 45%'` | Accent color (HSL format) |
@@ -198,7 +198,7 @@ const chart = NormieChart.init({
 // Later, switch to light theme
 chart.setTheme('light');
 
-// Or change time range
+// Or change time range (options: 'live', '5m', '1h', '6h', '24h', '7d', 'all')
 chart.setRange('7d');
 ```
 
@@ -372,6 +372,7 @@ const {
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.2 | Dec 2024 | Added `'all'` time range option for All Time chart view with daily intervals. |
 | 1.0.1 | Dec 2024 | Added stats bar with holders, burned, locked, liquidity. Fixed time range button response speed. Expanded metrics API. |
 | 1.0.0 | Dec 2024 | Initial release |
 

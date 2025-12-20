@@ -1,6 +1,6 @@
 /**
  * Normie Observer Chart Widget SDK
- * Version: 1.0.1
+ * Version: 1.0.2
  * 
  * Embed real-time $NORMIE price charts on any website.
  * 
@@ -19,7 +19,7 @@
 (function(global) {
   'use strict';
 
-  var VERSION = '1.0.1';
+  var VERSION = '1.0.2';
   
   // Derive base URL: use current origin if SDK is hosted on normie.observer,
   // otherwise default to production. Can be overridden via config.baseUrl
@@ -61,7 +61,7 @@
    * @param {string} options.container - CSS selector or DOM element for the container
    * @param {string} options.theme - 'dark' or 'light' (default: 'dark')
    * @param {string} options.height - Chart height (default: '400px')
-   * @param {string} options.range - Default time range: 'live', '5m', '1h', '6h', '24h', '7d' (default: '24h')
+   * @param {string} options.range - Default time range: 'live', '5m', '1h', '6h', '24h', '7d', 'all' (default: '24h')
    * @param {boolean} options.controls - Show time range controls (default: true)
    * @param {boolean} options.branding - Show normie.observer branding (default: true)
    * @param {string} options.color - Accent color in HSL format (default: '142 72% 45%')
@@ -155,7 +155,7 @@
 
       /**
        * Set the time range
-       * @param {string} range - 'live', '5m', '1h', '6h', '24h', or '7d'
+       * @param {string} range - 'live', '5m', '1h', '6h', '24h', '7d', or 'all'
        */
       setRange: function(range) {
         this.update({ range: range });
