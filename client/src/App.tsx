@@ -20,6 +20,7 @@ const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const NftDetail = lazy(() => import("@/pages/NftDetail"));
 const MyNfts = lazy(() => import("@/pages/MyNfts"));
 const CollectionDetail = lazy(() => import("@/pages/CollectionDetail"));
+const EmbedChart = lazy(() => import("@/pages/EmbedChart"));
 
 function PageLoader() {
   return (
@@ -46,6 +47,7 @@ function Router() {
         <Route path="/marketplace/nft/:id" component={NftDetail} />
         <Route path="/marketplace/my-nfts" component={MyNfts} />
         <Route path="/marketplace/collection/:id" component={CollectionDetail} />
+        <Route path="/embed/chart" component={EmbedChart} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>

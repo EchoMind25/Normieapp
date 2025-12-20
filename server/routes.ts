@@ -103,6 +103,71 @@ const authLimiter = rateLimit({
   validate: { xForwardedForHeader: false },
 });
 
+// Allowed origins for embed CORS - exact match only
+const EMBED_ALLOWED_ORIGINS = new Set([
+  "https://normienation.com",
+  "https://www.normienation.com",
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:5000",
+]);
+
+// Embed rate limiter (more restrictive for external usage)
+const embedLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 120,
+  message: { error: "Rate limit exceeded for embed API" },
+  validate: { xForwardedForHeader: false },
+});
+
+// CORS middleware for embed endpoints - strict origin validation
+function embedCors(req: Request, res: Response, next: NextFunction) {
+  const origin = req.headers.origin;
+  
+  // In development, allow any origin; in production, strict whitelist
+  const isDev = process.env.NODE_ENV !== "production";
+  const isAllowed = isDev || (origin && EMBED_ALLOWED_ORIGINS.has(origin));
+  
+  if (isAllowed && origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Embed-Token");
+    res.setHeader("Access-Control-Max-Age", "86400");
+    res.setHeader("Vary", "Origin");
+  } else if (!origin) {
+    // No origin header (same-origin request or non-browser client)
+    // Allow but don't set CORS headers
+  } else {
+    // Origin not in whitelist - reject CORS
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(403);
+    }
+    // For actual requests, still process but without CORS headers
+    // Browser will block cross-origin response
+  }
+  
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(isAllowed ? 204 : 403);
+  }
+  
+  next();
+}
+
+// Optional embed token validation middleware - header only for security
+function validateEmbedToken(req: Request, res: Response, next: NextFunction) {
+  const embedToken = req.headers["x-embed-token"] as string | undefined;
+  
+  // If EMBED_SECRET is set, require token validation via header only
+  const embedSecret = process.env.EMBED_SECRET;
+  if (embedSecret && embedSecret.length > 0) {
+    if (!embedToken || embedToken !== embedSecret) {
+      return res.status(401).json({ error: "Invalid or missing embed token" });
+    }
+  }
+  
+  next();
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -112,6 +177,53 @@ export async function registerRoutes(
   
   // Initialize push notifications
   initializePushNotifications();
+  
+  // Embed API routes with CORS support
+  app.options("/api/embed/*", embedCors);
+  
+  app.get("/api/embed/price-history", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=10");
+      const timeRange = (req.query.range as string) || "24h";
+      
+      if (timeRange === "live") {
+        const history = getPriceHistory();
+        res.json(history);
+      } else {
+        const history = await fetchHistoricalPrices(timeRange);
+        res.json(history);
+      }
+    } catch (error) {
+      console.error("[Embed] Price history error:", error);
+      res.status(500).json({ error: "Failed to fetch price history" });
+    }
+  });
+  
+  app.get("/api/embed/metrics", embedCors, embedLimiter, validateEmbedToken, async (_req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=10");
+      const metrics = await fetchTokenMetrics();
+      res.json({
+        price: metrics.price,
+        priceChange24h: metrics.priceChange24h,
+        marketCap: metrics.marketCap,
+        volume24h: metrics.volume24h,
+      });
+    } catch (error) {
+      console.error("[Embed] Metrics error:", error);
+      res.status(500).json({ error: "Failed to fetch metrics" });
+    }
+  });
+  
+  app.get("/api/embed/config", embedCors, (_req, res) => {
+    res.json({
+      version: "1.0.0",
+      tokenSymbol: "NORMIE",
+      tokenName: "Normie",
+      refreshInterval: 10000,
+      availableRanges: ["live", "5m", "1h", "6h", "24h", "7d"],
+    });
+  });
   
   app.use("/api/auth", authLimiter, authRoutes);
   

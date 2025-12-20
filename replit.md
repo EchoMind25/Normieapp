@@ -102,3 +102,33 @@ Preferred communication style: Simple, everyday language.
 - **Telegram**: @TheNormieNation community group
 - **X/Twitter**: @NormieCEO official account
 - **pump.fun**: Token trading page
+
+## Embeddable Chart Widget (December 2025)
+
+A production-ready embeddable chart solution for displaying $NORMIE price charts on external websites.
+
+### Embed Page
+- **URL**: `/embed/chart`
+- **Component**: `client/src/pages/EmbedChart.tsx`
+- **Parameters**: theme, height, range, controls, branding, color, token
+
+### JavaScript SDK Widget
+- **File**: `client/public/normie-chart-widget.js`
+- **Global**: `window.NormieChart`
+- **Methods**: `init()`, `initAll()`, `ping()`, `version`
+
+### Embed API Endpoints (CORS-enabled)
+- `GET /api/embed/price-history?range=<timeRange>` - Historical price data
+- `GET /api/embed/metrics` - Current price and stats
+- `GET /api/embed/config` - Widget configuration info
+
+### CORS Whitelist
+Configured in `server/routes.ts` - EMBED_ALLOWED_ORIGINS array:
+- normienation.com, www.normienation.com
+- localhost development ports
+
+### Optional Authentication
+Set `EMBED_SECRET` environment variable to require token authentication for embed endpoints.
+
+### Documentation
+See `EMBED_INTEGRATION_GUIDE.md` for complete integration instructions for external developers.
