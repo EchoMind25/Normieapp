@@ -248,25 +248,23 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
       <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} />
 
       <div className="overflow-hidden border-t border-border">
-        <div className="animate-ticker whitespace-nowrap py-1.5 px-4">
-          <span className="inline-flex items-center gap-4 sm:gap-8 font-mono text-xs text-muted-foreground">
+        <div className="ticker-wrapper py-1.5">
+          <div className="ticker-content">
             {metrics && (
               <>
-                <span>PRICE: {formatPrice(metrics.price)}</span>
-                <span>MCAP: ${formatNumber(metrics.marketCap)}</span>
-                <span>VOL 24H: ${formatNumber(metrics.volume24h)}</span>
-                <span className="text-destructive">BURNED: {formatNumber(metrics.burnedTokens)}</span>
-                <span className="text-chart-2">LOCKED: {formatNumber(metrics.lockedTokens)}</span>
-                <span>HOLDERS: {formatNumber(metrics.holders)}</span>
-                <span>PRICE: {formatPrice(metrics.price)}</span>
-                <span>MCAP: ${formatNumber(metrics.marketCap)}</span>
-                <span>VOL 24H: ${formatNumber(metrics.volume24h)}</span>
-                <span className="text-destructive">BURNED: {formatNumber(metrics.burnedTokens)}</span>
-                <span className="text-chart-2">LOCKED: {formatNumber(metrics.lockedTokens)}</span>
-                <span>HOLDERS: {formatNumber(metrics.holders)}</span>
+                {[0, 1, 2, 3].map((i) => (
+                  <span key={i} className="inline-flex items-center gap-4 sm:gap-8 font-mono text-xs text-foreground px-4">
+                    <span>PRICE: {formatPrice(metrics.price)}</span>
+                    <span>MCAP: ${formatNumber(metrics.marketCap)}</span>
+                    <span>VOL 24H: ${formatNumber(metrics.volume24h)}</span>
+                    <span className="text-destructive">BURNED: {formatNumber(metrics.burnedTokens)}</span>
+                    <span className="text-chart-2">LOCKED: {formatNumber(metrics.lockedTokens)}</span>
+                    <span>HOLDERS: {formatNumber(metrics.holders)}</span>
+                  </span>
+                ))}
               </>
             )}
-          </span>
+          </div>
         </div>
       </div>
 

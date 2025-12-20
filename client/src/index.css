@@ -163,8 +163,8 @@
   background: hsl(var(--primary) / 0.7);
 }
 
-/* Ticker animation */
-@keyframes ticker {
+/* Seamless ticker animation */
+@keyframes ticker-scroll {
   0% {
     transform: translateX(0);
   }
@@ -173,8 +173,16 @@
   }
 }
 
-.animate-ticker {
-  animation: ticker 30s linear infinite;
+.ticker-wrapper {
+  overflow: hidden;
+  width: 100%;
+}
+
+.ticker-content {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: ticker-scroll 40s linear infinite;
+  will-change: transform;
 }
 
 /* Pulse animation for live data updates */
