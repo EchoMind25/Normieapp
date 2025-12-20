@@ -518,7 +518,8 @@ export function addPricePoint(metrics: TokenMetrics): void {
 }
 
 export function getPriceHistory(): PricePoint[] {
-  return priceHistory;
+  // Return sorted (oldest first) to ensure correct chart display
+  return [...priceHistory].sort((a, b) => a.timestamp - b.timestamp);
 }
 
 export function getConnectionStatus(): { isConnected: boolean; lastSuccess: number } {
@@ -579,6 +580,9 @@ async function fetchBirdeyeOHLCV(timeRange: string): Promise<PricePoint[] | null
       price: item.c || item.close || 0, // Close price
       volume: item.v || item.volume || 0,
     }));
+    
+    // Sort chronologically (oldest first) to ensure correct chart display
+    points.sort((a, b) => a.timestamp - b.timestamp);
     
     console.log(`[Birdeye] Fetched ${points.length} real OHLCV points for ${timeRange} range`);
     return points;
@@ -697,7 +701,8 @@ export async function fetchHistoricalPrices(timeRange: string = "1h"): Promise<P
     return dexScreenerData;
   } catch (error) {
     console.error("[Historical] Error fetching prices:", error);
-    return priceHistory;
+    // Return sorted fallback data
+    return [...priceHistory].sort((a, b) => a.timestamp - b.timestamp);
   }
 }
 
