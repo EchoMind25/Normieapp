@@ -22,6 +22,11 @@ export function BiggestJeetLeaderboard() {
 
   const { data: leaderboard, isLoading } = useQuery<JeetLeaderboardEntry[]>({
     queryKey: ["/api/leaderboard/jeets", timeRange],
+    queryFn: async () => {
+      const response = await fetch(`/api/leaderboard/jeets?range=${timeRange}`);
+      if (!response.ok) throw new Error("Failed to fetch leaderboard");
+      return response.json();
+    },
     refetchInterval: 60000,
   });
 
