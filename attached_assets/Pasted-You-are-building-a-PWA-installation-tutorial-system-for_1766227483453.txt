@@ -1,0 +1,152 @@
+You are building a PWA installation tutorial system for normie.observer (a Solana memecoin tracking web app).
+
+CONTEXT:
+- normie.observer is a real-time Solana memecoin tracking platform
+- Already deployed as a web app, needs to guide users to install as PWA
+- Users access from iOS Safari, Android Chrome, and Desktop Chrome/Edge
+- Must detect device/browser and show only relevant installation steps
+
+YOUR TASK:
+Build a production-ready PWA installation tutorial system with:
+
+1. Smart overlay that auto-detects browser/device
+2. Dedicated /install page with tabbed instructions
+3. Device-specific installation guides (iOS, Android, Desktop)
+4. Dismissible prompts with localStorage tracking
+5. Native install prompt integration where supported
+
+TECHNICAL REQUIREMENTS:
+
+**Detection Logic:**
+- Detect iOS Safari vs Android Chrome vs Desktop Chrome/Edge
+- Check if PWA already installed (don't show if installed)
+- Capture `beforeinstallprompt` event for native install
+- Track dismissals (don't spam users)
+
+**Smart Overlay Features:**
+- Auto-show on first visit (if PWA not installed)
+- Position: bottom-right corner, non-intrusive
+- Dismissible with "Got it" or "Not now" button
+- Remember dismissal for 7 days
+- Show device-specific instructions only
+
+**Dedicated /install Page:**
+- Tabbed interface (iOS | Android | Desktop)
+- Auto-select correct tab based on detected device
+- Step-by-step instructions with placeholder for screenshots
+- Clean, minimal design matching normie.observer aesthetic
+- Responsive layout
+
+**Platform-Specific Instructions:**
+
+iOS Safari:
+1. Tap Share button in Safari
+2. Scroll and tap "Add to Home Screen"
+3. Tap "Add"
+
+Android Chrome:
+1. Use native install prompt if available
+2. Fallback: Tap menu → "Install app" or "Add to Home Screen"
+
+Desktop Chrome/Edge:
+1. Click install icon in address bar
+2. Or: Menu → "Install Normie Observer"
+
+DELIVERABLES:
+
+**File Structure:**
+/public
+/install-tutorial
+pwa-installer.js       (detection + overlay logic)
+install-page.html      (dedicated tutorial page)
+styles.css            (overlay + page styles)
+/icons                    (placeholder comments for screenshot paths)
+
+**Code Requirements:**
+- Pure JavaScript (no framework dependencies for installer)
+- Mobile-first responsive CSS
+- Accessible (keyboard navigation, ARIA labels)
+- <500KB total bundle size
+- Works offline (if service worker active)
+
+**localStorage Schema:**
+```javascript
+{
+  "installPromptDismissed": timestamp,
+  "installPromptShownCount": number,
+  "userInstalledPWA": boolean
+}
+```
+
+**Integration Instructions:**
+Provide clear steps to integrate into existing normie.observer codebase:
+1. Where to place files
+2. How to import/initialize
+3. Required HTML updates
+4. Manifest.json validation checklist
+5. Testing steps for each platform
+
+CONSTRAINTS:
+- No external dependencies (no jQuery, no React for this feature)
+- Must work with existing service worker (don't create new one)
+- Respect user privacy (no tracking beyond dismissal state)
+- Graceful degradation (if PWA not supported, show simple instructions)
+- Match normie.observer's dark theme aesthetic
+
+EXPECTED BEHAVIOR:
+
+First Visit (PWA not installed):
+→ Detect device → Show relevant overlay → User dismisses or installs
+
+Revisit (dismissed, not installed):
+→ Don't show overlay for 7 days → Provide link to /install page in nav/settings
+
+Already Installed:
+→ Detect standalone mode → Hide all install prompts
+
+TESTING CHECKLIST:
+Provide instructions to test on:
+- iPhone/iPad Safari (real device + simulator)
+- Android Chrome (real device + emulator)
+- Desktop Chrome (Windows/Mac/Linux)
+- Desktop Edge
+- Verify dismissal persistence
+- Verify "already installed" detection
+
+OUTPUT FORMAT:
+1. Complete code files (copy-paste ready)
+2. Integration guide (where to add to normie.observer)
+3. Testing instructions for each platform
+4. Screenshot placeholder locations (I'll add images later)
+5. Troubleshooting common issues
+
+Build this as production-ready code, not a tutorial or example. Assume normie.observer has:
+- Valid manifest.json
+- Service worker registered
+- HTTPS enabled
+- Current dark theme with #00ff88 accent color
+
+Start with the smart overlay implementation, then build the dedicated /install page.
+
+Shorter version if Replit handles context well:
+Build a production PWA installation tutorial for normie.observer.
+
+Requirements:
+- Smart overlay (auto-detect iOS/Android/Desktop, show relevant steps)
+- Dedicated /install page with tabs
+- localStorage dismissal tracking (7-day cooldown)
+- Native install prompt integration
+- Dark theme, #00ff88 accent
+- No external dependencies
+
+Deliverables:
+1. pwa-installer.js (detection + overlay)
+2. /install page (tabbed instructions)
+3. Integration guide
+4. Testing checklist
+
+Detect: iOS Safari, Android Chrome, Desktop Chrome/Edge
+Track: Don't spam dismissed users, hide if already installed
+Design: Bottom-right overlay, non-intrusive, mobile-responsive
+
+Provide copy-paste ready code + integration steps.
