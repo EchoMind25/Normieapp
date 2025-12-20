@@ -115,7 +115,7 @@ function StepCard({ step, stepNumber }: { step: InstallStep; stepNumber: number 
             <img 
               src={step.screenshotImage} 
               alt={step.title}
-              className="max-w-[200px] rounded-md border border-border/50 shadow-lg"
+              className="max-w-full w-auto rounded-md border border-border/50 shadow-lg"
             />
           </div>
         )}
