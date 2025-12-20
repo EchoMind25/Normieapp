@@ -107,6 +107,7 @@ export const users = pgTable("users", {
   notifyWhaleAlerts: boolean("notify_whale_alerts").default(true),
   notifyJeetAlarms: boolean("notify_jeet_alarms").default(true),
   notifyArtworkStatus: boolean("notify_artwork_status").default(true),
+  themePreference: varchar("theme_preference", { length: 10 }).default("system"),
   bannedAt: timestamp("banned_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
