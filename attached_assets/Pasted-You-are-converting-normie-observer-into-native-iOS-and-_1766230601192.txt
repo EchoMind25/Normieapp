@@ -1,0 +1,362 @@
+You are converting normie.observer into native iOS and Android applications for App Store and Google Play submission.
+
+CRITICAL CONTEXT:
+- normie.observer is a Solana memecoin/NFT tracking and community platform
+- Currently a web app with real-time price charts, NFT browsing, community features
+- Goal: Official native apps for iOS (App Store) and Android (Play Store)
+- Future roadmap: NFT purchases, crypto wallet integration, Apple Pay support
+- Must comply with Apple's strict crypto/NFT policies and Google Play guidelines
+
+COMPLIANCE-FIRST APPROACH:
+
+**Phase 1 Apps (Initial Submission - SAFEST):**
+- NFT viewing/browsing (NOT purchasing)
+- Price tracking and charts (informational only)
+- Community features (forums, profiles, following)
+- Educational content about Solana NFTs
+- Wallet address tracking (view-only)
+- Push notifications for price alerts
+- NO in-app purchases of crypto/NFTs initially
+
+**Phase 2 (Post-Approval via Update):**
+- External wallet integration (MetaMask, Phantom)
+- NFT purchases through connected wallets (NOT Apple IAP)
+- Crypto transactions (with proper disclaimers)
+- Apple Pay integration (if approved for fiat on-ramp only)
+
+YOUR TASK:
+Build production-ready native iOS and Android apps optimized for App Store/Play Store approval.
+
+TECHNICAL REQUIREMENTS:
+
+**Platform Choice:**
+Choose ONE and justify:
+- React Native (if normie.observer is React-based)
+- Flutter (better performance for charts/animations)
+- Native Swift/Kotlin (maximum approval odds but 2x dev work)
+
+**App Architecture:**
+/ios                    (iOS native project)
+/android                (Android native project)
+/src
+/screens
+HomeScreen          (price charts, trending NFTs)
+NFTBrowserScreen    (browse collections)
+CommunityScreen     (forums, social features)
+ProfileScreen       (user profile, watchlists)
+EducationScreen     (Solana/NFT learning resources)
+/components
+ChartWidget         (reuse normie.observer chart logic)
+NFTCard
+PriceAlert
+/services
+api.js              (connect to normie.observer backend)
+notifications.js    (push notifications)
+analytics.js        (App Store requires privacy-compliant analytics)
+/utils
+compliance.js       (age verification, disclaimers)
+
+**iOS-Specific Features (Improve Approval Odds):**
+- Native UIKit/SwiftUI components (don't just wrap WebView)
+- Apple Sign-In integration (REQUIRED if you have any auth)
+- Haptic feedback for interactions
+- Dynamic Type support (accessibility)
+- Dark Mode native support
+- ShareSheet integration
+- Widgets (iOS 14+) for price tracking
+- Siri Shortcuts for quick price checks
+- App Clips (optional, for quick NFT previews)
+- StoreKit for future in-app purchases (framework only, don't implement yet)
+
+**Android-Specific Features:**
+- Material Design 3 components
+- Google Sign-In integration
+- Adaptive icons
+- Dark/Light theme following system
+- Share functionality
+- Home screen widgets
+- Notification channels (price alerts, community)
+- Biometric authentication option
+- Android Auto (if relevant for audio features)
+
+**App Store Compliance Checklist:**
+
+1. **Financial/Crypto Compliance (CRITICAL):**
+   - Include in description: "This app does not facilitate the purchase of cryptocurrency or NFTs"
+   - Add age restriction: 17+ (gambling/financial)
+   - Prominent disclaimers: "Price tracking for informational purposes only"
+   - Risk warnings on every screen showing prices
+   - No "get rich quick" messaging anywhere
+   - Cannot use Apple IAP for crypto/NFT (use external wallets only)
+
+2. **Content Moderation (Community Features):**
+   - User-generated content flagging system
+   - Report abuse functionality
+   - Terms of Service acceptance on signup
+   - Privacy Policy (REQUIRED, include link)
+   - COPPA compliance if allowing users under 13
+   - Profanity filter for community posts
+
+3. **Required Metadata:**
+   - App name: "Normie Observer" or "Normie NFT Tracker"
+   - Subtitle: "Solana NFT & Memecoin Tracker"
+   - Keywords: NFT, Solana, cryptocurrency tracker, blockchain, digital art
+   - Category: Finance or Reference (NOT Gambling)
+   - Age rating: 17+ (Unrestricted Web Access, Financial Info)
+   - Privacy Policy URL
+   - Support URL
+
+4. **Screenshots Required:**
+   - 6.7" iPhone (iPhone 14 Pro Max)
+   - 6.5" iPhone (iPhone 11 Pro Max) 
+   - 5.5" iPhone (iPhone 8 Plus)
+   - 12.9" iPad Pro
+   - Must show actual app functionality (no mockups)
+   - Include text overlays explaining features
+   - Show disclaimers visible in screenshots
+
+5. **Technical Requirements:**
+   - IPv6 compatible
+   - No private APIs
+   - No cryptocurrency mining
+   - Crash-free for at least 95% of sessions
+   - Launch time under 3 seconds
+   - Memory usage under 200MB baseline
+   - Works offline (graceful degradation)
+
+**Google Play Store Compliance:**
+
+1. **Financial Services:**
+   - Declare app handles financial transactions
+   - Include all required disclaimers
+   - No misleading claims about returns
+   - Age rating: ESRB Everyone, PEGI 3 (adjust if needed)
+
+2. **Required Metadata:**
+   - Title: "Normie Observer - Solana NFT Tracker"
+   - Short description (80 chars)
+   - Full description (4000 chars)
+   - Feature graphic (1024x500)
+   - Screenshots (at least 2, max 8)
+   - Privacy Policy URL
+
+3. **Permissions Justification:**
+   - INTERNET: Required for price data
+   - CAMERA: NFT scanning (if implemented)
+   - NOTIFICATIONS: Price alerts
+   - Must justify each permission in store listing
+
+**Feature Implementation Priorities:**
+
+**MUST HAVE (for approval):**
+- Real-time price charts (read-only)
+- NFT collection browsing (informational)
+- User authentication (Apple/Google Sign-In)
+- Push notifications (with opt-in)
+- Educational content section
+- Prominent risk disclaimers
+- Terms of Service + Privacy Policy
+- Content reporting system
+- Offline mode (cached data)
+
+**SHOULD HAVE (improve approval odds):**
+- Price alert customization
+- Watchlist/favorites
+- Community forums with moderation
+- User profiles (no financial info)
+- Share functionality
+- Biometric app lock (privacy)
+- Multi-language support
+- Accessibility features (VoiceOver, TalkBack)
+
+**CANNOT HAVE (instant rejection):**
+- Direct crypto purchases via Apple IAP
+- NFT minting without review
+- Unmoderated user content
+- Gambling/lottery features
+- Misleading financial advice
+- Mining functionality
+- Private API usage
+- Copyright infringing content
+
+**FUTURE FEATURES (Post-Approval Updates):**
+Phase these in AFTER initial approval:
+1. Update 1.1: Wallet connection (view-only)
+2. Update 1.2: External NFT marketplace links
+3. Update 1.3: NFT purchases (via external wallet, NOT IAP)
+4. Update 1.4: Apple Pay for fiat on-ramp (requires separate financial licensing)
+
+**Backend API Requirements:**
+
+Ensure normie.observer backend supports:
+GET /api/v1/nfts              (list NFTs, pagination)
+GET /api/v1/nfts/:id          (NFT details)
+GET /api/v1/prices            (real-time price data)
+GET /api/v1/collections       (NFT collections)
+POST /api/v1/alerts           (create price alerts)
+GET /api/v1/community/posts   (forum posts)
+POST /api/v1/report           (content flagging)
+
+Add rate limiting, authentication, and abuse prevention.
+
+**Submission Package Deliverables:**
+
+1. **iOS Submission:**
+   - Xcode project (complete, buildable)
+   - App Store Connect metadata (JSON/text file)
+   - Screenshot templates (all required sizes)
+   - App icon (1024x1024, no alpha)
+   - Privacy nutrition label data
+   - TestFlight beta testing guide
+   - App Review Notes (explain crypto/NFT functionality)
+
+2. **Android Submission:**
+   - Android Studio project (complete, buildable)
+   - Play Console metadata
+   - Screenshot templates
+   - Feature graphic
+   - Google Play app signing setup
+   - Privacy Policy + Terms of Service
+   - Content rating questionnaire answers
+
+3. **Legal Documents:**
+   - Privacy Policy (GDPR, CCPA compliant)
+   - Terms of Service
+   - Risk Disclaimers
+   - Community Guidelines
+   - DMCA agent contact (if user content)
+
+4. **Testing Documentation:**
+   - Test account credentials for App Review
+   - Demo video (for reviewers)
+   - Feature walkthrough guide
+   - Edge case testing results
+   - Performance benchmarks
+
+**App Review Strategy:**
+
+**Reviewer Notes to Include:**
+This app provides informational price tracking for Solana-based NFTs and memecoins.
+Key Points:
+
+NO cryptocurrency or NFT purchases are available in-app
+All pricing data is for informational/educational purposes only
+Community features are moderated with reporting functionality
+Users must be 17+ due to financial information
+External links to third-party marketplaces clearly disclosed
+App does not facilitate trading or financial transactions
+
+Test Account:
+Username: reviewer@normie.observer
+Password: [provide secure password]
+Demo Video: [link to unlisted YouTube walkthrough]
+
+**Rejection Risk Mitigation:**
+
+High-risk features to avoid initially:
+- ANY in-app crypto purchases
+- Wallet private key storage
+- Price predictions/financial advice
+- Unmoderated user content
+- External payment processing
+- Referral/reward programs
+- Gambling-adjacent features
+
+If rejected, common reasons and fixes:
+- **4.3 Design: Spam** → Add more native features, reduce web wrapper feel
+- **3.1.1 In-App Purchase** → Remove all purchase flows, make view-only
+- **5.2.1 User Generated Content** → Add robust moderation/reporting
+- **5.3 Gaming, Gambling** → Tone down "trading" language, emphasize education
+
+**Code Structure Example:**
+```swift
+// iOS - Compliance-first design
+struct NFTDetailView: View {
+    let nft: NFTModel
+    
+    var body: some View {
+        ScrollView {
+            // Risk disclaimer at top
+            DisclaimerBanner(
+                text: "Price information is for educational purposes only. Not financial advice."
+            )
+            
+            NFTImageView(url: nft.imageUrl)
+            PriceChart(data: nft.priceHistory)
+            
+            // NO BUY BUTTON in Phase 1
+            Button("View on External Marketplace") {
+                // Opens Safari, not in-app purchase
+                openExternalURL(nft.marketplaceUrl)
+            }
+        }
+    }
+}
+```
+
+**Performance Targets:**
+
+- App launch: <2 seconds cold, <1 second warm
+- Chart rendering: 60fps minimum
+- API response caching: 5-minute TTL
+- Image loading: Progressive, cached
+- Memory footprint: <150MB typical usage
+- Battery impact: "Low" in iOS battery settings
+- Crash rate: <0.1% (App Store threshold is 1%)
+
+**Monitoring & Compliance:**
+
+Implement analytics (privacy-compliant):
+- Screen view tracking
+- Feature usage metrics
+- Crash reporting (Firebase, Sentry)
+- Performance monitoring
+- User retention rates
+
+**CRITICAL SUCCESS FACTORS:**
+
+1. **Don't Look Like a WebView:**
+   - Use native navigation patterns
+   - Implement native gestures
+   - Use platform-specific UI components
+   - Offline functionality
+   - Push notifications
+
+2. **Prove Educational Value:**
+   - Add "Learn" section about Solana/NFTs
+   - Glossary of terms
+   - Market analysis (informational only)
+   - Risk education
+
+3. **Show Content Moderation:**
+   - Visible "Report" buttons
+   - Community guidelines
+   - Moderator response times
+   - User blocking functionality
+
+**OUTPUT REQUIREMENTS:**
+
+Provide:
+1. Complete native app codebase (iOS + Android)
+2. App Store/Play Store metadata files (ready to copy-paste)
+3. Screenshot templates with annotations
+4. Privacy Policy + Terms of Service (legal-compliant)
+5. Submission checklist for both platforms
+6. Reviewer notes document
+7. Demo video script
+8. Post-approval roadmap (how to add wallet features safely)
+
+**CONSTRAINTS:**
+
+- Do NOT include actual crypto purchase functionality in v1.0
+- Do NOT use private APIs or undocumented features
+- Do NOT make financial predictions or investment advice
+- Do NOT store user private keys/seed phrases
+- Do NOT bypass platform payment systems (no Stripe for NFTs)
+- Target minimum iOS 15.0, Android API 26 (Oreo)
+- Bundle size under 100MB (initial download)
+- Support both phones and tablets
+
+Start with the iOS implementation first (stricter approval process), then adapt for Android. Focus on features that demonstrate value beyond a web wrapper while maintaining strict compliance with App Store guidelines 3.1.1 and 5.2.1.
+
+Build this as if we're submitting tomorrow - production-ready, legally compliant, and optimized for first-time approval.
