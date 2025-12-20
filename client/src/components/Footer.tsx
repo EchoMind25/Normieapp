@@ -21,6 +21,13 @@ export function Footer() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <footer className="border-t border-border bg-card/50 py-8 sm:py-12 px-4 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -70,34 +77,34 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="font-mono font-bold uppercase text-sm tracking-wider">Quick Links</h4>
             <nav className="flex flex-col gap-2">
-              <a
-                href="#dashboard"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              <button
+                onClick={() => scrollToSection("dashboard")}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                 data-testid="footer-nav-dashboard"
               >
                 Dashboard
-              </a>
-              <a
-                href="#meme-generator"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              </button>
+              <button
+                onClick={() => scrollToSection("meme-generator")}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                 data-testid="footer-nav-memes"
               >
                 Meme Generator
-              </a>
-              <a
-                href="#shop"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              </button>
+              <button
+                onClick={() => scrollToSection("shop")}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                 data-testid="footer-nav-shop"
               >
                 Merch Shop
-              </a>
-              <a
-                href="#community"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              </button>
+              <button
+                onClick={() => scrollToSection("community")}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                 data-testid="footer-nav-community"
               >
                 Community
-              </a>
+              </button>
               <Link
                 href="/install"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"

@@ -48,31 +48,29 @@ export default function Home() {
   const passedMilestonesRef = useRef<Set<number>>(new Set());
 
   // Force scroll to top on mount to ensure Dashboard is visible first
-  // Multiple attempts to override any browser/lazy-load scroll restoration
+  // Clear any hash fragment that causes browser auto-scroll
   useEffect(() => {
+    // Disable browser scroll restoration
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
     }
     
-    // Immediate scroll
+    // Remove hash fragment from URL without triggering navigation
+    // This prevents browser from auto-scrolling to #meme-generator etc
+    if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    
+    // Force scroll to top immediately
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
     
-    // After microtask to catch async renders
-    queueMicrotask(() => {
-      window.scrollTo(0, 0);
-    });
+    // Multiple attempts to catch async rendering and lazy loading
+    queueMicrotask(() => window.scrollTo(0, 0));
+    requestAnimationFrame(() => window.scrollTo(0, 0));
     
-    // After initial render cycle
-    requestAnimationFrame(() => {
-      window.scrollTo(0, 0);
-    });
-    
-    // After lazy components load
-    const timeoutId = setTimeout(() => {
-      window.scrollTo(0, 0);
-    }, 150);
+    const timeoutId = setTimeout(() => window.scrollTo(0, 0), 150);
     
     return () => clearTimeout(timeoutId);
   }, []);
