@@ -602,11 +602,13 @@ export default function EmbedChart() {
   };
 
   const formatDuration = (seconds: number): string => {
+    if (!seconds || seconds <= 0) return "—";
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     if (days > 0) return `${days}d ${hours}h`;
     const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
   };
 
   const truncateAddress = (addr: string): string => {
