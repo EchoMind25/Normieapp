@@ -140,6 +140,7 @@ function getQueryParams(): EmbedConfig {
 
 export default function EmbedChart() {
   const config = useMemo(() => getQueryParams(), []);
+  const [currentView, setCurrentView] = useState<ViewMode>(config.view);
   const [timeRange, setTimeRange] = useState<TimeRange>(config.defaultRange);
   const [chartData, setChartData] = useState<PricePoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -212,7 +213,7 @@ export default function EmbedChart() {
 
   useEffect(() => {
     // Only fetch chart data when in chart view mode
-    if (config.view !== "chart") return;
+    if (currentView !== "chart") return;
     
     // Force refresh when time range changes (user clicked a button)
     fetchChartData(timeRange, true);
@@ -222,22 +223,22 @@ export default function EmbedChart() {
     }, timeRange === "live" ? 10000 : 60000);
     
     return () => clearInterval(interval);
-  }, [timeRange, fetchChartData, config.view]);
+  }, [timeRange, fetchChartData, currentView]);
 
   // Fetch metrics on mount and refresh periodically (only for chart view)
   useEffect(() => {
-    if (config.view !== "chart") return;
+    if (currentView !== "chart") return;
     
     fetchMetrics();
     const interval = setInterval(fetchMetrics, 30000);
     return () => clearInterval(interval);
-  }, [fetchMetrics, config.view]);
+  }, [fetchMetrics, currentView]);
 
   // Fetch leaderboard data when in leaderboard view mode
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   
   useEffect(() => {
-    if (config.view === "chart") return;
+    if (currentView === "chart") return;
     
     const fetchLeaderboard = async () => {
       setLeaderboardLoading(true);
@@ -247,7 +248,7 @@ export default function EmbedChart() {
         if (config.token) {
           headers["X-Embed-Token"] = config.token;
         }
-        const endpoint = `/api/embed/leaderboard/${config.view}`;
+        const endpoint = `/api/embed/leaderboard/${currentView}`;
         const response = await fetch(endpoint, { headers });
         if (response.ok) {
           const data = await response.json();
@@ -267,11 +268,11 @@ export default function EmbedChart() {
     fetchLeaderboard();
     const interval = setInterval(fetchLeaderboard, 60000);
     return () => clearInterval(interval);
-  }, [config.view, config.token]);
+  }, [currentView, config.token]);
 
   // Fetch chart markers (whale buys + dev buys) when time range changes (only for chart view)
   useEffect(() => {
-    if (config.view !== "chart") return;
+    if (currentView !== "chart") return;
     
     const fetchMarkers = async () => {
       try {
@@ -290,7 +291,7 @@ export default function EmbedChart() {
       }
     };
     fetchMarkers();
-  }, [timeRange, config.token, config.view]);
+  }, [timeRange, config.token, currentView]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", config.theme === "dark");
@@ -569,10 +570,47 @@ export default function EmbedChart() {
     transition: "all 0.15s ease",
   });
 
+  // View switching tabs component
+  const viewTabs = config.showControls ? (
+    <div style={{ 
+      display: "flex", 
+      gap: "4px", 
+      marginBottom: "12px",
+      borderBottom: `1px solid ${config.theme === "dark" ? "hsl(120 5% 20%)" : "#e5e5e5"}`,
+      paddingBottom: "8px",
+    }}>
+      {(["chart", "diamond", "whales", "jeets"] as ViewMode[]).map((view) => (
+        <button
+          key={view}
+          onClick={() => setCurrentView(view)}
+          style={{
+            padding: "6px 10px",
+            fontSize: "11px",
+            fontWeight: currentView === view ? 600 : 400,
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            background: currentView === view 
+              ? `hsl(${config.accentColor})` 
+              : "transparent",
+            color: currentView === view 
+              ? "#ffffff" 
+              : config.theme === "dark" ? "hsl(120 5% 70%)" : "#666666",
+            transition: "all 0.15s ease",
+          }}
+          data-testid={`button-view-${view}`}
+        >
+          {view === "chart" ? "Chart" : view === "diamond" ? "Diamond" : view === "whales" ? "Whales" : "Jeets"}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   // Only show chart error for chart view
-  if (error && config.view === "chart") {
+  if (error && currentView === "chart") {
     return (
       <div style={{ ...containerStyle, justifyContent: "center", alignItems: "center" }}>
+        {viewTabs}
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: "14px", marginBottom: "8px", color: "#ef4444" }}>
             {error}
@@ -593,7 +631,7 @@ export default function EmbedChart() {
   }
 
   const getLeaderboardTitle = () => {
-    switch (config.view) {
+    switch (currentView) {
       case "diamond": return "Diamond Hands";
       case "whales": return "Top Holders";
       case "jeets": return "Paper Hands";
@@ -617,11 +655,12 @@ export default function EmbedChart() {
   };
 
   // Leaderboard view rendering
-  if (config.view !== "chart") {
+  if (currentView !== "chart") {
     // Show leaderboard-specific error
     if (leaderboardError && leaderboardData.length === 0) {
       return (
         <div style={{ ...containerStyle, justifyContent: "center", alignItems: "center" }}>
+          {viewTabs}
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: "14px", marginBottom: "8px", color: "#ef4444" }}>
               {leaderboardError}
@@ -633,7 +672,8 @@ export default function EmbedChart() {
     
     return (
       <div style={containerStyle} data-testid="embed-leaderboard-container">
-        <div style={{ marginBottom: "12px" }}>
+        {viewTabs}
+        <div style={{ marginBottom: "8px" }}>
           <h2 style={{ 
             margin: 0, 
             fontSize: "16px", 
@@ -666,7 +706,7 @@ export default function EmbedChart() {
                 }}>
                   <th style={{ textAlign: "left", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>#</th>
                   <th style={{ textAlign: "left", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>Wallet</th>
-                  {config.view === "jeets" ? (
+                  {currentView === "jeets" ? (
                     <>
                       <th style={{ textAlign: "right", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>Total Sold</th>
                       <th style={{ textAlign: "right", padding: "8px 4px", fontWeight: 500, opacity: 0.7 }}>Sells</th>
@@ -705,7 +745,7 @@ export default function EmbedChart() {
                         {(entry as any).username || truncateAddress(entry.walletAddress)}
                       </a>
                     </td>
-                    {config.view === "jeets" ? (
+                    {currentView === "jeets" ? (
                       <>
                         <td style={{ textAlign: "right", padding: "8px 4px", color: "#ef4444" }}>
                           {formatNumber((entry as JeetEntry).totalSold)}
@@ -769,6 +809,7 @@ export default function EmbedChart() {
   // Chart view rendering (original)
   return (
     <div style={containerStyle} data-testid="embed-chart-container">
+      {viewTabs}
       {config.showControls && (
         <div style={headerStyle}>
           <div style={priceStyle}>
