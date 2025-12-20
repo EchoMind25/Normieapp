@@ -17,8 +17,29 @@ This document provides complete instructions for embedding real-time $NORMIE pri
 | Endpoint | Description | CORS |
 |----------|-------------|------|
 | `GET /api/embed/price-history?range=24h` | Historical price data | Yes |
-| `GET /api/embed/metrics` | Current price & stats | Yes |
+| `GET /api/embed/metrics` | Full token metrics (price, holders, burned, locked, liquidity, etc.) | Yes |
 | `GET /api/embed/config` | Widget configuration | Yes |
+
+### Metrics API Response
+
+The `/api/embed/metrics` endpoint returns:
+
+```json
+{
+  "price": 0.000305,
+  "priceChange24h": 5.23,
+  "marketCap": 293939,
+  "marketCapChange24h": 5.23,
+  "volume24h": 7309.22,
+  "liquidity": 53048.02,
+  "totalSupply": 1000000000,
+  "circulatingSupply": 466800000,
+  "burnedTokens": 31200000,
+  "lockedTokens": 502000000,
+  "holders": 177,
+  "lastUpdated": "2025-12-20T02:40:03.599Z"
+}
+```
 
 ### Embed Page URL
 
@@ -316,9 +337,21 @@ const response = await fetch(
 const data = await response.json();
 // Returns: [{ timestamp: 1703001234567, price: 0.000234 }, ...]
 
-// Fetch current metrics
+// Fetch current metrics (includes all token stats)
 const metrics = await fetch('https://normie.observer/api/embed/metrics');
-const { price, priceChange24h, marketCap, volume24h } = await metrics.json();
+const { 
+  price, 
+  priceChange24h, 
+  marketCap, 
+  volume24h,
+  liquidity,
+  holders,
+  burnedTokens,
+  lockedTokens,
+  circulatingSupply,
+  totalSupply,
+  lastUpdated
+} = await metrics.json();
 ```
 
 ---
@@ -339,6 +372,7 @@ const { price, priceChange24h, marketCap, volume24h } = await metrics.json();
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.1 | Dec 2024 | Added stats bar with holders, burned, locked, liquidity. Fixed time range button response speed. Expanded metrics API. |
 | 1.0.0 | Dec 2024 | Initial release |
 
 ---

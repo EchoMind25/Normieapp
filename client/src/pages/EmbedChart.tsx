@@ -24,11 +24,38 @@ ChartJS.register(
   Filler
 );
 
+interface TokenMetrics {
+  price: number;
+  priceChange24h: number;
+  marketCap: number;
+  volume24h: number;
+  liquidity: number;
+  totalSupply: number;
+  circulatingSupply: number;
+  burnedTokens: number;
+  lockedTokens: number;
+  holders: number;
+  lastUpdated: string;
+}
+
 function formatPrice(price: number): string {
   if (price >= 1) return `$${price.toFixed(2)}`;
   if (price >= 0.01) return `$${price.toFixed(4)}`;
   if (price >= 0.0001) return `$${price.toFixed(6)}`;
   return `$${price.toFixed(8)}`;
+}
+
+function formatNumber(num: number): string {
+  if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(2)}B`;
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(2)}K`;
+  return num.toLocaleString();
+}
+
+function formatUSD(num: number): string {
+  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}M`;
+  if (num >= 1_000) return `$${(num / 1_000).toFixed(2)}K`;
+  return `$${num.toLocaleString()}`;
 }
 
 function formatChartLabel(timestamp: number): string {
@@ -75,11 +102,30 @@ export default function EmbedChart() {
   const [error, setError] = useState<string | null>(null);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number | null>(null);
+  const [metrics, setMetrics] = useState<TokenMetrics | null>(null);
   const lastFetchRef = useRef<number>(0);
 
-  const fetchChartData = useCallback(async (range: TimeRange) => {
+  // Fetch token metrics (holders, burned, locked, etc.)
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const headers: HeadersInit = {};
+      if (config.token) {
+        headers["X-Embed-Token"] = config.token;
+      }
+      const response = await fetch("/api/embed/metrics", { headers });
+      if (response.ok) {
+        const data: TokenMetrics = await response.json();
+        setMetrics(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch metrics:", err);
+    }
+  }, [config.token]);
+
+  const fetchChartData = useCallback(async (range: TimeRange, forceRefresh = false) => {
     const now = Date.now();
-    if (now - lastFetchRef.current < 5000) return;
+    // Only throttle auto-refresh, not manual range changes
+    if (!forceRefresh && now - lastFetchRef.current < 5000) return;
     
     setIsLoading(true);
     setError(null);
@@ -118,14 +164,22 @@ export default function EmbedChart() {
   }, [config.token]);
 
   useEffect(() => {
-    fetchChartData(timeRange);
+    // Force refresh when time range changes (user clicked a button)
+    fetchChartData(timeRange, true);
     
     const interval = setInterval(() => {
-      fetchChartData(timeRange);
+      fetchChartData(timeRange, false);
     }, timeRange === "live" ? 10000 : 60000);
     
     return () => clearInterval(interval);
   }, [timeRange, fetchChartData]);
+
+  // Fetch metrics on mount and refresh periodically
+  useEffect(() => {
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 30000);
+    return () => clearInterval(interval);
+  }, [fetchMetrics]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", config.theme === "dark");
@@ -342,6 +396,59 @@ export default function EmbedChart() {
         )}
       </div>
 
+      {/* Token Stats Bar */}
+      {metrics && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))",
+            gap: "8px",
+            marginTop: "12px",
+            padding: "10px",
+            background: config.theme === "dark" ? "hsl(120 5% 12%)" : "#f5f5f5",
+            borderRadius: "6px",
+          }}
+          data-testid="stats-bar"
+        >
+          <StatItem
+            label="Market Cap"
+            value={formatUSD(metrics.marketCap)}
+            theme={config.theme}
+            testId="stat-market-cap"
+          />
+          <StatItem
+            label="Volume 24h"
+            value={formatUSD(metrics.volume24h)}
+            theme={config.theme}
+            testId="stat-volume"
+          />
+          <StatItem
+            label="Liquidity"
+            value={formatUSD(metrics.liquidity)}
+            theme={config.theme}
+            testId="stat-liquidity"
+          />
+          <StatItem
+            label="Holders"
+            value={metrics.holders.toLocaleString()}
+            theme={config.theme}
+            testId="stat-holders"
+          />
+          <StatItem
+            label="Burned"
+            value={formatNumber(metrics.burnedTokens)}
+            theme={config.theme}
+            testId="stat-burned"
+          />
+          <StatItem
+            label="Locked"
+            value={formatNumber(metrics.lockedTokens)}
+            theme={config.theme}
+            testId="stat-locked"
+          />
+        </div>
+      )}
+
       {config.showBranding && (
         <div
           style={{
@@ -374,6 +481,52 @@ export default function EmbedChart() {
         * { box-sizing: border-box; }
         button:hover { opacity: 0.85; }
       `}</style>
+    </div>
+  );
+}
+
+// Stat item component for the stats bar
+function StatItem({
+  label,
+  value,
+  theme,
+  testId,
+}: {
+  label: string;
+  value: string;
+  theme: "dark" | "light";
+  testId: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        textAlign: "center",
+      }}
+      data-testid={testId}
+    >
+      <span
+        style={{
+          fontSize: "9px",
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+          color: theme === "dark" ? "hsl(120 3% 55%)" : "#888888",
+          marginBottom: "2px",
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: "12px",
+          fontWeight: 600,
+          color: theme === "dark" ? "hsl(120 5% 90%)" : "#1a1a1a",
+        }}
+      >
+        {value}
+      </span>
     </div>
   );
 }

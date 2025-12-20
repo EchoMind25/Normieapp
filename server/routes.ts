@@ -207,7 +207,15 @@ export async function registerRoutes(
         price: metrics.price,
         priceChange24h: metrics.priceChange24h,
         marketCap: metrics.marketCap,
+        marketCapChange24h: metrics.marketCapChange24h,
         volume24h: metrics.volume24h,
+        liquidity: metrics.liquidity,
+        totalSupply: metrics.totalSupply,
+        circulatingSupply: metrics.circulatingSupply,
+        burnedTokens: metrics.burnedTokens,
+        lockedTokens: metrics.lockedTokens,
+        holders: metrics.holders,
+        lastUpdated: metrics.lastUpdated,
       });
     } catch (error) {
       console.error("[Embed] Metrics error:", error);
