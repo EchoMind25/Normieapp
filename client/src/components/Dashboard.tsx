@@ -17,6 +17,7 @@ import {
   Clock,
   AlertTriangle,
   ExternalLink,
+  Wallet,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -144,6 +145,14 @@ interface ChartMarker {
   percentOfSupply?: number;
 }
 
+interface DevWalletHoldings {
+  tokensHeld: number;
+  usdValue: number;
+  walletAddress: string;
+  walletLabel: string;
+  lastUpdated: string;
+}
+
 export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnected }: DashboardProps) {
   const [timeRange, setTimeRange] = useState("24h");
   const [chartData, setChartData] = useState<PricePoint[]>([]);
@@ -151,6 +160,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
   const lastFetchRef = useRef<{ range: string; timestamp: number } | null>(null);
   const chartDataRef = useRef<PricePoint[]>([]);
   const [chartMarkers, setChartMarkers] = useState<ChartMarker[]>([]);
+  const [devWalletHoldings, setDevWalletHoldings] = useState<DevWalletHoldings | null>(null);
 
   const fetchChartData = useCallback(async (range: string, force = false) => {
     if (range === "live") {
@@ -241,6 +251,24 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
     };
     fetchMarkers();
   }, [timeRange]);
+
+  // Fetch dev wallet holdings
+  useEffect(() => {
+    const fetchDevWallet = async () => {
+      try {
+        const response = await fetch("/api/dev-wallet");
+        if (response.ok) {
+          const data = await response.json();
+          setDevWalletHoldings(data);
+        }
+      } catch (error) {
+        console.error("[Dashboard] Error fetching dev wallet:", error);
+      }
+    };
+    fetchDevWallet();
+    const interval = setInterval(fetchDevWallet, 120000); // Refresh every 2 minutes
+    return () => clearInterval(interval);
+  }, []);
 
   const formatPrice = (price: number) => {
     if (price < 0.00001) {
@@ -451,14 +479,19 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
     },
     plugins: {
       legend: {
-        display: devBuys.length > 0 || whaleBuyPoints.some(p => p !== null),
+        display: true, // Always show legend for Dev Buys and Whale Buys reference
         position: "top" as const,
         labels: {
           color: "hsl(120 3% 55%)",
           font: { family: "JetBrains Mono, monospace", size: 10 },
           usePointStyle: true,
           filter: (legendItem: any, chartData: any) => {
-            // Only show legend items that have data
+            // Always show Dev Buys and Whale Buys legends for reference
+            const label = legendItem.text;
+            if (label === "Whale Buys" || label === "Dev Buys") {
+              return true; // Always show these legend items
+            }
+            // For other items, only show if they have data
             const datasetIndex = legendItem.datasetIndex;
             const dataset = chartData.datasets[datasetIndex];
             return dataset.data.some((d: any) => d !== null);
@@ -717,6 +750,34 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
             <span>100%</span>
           </div>
         </Card>
+
+        {devWalletHoldings && (
+          <Card className="p-4 lg:p-6 mb-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-chart-1/10">
+                  <Wallet className="h-5 w-5 text-chart-1" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
+                    {devWalletHoldings.walletLabel}
+                  </h3>
+                  <p className="text-lg font-mono font-bold" data-testid="text-dev-wallet-holdings">
+                    {formatNumber(devWalletHoldings.tokensHeld)} NORMIE
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <Badge variant="outline" className="font-mono text-chart-1">
+                  ${devWalletHoldings.usdValue.toFixed(2)} USD
+                </Badge>
+                <p className="text-xs text-muted-foreground mt-1 font-mono">
+                  {((devWalletHoldings.tokensHeld / 1000000000) * 100).toFixed(4)}% of supply
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 p-4 lg:p-6">

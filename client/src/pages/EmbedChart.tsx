@@ -349,13 +349,19 @@ export default function EmbedChart() {
     animation: { duration: 0 },
     plugins: {
       legend: {
-        display: devBuyPoints.some(p => p !== null) || whaleBuyPoints.some(p => p !== null),
+        display: true, // Always show legend for Dev Buys and Whale Buys reference
         position: "top" as const,
         labels: {
           color: config.theme === "dark" ? "hsl(120 3% 55%)" : "#666666",
           font: { size: 10 },
           usePointStyle: true,
           filter: (legendItem: any, chartData: any) => {
+            // Always show Dev Buys and Whale Buys legends for reference
+            const label = legendItem.text;
+            if (label === "Whale Buys" || label === "Dev Buys") {
+              return true; // Always show these legend items
+            }
+            // For other items, only show if they have data
             const datasetIndex = legendItem.datasetIndex;
             const dataset = chartData.datasets[datasetIndex];
             return dataset.data.some((d: any) => d !== null);

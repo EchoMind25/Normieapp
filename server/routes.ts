@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { fetchTokenMetrics, getMetrics, getPriceHistory, addPricePoint, fetchDevBuys, getDevBuys, getConnectionStatus, fetchHistoricalPrices, fetchRecentTokenActivity, getActivityCache } from "./solana";
+import { fetchTokenMetrics, getMetrics, getPriceHistory, addPricePoint, fetchDevBuys, getDevBuys, getConnectionStatus, fetchHistoricalPrices, fetchRecentTokenActivity, getActivityCache, fetchDevWalletHoldings, getDevWalletAddress } from "./solana";
 import authRoutes from "./authRoutes";
 import { db, verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
 import { manualDevBuys, users, sessions, userFeedback, insertUserFeedbackSchema } from "@shared/schema";
@@ -446,6 +446,22 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[DevBuys] Unexpected error:", error);
       res.status(500).json({ error: "Failed to fetch dev buys" });
+    }
+  });
+
+  // Get dev/Normie wallet holdings
+  app.get("/api/dev-wallet", async (_req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=60");
+      const holdings = await fetchDevWalletHoldings();
+      res.json({
+        ...holdings,
+        walletAddress: getDevWalletAddress(),
+        walletLabel: "Normie Wallet",
+      });
+    } catch (error) {
+      console.error("[DevWallet] Error:", error);
+      res.status(500).json({ error: "Failed to fetch dev wallet holdings" });
     }
   });
   

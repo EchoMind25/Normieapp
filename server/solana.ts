@@ -156,6 +156,93 @@ async function fetchHolderCount(): Promise<number> {
   }
 }
 
+// Dev wallet holdings cache
+interface DevWalletHoldings {
+  tokensHeld: number;
+  usdValue: number;
+  lastUpdated: string;
+}
+
+let cachedDevWalletHoldings: DevWalletHoldings | null = null;
+let lastDevWalletFetch = 0;
+const DEV_WALLET_CACHE_TTL = 120000; // 2 minutes
+
+// Fetch dev/Normie wallet holdings
+export async function fetchDevWalletHoldings(): Promise<DevWalletHoldings> {
+  const now = Date.now();
+  
+  // Return cached value if fresh
+  if (cachedDevWalletHoldings && now - lastDevWalletFetch < DEV_WALLET_CACHE_TTL) {
+    return cachedDevWalletHoldings;
+  }
+  
+  try {
+    const conn = getConnection();
+    const devPubkey = new PublicKey(DEV_WALLET);
+    const tokenPubkey = new PublicKey(TOKEN_ADDRESS);
+    
+    // Get all token accounts for the dev wallet
+    const tokenAccounts = await conn.getTokenAccountsByOwner(devPubkey, {
+      mint: tokenPubkey,
+    });
+    
+    let totalTokens = 0;
+    
+    for (const { account } of tokenAccounts.value) {
+      // Parse token account data - amount is at offset 64, 8 bytes (u64)
+      const data = account.data;
+      if (data.length >= 72) {
+        // Token amount is stored as u64 at offset 64
+        const amount = Number(data.readBigUInt64LE(64));
+        // Convert from raw amount (with 6 decimals for NORMIE)
+        totalTokens += amount / 1_000_000;
+      }
+    }
+    
+    // Get current price for USD value - fetch if not available
+    let currentPrice = currentMetrics?.price;
+    if (!currentPrice) {
+      // Fetch price directly from DexScreener if metrics not available
+      try {
+        const dexResponse = await fetch(`${DEXSCREENER_API}/${TOKEN_ADDRESS}`);
+        if (dexResponse.ok) {
+          const dexData = await dexResponse.json();
+          if (dexData.pairs && dexData.pairs.length > 0) {
+            currentPrice = parseFloat(dexData.pairs[0].priceUsd) || 0;
+          }
+        }
+      } catch (e) {
+        console.error("[DevWallet] Error fetching price:", e);
+      }
+    }
+    const usdValue = totalTokens * (currentPrice || 0);
+    
+    cachedDevWalletHoldings = {
+      tokensHeld: totalTokens,
+      usdValue,
+      lastUpdated: new Date().toISOString(),
+    };
+    
+    lastDevWalletFetch = now;
+    console.log(`[DevWallet] Holdings: ${(totalTokens / 1_000_000).toFixed(2)}M tokens ($${usdValue.toFixed(2)})`);
+    
+    return cachedDevWalletHoldings;
+  } catch (error) {
+    console.error("[DevWallet] Error fetching holdings:", error);
+    
+    // Return cached or empty value
+    return cachedDevWalletHoldings || {
+      tokensHeld: 0,
+      usdValue: 0,
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+}
+
+export function getDevWalletAddress(): string {
+  return DEV_WALLET;
+}
+
 export async function fetchTokenMetrics(): Promise<TokenMetrics> {
   const now = Date.now();
   
