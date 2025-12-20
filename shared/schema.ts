@@ -846,6 +846,22 @@ export type JeetLeaderboardEntry = {
 };
 
 // =====================================================
+// Jeet Wallet Totals Table - Aggregated per-wallet data for fast leaderboard
+// =====================================================
+
+export const jeetWalletTotals = pgTable("jeet_wallet_totals", {
+  walletAddress: varchar("wallet_address", { length: 44 }).primaryKey(),
+  totalTokensSold: decimal("total_tokens_sold", { precision: 24, scale: 6 }).default("0").notNull(),
+  totalSolValue: decimal("total_sol_value", { precision: 20, scale: 9 }).default("0"),
+  sellCount: integer("sell_count").default(0).notNull(),
+  firstSellAt: timestamp("first_sell_at"),
+  lastSellAt: timestamp("last_sell_at"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type JeetWalletTotal = typeof jeetWalletTotals.$inferSelect;
+
+// =====================================================
 // Normie token constants
 // =====================================================
 

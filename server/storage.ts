@@ -9,6 +9,7 @@ import {
   storedDevBuys,
   whaleBuys,
   jeetSells,
+  jeetWalletTotals,
   nfts,
   nftCollections,
   nftListings,
@@ -277,6 +278,11 @@ export interface IStorage {
   createJeetSell(sell: InsertJeetSell): Promise<JeetSell>;
   getJeetSellBySignature(signature: string): Promise<JeetSell | undefined>;
   getJeetLeaderboard(limit?: number, range?: "24h" | "7d" | "30d" | "all"): Promise<JeetLeaderboardEntry[]>;
+  
+  // Jeet Wallet Totals (aggregated data for fast leaderboard)
+  upsertJeetWalletTotal(walletAddress: string, soldAmount: number, soldValueSol: number | null, sellTime: Date): Promise<void>;
+  getJeetWalletTotalsLeaderboard(limit?: number): Promise<JeetLeaderboardEntry[]>;
+  getJeetSellCount(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1362,6 +1368,57 @@ export class DatabaseStorage implements IStorage {
       sellCount: Number(row.sellCount) || 0,
       solscanUrl: `https://solscan.io/account/${row.walletAddress}`,
     }));
+  }
+
+  // Jeet Wallet Totals - Aggregated data for fast leaderboard
+  async upsertJeetWalletTotal(
+    walletAddress: string, 
+    soldAmount: number, 
+    soldValueSol: number | null, 
+    sellTime: Date
+  ): Promise<void> {
+    await db
+      .insert(jeetWalletTotals)
+      .values({
+        walletAddress,
+        totalTokensSold: soldAmount.toString(),
+        totalSolValue: soldValueSol?.toString() || "0",
+        sellCount: 1,
+        firstSellAt: sellTime,
+        lastSellAt: sellTime,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: jeetWalletTotals.walletAddress,
+        set: {
+          totalTokensSold: sql`${jeetWalletTotals.totalTokensSold} + ${soldAmount}`,
+          totalSolValue: sql`COALESCE(${jeetWalletTotals.totalSolValue}, 0) + ${soldValueSol || 0}`,
+          sellCount: sql`${jeetWalletTotals.sellCount} + 1`,
+          lastSellAt: sellTime,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  async getJeetWalletTotalsLeaderboard(limit: number = 20): Promise<JeetLeaderboardEntry[]> {
+    const results = await db
+      .select()
+      .from(jeetWalletTotals)
+      .orderBy(desc(sql`CAST(${jeetWalletTotals.totalTokensSold} AS NUMERIC)`))
+      .limit(limit);
+
+    return results.map((row, index) => ({
+      rank: index + 1,
+      walletAddress: row.walletAddress,
+      totalSold: parseFloat(row.totalTokensSold) || 0,
+      sellCount: row.sellCount,
+      solscanUrl: `https://solscan.io/account/${row.walletAddress}`,
+    }));
+  }
+
+  async getJeetSellCount(): Promise<number> {
+    const [result] = await db.select({ count: sql<number>`count(*)` }).from(jeetSells);
+    return Number(result?.count || 0);
   }
 }
 
