@@ -279,11 +279,11 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
 
   const { devBuyPoints, devBuyAmounts } = useMemo(() => {
     if (chartData.length === 0) {
-      return { devBuyPoints: [], devBuyAmounts: {} as Record<number, number> };
+      return { devBuyPoints: [], devBuyAmounts: {} as Record<number, { total: number; count: number }> };
     }
     
     const result: (number | null)[] = new Array(chartData.length).fill(null);
-    const amounts: Record<number, number> = {};
+    const amounts: Record<number, { total: number; count: number }> = {};
     
     const getToleranceMs = () => {
       switch (timeRange) {
@@ -321,21 +321,26 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       
       if (closestIndex !== -1 && closestDiff < toleranceMs) {
         result[closestIndex] = chartData[closestIndex].price;
-        amounts[closestIndex] = buy.amount;
+        if (amounts[closestIndex]) {
+          amounts[closestIndex].total += buy.amount;
+          amounts[closestIndex].count += 1;
+        } else {
+          amounts[closestIndex] = { total: buy.amount, count: 1 };
+        }
       }
     });
     
     return { devBuyPoints: result, devBuyAmounts: amounts };
   }, [chartData, devBuys, timeRange]);
 
-  // Calculate whale buy marker points from chart markers
+  // Calculate whale buy marker points from chart markers (aggregate multiple at same point)
   const { whaleBuyPoints, whaleBuyAmounts } = useMemo(() => {
     if (chartData.length === 0 || chartMarkers.length === 0) {
-      return { whaleBuyPoints: [], whaleBuyAmounts: {} as Record<number, { amount: number; percent: number }> };
+      return { whaleBuyPoints: [], whaleBuyAmounts: {} as Record<number, { total: number; count: number; totalPercent: number }> };
     }
     
     const result: (number | null)[] = new Array(chartData.length).fill(null);
-    const amounts: Record<number, { amount: number; percent: number }> = {};
+    const amounts: Record<number, { total: number; count: number; totalPercent: number }> = {};
     
     const getToleranceMs = () => {
       switch (timeRange) {
@@ -374,10 +379,17 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
       
       if (closestIndex !== -1 && closestDiff < toleranceMs) {
         result[closestIndex] = chartData[closestIndex].price;
-        amounts[closestIndex] = {
-          amount: marker.amount,
-          percent: marker.percentOfSupply || 0,
-        };
+        if (amounts[closestIndex]) {
+          amounts[closestIndex].total += marker.amount;
+          amounts[closestIndex].count += 1;
+          amounts[closestIndex].totalPercent += marker.percentOfSupply || 0;
+        } else {
+          amounts[closestIndex] = {
+            total: marker.amount,
+            count: 1,
+            totalPercent: marker.percentOfSupply || 0,
+          };
+        }
       }
     });
     
@@ -467,26 +479,28 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
           label: function (context: any) {
             const label = context.dataset.label || "";
             if (label === "Dev Buys") {
-              const amount = devBuyAmounts[context.dataIndex];
-              if (amount !== undefined) {
-                const formattedAmount = amount >= 1000000
-                  ? `${(amount / 1000000).toFixed(2)}M`
-                  : amount >= 1000
-                  ? `${(amount / 1000).toFixed(1)}K`
-                  : amount.toLocaleString();
-                return `DEV BUY: ${formattedAmount} $NORMIE`;
+              const devData = devBuyAmounts[context.dataIndex];
+              if (devData !== undefined) {
+                const formattedAmount = devData.total >= 1000000
+                  ? `${(devData.total / 1000000).toFixed(2)}M`
+                  : devData.total >= 1000
+                  ? `${(devData.total / 1000).toFixed(1)}K`
+                  : devData.total.toLocaleString();
+                const countStr = devData.count > 1 ? ` (${devData.count} buys)` : "";
+                return `DEV BUY: ${formattedAmount} $NORMIE${countStr}`;
               }
               return "";
             }
             if (label === "Whale Buys") {
               const whaleData = whaleBuyAmounts[context.dataIndex];
               if (whaleData !== undefined) {
-                const formattedAmount = whaleData.amount >= 1000000
-                  ? `${(whaleData.amount / 1000000).toFixed(2)}M`
-                  : whaleData.amount >= 1000
-                  ? `${(whaleData.amount / 1000).toFixed(1)}K`
-                  : whaleData.amount.toLocaleString();
-                return `WHALE BUY: ${formattedAmount} $NORMIE (${whaleData.percent.toFixed(1)}% of supply)`;
+                const formattedAmount = whaleData.total >= 1000000
+                  ? `${(whaleData.total / 1000000).toFixed(2)}M`
+                  : whaleData.total >= 1000
+                  ? `${(whaleData.total / 1000).toFixed(1)}K`
+                  : whaleData.total.toLocaleString();
+                const countStr = whaleData.count > 1 ? ` (${whaleData.count} buys)` : "";
+                return `WHALE BUY: ${formattedAmount} $NORMIE (${whaleData.totalPercent.toFixed(1)}% of supply)${countStr}`;
               }
               return "";
             }

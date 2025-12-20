@@ -221,21 +221,21 @@ export default function EmbedChart() {
     document.body.style.overflow = "hidden";
   }, [config.theme]);
 
-  // Calculate dev buy and whale buy marker points
+  // Calculate dev buy and whale buy marker points (aggregate multiple markers per point)
   const { devBuyPoints, whaleBuyPoints, devBuyAmounts, whaleBuyAmounts } = useMemo(() => {
     if (chartData.length === 0 || chartMarkers.length === 0) {
       return {
         devBuyPoints: [] as (number | null)[],
         whaleBuyPoints: [] as (number | null)[],
-        devBuyAmounts: {} as Record<number, number>,
-        whaleBuyAmounts: {} as Record<number, { amount: number; percent: number }>,
+        devBuyAmounts: {} as Record<number, { total: number; count: number }>,
+        whaleBuyAmounts: {} as Record<number, { total: number; count: number; totalPercent: number }>,
       };
     }
     
     const devPoints: (number | null)[] = new Array(chartData.length).fill(null);
     const whalePoints: (number | null)[] = new Array(chartData.length).fill(null);
-    const devAmounts: Record<number, number> = {};
-    const whaleAmounts: Record<number, { amount: number; percent: number }> = {};
+    const devAmounts: Record<number, { total: number; count: number }> = {};
+    const whaleAmounts: Record<number, { total: number; count: number; totalPercent: number }> = {};
     
     const getToleranceMs = () => {
       switch (timeRange) {
@@ -274,13 +274,25 @@ export default function EmbedChart() {
       if (closestIndex !== -1 && closestDiff < toleranceMs) {
         if (marker.type === "dev") {
           devPoints[closestIndex] = chartData[closestIndex].price;
-          devAmounts[closestIndex] = marker.amount;
+          if (devAmounts[closestIndex]) {
+            devAmounts[closestIndex].total += marker.amount;
+            devAmounts[closestIndex].count += 1;
+          } else {
+            devAmounts[closestIndex] = { total: marker.amount, count: 1 };
+          }
         } else if (marker.type === "whale") {
           whalePoints[closestIndex] = chartData[closestIndex].price;
-          whaleAmounts[closestIndex] = {
-            amount: marker.amount,
-            percent: marker.percentOfSupply || 0,
-          };
+          if (whaleAmounts[closestIndex]) {
+            whaleAmounts[closestIndex].total += marker.amount;
+            whaleAmounts[closestIndex].count += 1;
+            whaleAmounts[closestIndex].totalPercent += marker.percentOfSupply || 0;
+          } else {
+            whaleAmounts[closestIndex] = {
+              total: marker.amount,
+              count: 1,
+              totalPercent: marker.percentOfSupply || 0,
+            };
+          }
         }
       }
     });
@@ -364,26 +376,28 @@ export default function EmbedChart() {
           label: (context: any) => {
             const label = context.dataset.label || "";
             if (label === "Dev Buys") {
-              const amount = devBuyAmounts[context.dataIndex];
-              if (amount !== undefined) {
-                const formattedAmount = amount >= 1000000
-                  ? `${(amount / 1000000).toFixed(2)}M`
-                  : amount >= 1000
-                  ? `${(amount / 1000).toFixed(1)}K`
-                  : amount.toLocaleString();
-                return `DEV BUY: ${formattedAmount} $NORMIE`;
+              const devData = devBuyAmounts[context.dataIndex];
+              if (devData !== undefined) {
+                const formattedAmount = devData.total >= 1000000
+                  ? `${(devData.total / 1000000).toFixed(2)}M`
+                  : devData.total >= 1000
+                  ? `${(devData.total / 1000).toFixed(1)}K`
+                  : devData.total.toLocaleString();
+                const countStr = devData.count > 1 ? ` (${devData.count} buys)` : "";
+                return `DEV BUY: ${formattedAmount} $NORMIE${countStr}`;
               }
               return "";
             }
             if (label === "Whale Buys") {
               const whaleData = whaleBuyAmounts[context.dataIndex];
               if (whaleData !== undefined) {
-                const formattedAmount = whaleData.amount >= 1000000
-                  ? `${(whaleData.amount / 1000000).toFixed(2)}M`
-                  : whaleData.amount >= 1000
-                  ? `${(whaleData.amount / 1000).toFixed(1)}K`
-                  : whaleData.amount.toLocaleString();
-                return `WHALE BUY: ${formattedAmount} (${whaleData.percent.toFixed(1)}%)`;
+                const formattedAmount = whaleData.total >= 1000000
+                  ? `${(whaleData.total / 1000000).toFixed(2)}M`
+                  : whaleData.total >= 1000
+                  ? `${(whaleData.total / 1000).toFixed(1)}K`
+                  : whaleData.total.toLocaleString();
+                const countStr = whaleData.count > 1 ? ` (${whaleData.count} buys)` : "";
+                return `WHALE BUY: ${formattedAmount} (${whaleData.totalPercent.toFixed(1)}%)${countStr}`;
               }
               return "";
             }
