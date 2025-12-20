@@ -225,12 +225,70 @@ export async function registerRoutes(
   
   app.get("/api/embed/config", embedCors, (_req, res) => {
     res.json({
-      version: "1.0.0",
+      version: "1.0.2",
       tokenSymbol: "NORMIE",
       tokenName: "Normie",
       refreshInterval: 10000,
-      availableRanges: ["live", "5m", "1h", "6h", "24h", "7d"],
+      availableRanges: ["live", "5m", "1h", "6h", "24h", "7d", "all"],
     });
+  });
+
+  // Embed chart markers endpoint with CORS support for whale/dev buys
+  app.get("/api/embed/chart-markers", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=30");
+      
+      const range = req.query.range as string;
+      let startDate: Date | undefined;
+      
+      if (range === "all") {
+        startDate = undefined;
+      } else if (range) {
+        const now = new Date();
+        switch (range) {
+          case "live":
+          case "5m":
+          case "1h":
+          case "6h":
+          case "24h": startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+          case "7d": startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+          case "30d": startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+          default: startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        }
+      }
+      
+      const devBuys = startDate 
+        ? await storage.getStoredDevBuysInRange(startDate, new Date())
+        : await storage.getAllStoredDevBuys();
+      
+      const whaleBuys = startDate
+        ? await storage.getWhaleBuysInRange(startDate, new Date())
+        : await storage.getAllWhaleBuys();
+      
+      const markers = [
+        ...devBuys.map(buy => ({
+          type: "dev" as const,
+          signature: buy.signature,
+          timestamp: new Date(buy.timestamp).getTime(),
+          amount: parseFloat(buy.amount),
+          price: parseFloat(buy.price),
+        })),
+        ...whaleBuys.map(buy => ({
+          type: "whale" as const,
+          signature: buy.signature,
+          walletAddress: buy.walletAddress,
+          timestamp: new Date(buy.timestamp).getTime(),
+          amount: parseFloat(buy.amount),
+          price: parseFloat(buy.price),
+          percentOfSupply: parseFloat(buy.percentOfSupply),
+        })),
+      ].sort((a, b) => a.timestamp - b.timestamp);
+      
+      res.json(markers);
+    } catch (error) {
+      console.error("[Embed] Chart markers error:", error);
+      res.status(500).json({ error: "Failed to fetch chart markers" });
+    }
   });
   
   app.use("/api/auth", authLimiter, authRoutes);

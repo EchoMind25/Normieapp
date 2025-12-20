@@ -201,7 +201,7 @@ export default function EmbedChart() {
           headers["X-Embed-Token"] = config.token;
         }
         const apiRange = timeRange === "live" ? "24h" : timeRange;
-        const response = await fetch(`/api/chart-markers?range=${apiRange}`, { headers });
+        const response = await fetch(`/api/embed/chart-markers?range=${apiRange}`, { headers });
         if (response.ok) {
           const markers: ChartMarker[] = await response.json();
           setChartMarkers(markers);

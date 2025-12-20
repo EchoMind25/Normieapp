@@ -18,6 +18,7 @@ This document provides complete instructions for embedding real-time $NORMIE pri
 |----------|-------------|------|
 | `GET /api/embed/price-history?range=24h` | Historical price data | Yes |
 | `GET /api/embed/metrics` | Full token metrics (price, holders, burned, locked, liquidity, etc.) | Yes |
+| `GET /api/embed/chart-markers?range=24h` | Whale buys + dev buys for chart markers | Yes |
 | `GET /api/embed/config` | Widget configuration | Yes |
 
 ### Metrics API Response
@@ -352,6 +353,14 @@ const {
   totalSupply,
   lastUpdated
 } = await metrics.json();
+
+// Fetch chart markers (whale buys + dev buys)
+const markersResponse = await fetch('https://normie.observer/api/embed/chart-markers?range=24h');
+const markers = await markersResponse.json();
+// Returns: [
+//   { type: "dev", signature: "...", timestamp: 1703001234567, amount: 500000, price: 0.000234 },
+//   { type: "whale", signature: "...", walletAddress: "...", timestamp: 1703001234567, amount: 25000000, price: 0.000234, percentOfSupply: 2.5 }
+// ]
 ```
 
 ---
