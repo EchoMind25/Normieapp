@@ -1,5 +1,5 @@
 import { Switch, Route } from "wouter";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,7 +10,10 @@ import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { DynamicFavicon } from "@/components/DynamicFavicon";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { DisclaimerModal } from "@/components/DisclaimerModal";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { initStatusBar, hideSplashScreen, isNative } from "@/lib/native-utils";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
 
@@ -23,6 +26,8 @@ const MyNfts = lazy(() => import("@/pages/MyNfts"));
 const CollectionDetail = lazy(() => import("@/pages/CollectionDetail"));
 const EmbedChart = lazy(() => import("@/pages/EmbedChart"));
 const Install = lazy(() => import("@/pages/Install"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const Terms = lazy(() => import("@/pages/Terms"));
 
 function PageLoader() {
   return (
@@ -51,6 +56,8 @@ function Router() {
         <Route path="/marketplace/collection/:id" component={CollectionDetail} />
         <Route path="/embed/chart" component={EmbedChart} />
         <Route path="/install" component={Install} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/terms" component={Terms} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
@@ -58,6 +65,13 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    if (isNative) {
+      initStatusBar();
+      hideSplashScreen();
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -65,6 +79,8 @@ function App() {
           <TooltipProvider>
             <DynamicFavicon />
             <Toaster />
+            <OfflineBanner />
+            <DisclaimerModal />
             <ForcePasswordChange />
             <NotificationPrompt />
             <PWAInstallPrompt />
