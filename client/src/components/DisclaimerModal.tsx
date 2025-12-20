@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation, Link } from 'wouter';
 import {
   Dialog,
   DialogContent,
@@ -11,26 +12,31 @@ import { AlertTriangle, Shield, Scale, RefreshCw } from 'lucide-react';
 import { hasAcceptedDisclaimer, acceptDisclaimer, hasPreviouslyAccepted, POLICY_VERSION } from '@/lib/native-utils';
 
 export function DisclaimerModal() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [needsAcceptance, setNeedsAcceptance] = useState(false);
   const [isPolicyUpdate, setIsPolicyUpdate] = useState(false);
+  const [location] = useLocation();
 
-  // Hide on embed pages
-  const isEmbed = useMemo(() => window.location.pathname.startsWith('/embed'), []);
+  // Pages where the modal should be hidden (embeds, terms, privacy)
+  const isExemptPage = location.startsWith('/embed') || 
+                       location === '/terms' || 
+                       location === '/privacy';
 
   useEffect(() => {
-    if (!isEmbed && !hasAcceptedDisclaimer()) {
-      setIsOpen(true);
-      // Check if this is a policy update (user accepted before but not current version)
+    if (!hasAcceptedDisclaimer()) {
+      setNeedsAcceptance(true);
       setIsPolicyUpdate(hasPreviouslyAccepted());
     }
-  }, [isEmbed]);
+  }, []);
+
+  // Modal is open when acceptance is needed AND not on an exempt page
+  const isOpen = needsAcceptance && !isExemptPage;
 
   const handleAccept = () => {
     acceptDisclaimer();
-    setIsOpen(false);
+    setNeedsAcceptance(false);
   };
 
-  if (isEmbed) return null;
+  if (isExemptPage && !needsAcceptance) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
@@ -96,9 +102,9 @@ export function DisclaimerModal() {
               <Scale className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
               <p className="text-xs text-muted-foreground">
                 By continuing, you acknowledge that you have read and agree to our{' '}
-                <a href="/terms" className="text-primary underline" target="_blank">Terms of Service</a>
+                <Link href="/terms" className="text-primary underline" data-testid="link-terms">Terms of Service</Link>
                 {' '}and{' '}
-                <a href="/privacy" className="text-primary underline" target="_blank">Privacy Policy</a>.
+                <Link href="/privacy" className="text-primary underline" data-testid="link-privacy">Privacy Policy</Link>.
               </p>
             </div>
           </DialogDescription>

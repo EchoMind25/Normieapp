@@ -10,6 +10,8 @@ import {
   whaleBuys,
   jeetSells,
   jeetWalletTotals,
+  walletHoldings,
+  walletBuys,
   nfts,
   nftCollections,
   nftListings,
@@ -87,6 +89,12 @@ import {
   type JeetSell,
   type InsertJeetSell,
   type JeetLeaderboardEntry,
+  type WalletHolding,
+  type InsertWalletHolding,
+  type WalletBuy,
+  type InsertWalletBuy,
+  type DiamondHandsEntry,
+  type WhaleEntry,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -283,6 +291,17 @@ export interface IStorage {
   upsertJeetWalletTotal(walletAddress: string, soldAmount: number, soldValueSol: number | null, sellTime: Date): Promise<void>;
   getJeetWalletTotalsLeaderboard(limit?: number): Promise<JeetLeaderboardEntry[]>;
   getJeetSellCount(): Promise<number>;
+  
+  // Wallet Holdings (for Diamond Hands & Whale leaderboards)
+  createWalletBuy(buy: InsertWalletBuy): Promise<WalletBuy>;
+  getWalletBuyBySignature(signature: string): Promise<WalletBuy | undefined>;
+  upsertWalletHolding(walletAddress: string, boughtAmount: number, buyTime: Date): Promise<void>;
+  updateWalletHoldingOnSell(walletAddress: string, soldAmount: number, sellTime: Date): Promise<void>;
+  getDiamondHandsLeaderboard(limit?: number): Promise<DiamondHandsEntry[]>;
+  getWhalesLeaderboard(limit?: number): Promise<WhaleEntry[]>;
+  getWalletHolding(walletAddress: string): Promise<WalletHolding | undefined>;
+  getWalletBuyCount(): Promise<number>;
+  getWalletHoldingsCount(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1418,6 +1437,125 @@ export class DatabaseStorage implements IStorage {
 
   async getJeetSellCount(): Promise<number> {
     const [result] = await db.select({ count: sql<number>`count(*)` }).from(jeetSells);
+    return Number(result?.count || 0);
+  }
+
+  // Wallet Holdings (for Diamond Hands & Whale leaderboards)
+  async createWalletBuy(buy: InsertWalletBuy): Promise<WalletBuy> {
+    const [created] = await db.insert(walletBuys).values(buy).returning();
+    return created;
+  }
+
+  async getWalletBuyBySignature(signature: string): Promise<WalletBuy | undefined> {
+    const [buy] = await db.select().from(walletBuys).where(eq(walletBuys.signature, signature));
+    return buy;
+  }
+
+  async upsertWalletHolding(walletAddress: string, boughtAmount: number, buyTime: Date): Promise<void> {
+    await db
+      .insert(walletHoldings)
+      .values({
+        walletAddress,
+        currentBalance: boughtAmount.toString(),
+        totalBought: boughtAmount.toString(),
+        totalSold: "0",
+        firstBuyAt: buyTime,
+        lastBuyAt: buyTime,
+        holdStartAt: buyTime,
+        buyCount: 1,
+        sellCount: 0,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: walletHoldings.walletAddress,
+        set: {
+          currentBalance: sql`CAST(${walletHoldings.currentBalance} AS NUMERIC) + ${boughtAmount}`,
+          totalBought: sql`CAST(${walletHoldings.totalBought} AS NUMERIC) + ${boughtAmount}`,
+          lastBuyAt: buyTime,
+          buyCount: sql`${walletHoldings.buyCount} + 1`,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  async updateWalletHoldingOnSell(walletAddress: string, soldAmount: number, sellTime: Date): Promise<void> {
+    await db
+      .update(walletHoldings)
+      .set({
+        currentBalance: sql`GREATEST(0, CAST(${walletHoldings.currentBalance} AS NUMERIC) - ${soldAmount})`,
+        totalSold: sql`CAST(${walletHoldings.totalSold} AS NUMERIC) + ${soldAmount}`,
+        sellCount: sql`${walletHoldings.sellCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(walletHoldings.walletAddress, walletAddress));
+  }
+
+  async getDiamondHandsLeaderboard(limit: number = 20): Promise<DiamondHandsEntry[]> {
+    const results = await db
+      .select({
+        walletAddress: walletHoldings.walletAddress,
+        userId: walletHoldings.userId,
+        currentBalance: walletHoldings.currentBalance,
+        holdStartAt: walletHoldings.holdStartAt,
+        firstBuyAt: walletHoldings.firstBuyAt,
+      })
+      .from(walletHoldings)
+      .where(gt(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`, 0))
+      .orderBy(asc(walletHoldings.holdStartAt))
+      .limit(limit);
+
+    const now = Date.now();
+    return results.map((row, index) => ({
+      rank: index + 1,
+      walletAddress: row.walletAddress,
+      userId: row.userId,
+      username: null,
+      currentBalance: parseFloat(row.currentBalance) || 0,
+      holdDurationSeconds: row.holdStartAt ? Math.floor((now - row.holdStartAt.getTime()) / 1000) : 0,
+      firstBuyAt: row.firstBuyAt?.toISOString() || null,
+      solscanUrl: `https://solscan.io/account/${row.walletAddress}`,
+    }));
+  }
+
+  async getWhalesLeaderboard(limit: number = 20): Promise<WhaleEntry[]> {
+    const results = await db
+      .select({
+        walletAddress: walletHoldings.walletAddress,
+        userId: walletHoldings.userId,
+        currentBalance: walletHoldings.currentBalance,
+        holdStartAt: walletHoldings.holdStartAt,
+        firstBuyAt: walletHoldings.firstBuyAt,
+      })
+      .from(walletHoldings)
+      .where(gt(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`, 0))
+      .orderBy(desc(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`))
+      .limit(limit);
+
+    const now = Date.now();
+    return results.map((row, index) => ({
+      rank: index + 1,
+      walletAddress: row.walletAddress,
+      userId: row.userId,
+      username: null,
+      currentBalance: parseFloat(row.currentBalance) || 0,
+      holdDurationSeconds: row.holdStartAt ? Math.floor((now - row.holdStartAt.getTime()) / 1000) : 0,
+      firstBuyAt: row.firstBuyAt?.toISOString() || null,
+      solscanUrl: `https://solscan.io/account/${row.walletAddress}`,
+    }));
+  }
+
+  async getWalletHolding(walletAddress: string): Promise<WalletHolding | undefined> {
+    const [holding] = await db.select().from(walletHoldings).where(eq(walletHoldings.walletAddress, walletAddress));
+    return holding;
+  }
+
+  async getWalletBuyCount(): Promise<number> {
+    const [result] = await db.select({ count: sql<number>`count(*)` }).from(walletBuys);
+    return Number(result?.count || 0);
+  }
+
+  async getWalletHoldingsCount(): Promise<number> {
+    const [result] = await db.select({ count: sql<number>`count(*)` }).from(walletHoldings);
     return Number(result?.count || 0);
   }
 }

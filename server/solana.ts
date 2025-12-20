@@ -1131,6 +1131,173 @@ export function isBackfillInProgress(): boolean {
   return backfillInProgress;
 }
 
+// =====================================================
+// Historical Holder Backfill - Fetch historical buys from Birdeye
+// =====================================================
+
+let holderBackfillInProgress = false;
+
+export function isHolderBackfillInProgress(): boolean {
+  return holderBackfillInProgress;
+}
+
+export async function backfillHistoricalHolders(limit: number = 500): Promise<{
+  success: boolean;
+  processed: number;
+  newBuys: number;
+  error?: string;
+}> {
+  if (!BIRDEYE_API_KEY) {
+    return { success: false, processed: 0, newBuys: 0, error: "BIRDEYE_API_KEY not configured" };
+  }
+  
+  if (holderBackfillInProgress) {
+    return { success: false, processed: 0, newBuys: 0, error: "Holder backfill already in progress" };
+  }
+  
+  holderBackfillInProgress = true;
+  let processed = 0;
+  let newBuys = 0;
+  const pageSize = 50;
+  let offset = 0;
+  let hasMore = true;
+  
+  try {
+    console.log(`[Holder Backfill] Starting historical backfill (limit: ${limit})...`);
+    
+    while (hasMore && processed < limit) {
+      const url = `${BIRDEYE_API}/defi/txs/token?address=${TOKEN_ADDRESS}&offset=${offset}&limit=${pageSize}&tx_type=swap`;
+      
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/json",
+          "X-API-KEY": BIRDEYE_API_KEY,
+          "x-chain": "solana",
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Holder Backfill] Birdeye API error ${response.status}: ${errorText}`);
+        if (response.status === 429) {
+          console.log(`[Holder Backfill] Rate limited after ${processed} trades, stopping pagination`);
+          break;
+        }
+        holderBackfillInProgress = false;
+        return { success: false, processed, newBuys, error: `Birdeye API error: ${response.status}` };
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.data?.items || data.data.items.length === 0) {
+        console.log(`[Holder Backfill] No more trades at offset ${offset}`);
+        hasMore = false;
+        break;
+      }
+      
+      const trades: BirdeyeTrade[] = data.data.items;
+      const buyCount = trades.filter(t => t.side === "buy").length;
+      console.log(`[Holder Backfill] Page offset=${offset}: ${trades.length} trades (${buyCount} buys)`);
+      
+      for (const trade of trades) {
+        if (processed >= limit) break;
+        processed++;
+        
+        const walletAddress = trade.owner || "";
+        const signature = trade.txHash || "";
+        const tradeTime = new Date(trade.blockUnixTime * 1000);
+        
+        if (!walletAddress || !signature) continue;
+        
+        // Process buys
+        if (trade.side === "buy") {
+          const tokenAmount = trade.base?.uiAmount || 0;
+          const solAmount = trade.quote?.uiAmount || 0;
+          
+          if (tokenAmount <= 0) continue;
+          
+          try {
+            const existing = await storage.getWalletBuyBySignature(signature);
+            if (existing) continue;
+            
+            // Calculate price at buy
+            const priceAtBuy = solAmount > 0 && tokenAmount > 0 ? solAmount / tokenAmount : null;
+            
+            await storage.createWalletBuy({
+              signature,
+              walletAddress,
+              boughtAmount: tokenAmount.toFixed(6),
+              boughtValueSol: solAmount.toFixed(9),
+              priceAtBuy: priceAtBuy?.toFixed(12) || null,
+              slot: null,
+              blockTime: tradeTime,
+            });
+            
+            await storage.upsertWalletHolding(walletAddress, tokenAmount, tradeTime);
+            
+            newBuys++;
+            
+            if (newBuys % 25 === 0) {
+              console.log(`[Holder Backfill] Processed ${newBuys} new buys...`);
+            }
+          } catch (err) {
+            console.error(`[Holder Backfill] Error storing buy ${signature}:`, err);
+          }
+        }
+        
+        // Process sells (update holdings balance)
+        if (trade.side === "sell") {
+          const tokenAmount = trade.base?.uiAmount || 0;
+          
+          if (tokenAmount > 0) {
+            try {
+              await storage.updateWalletHoldingOnSell(walletAddress, tokenAmount, tradeTime);
+            } catch (err) {
+              // Wallet might not exist yet if sells came before buys in history
+            }
+          }
+        }
+      }
+      
+      offset += trades.length;
+      
+      if (trades.length < pageSize) {
+        hasMore = false;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    
+    console.log(`[Holder Backfill] Complete! Processed ${processed} trades, ${newBuys} new buys stored`);
+    holderBackfillInProgress = false;
+    
+    return { success: true, processed, newBuys };
+  } catch (error) {
+    console.error("[Holder Backfill] Error:", error);
+    holderBackfillInProgress = false;
+    return { success: false, processed, newBuys, error: String(error) };
+  }
+}
+
+// Auto-backfill holders on startup if no holder data exists
+async function autoBackfillHoldersIfEmpty() {
+  try {
+    const count = await storage.getWalletHoldingsCount();
+    if (count === 0) {
+      console.log("[Holder Backfill] No holder data found, starting auto-backfill...");
+      const result = await backfillHistoricalHolders(500);
+      console.log(`[Holder Backfill] Auto-backfill complete:`, result);
+    } else {
+      console.log(`[Holder Backfill] Found ${count} existing holdings, skipping auto-backfill`);
+    }
+  } catch (error) {
+    console.error("[Holder Backfill] Auto-backfill error:", error);
+  }
+}
+
+// Delay holder auto-backfill to run after jeet backfill
+setTimeout(autoBackfillHoldersIfEmpty, 30000);
+
 // Auto-backfill on startup if no jeet data exists
 async function autoBackfillIfEmpty() {
   try {

@@ -1588,6 +1588,68 @@ export async function registerRoutes(
   });
 
   // =====================================================
+  // Holder Leaderboard Routes (Diamond Hands & Whales)
+  // =====================================================
+
+  app.get("/api/leaderboard/holders/diamond", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      const leaderboard = await storage.getDiamondHandsLeaderboard(limit);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("[Diamond Hands] Error fetching leaderboard:", error);
+      res.json([]);
+    }
+  });
+
+  app.get("/api/leaderboard/holders/whales", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+      const leaderboard = await storage.getWhalesLeaderboard(limit);
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("[Whales] Error fetching leaderboard:", error);
+      res.json([]);
+    }
+  });
+
+  app.get("/api/leaderboard/holders/stats", async (_req, res) => {
+    try {
+      const buyCount = await storage.getWalletBuyCount();
+      const holdingsCount = await storage.getWalletHoldingsCount();
+      res.json({ 
+        totalBuysTracked: buyCount,
+        totalWalletsTracked: holdingsCount,
+        status: holdingsCount > 0 ? "tracking" : "awaiting_data"
+      });
+    } catch (error) {
+      console.error("[Holder Stats] Error:", error);
+      res.json({ totalBuysTracked: 0, totalWalletsTracked: 0, status: "error" });
+    }
+  });
+
+  // Backfill historical holder data (admin only)
+  app.post("/api/admin/holders/backfill", requireAdmin, async (req, res) => {
+    try {
+      const { backfillHistoricalHolders, isHolderBackfillInProgress } = await import("./solana");
+      
+      if (isHolderBackfillInProgress()) {
+        return res.status(409).json({ error: "Backfill already in progress" });
+      }
+      
+      const limit = Math.min(parseInt(req.body.limit as string) || 100, 500);
+      
+      console.log(`[Admin] Starting holder backfill with limit ${limit}`);
+      const result = await backfillHistoricalHolders(limit);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("[Admin] Holder backfill error:", error);
+      res.status(500).json({ error: "Failed to run holder backfill" });
+    }
+  });
+
+  // =====================================================
   // Art Gallery Routes
   // =====================================================
 

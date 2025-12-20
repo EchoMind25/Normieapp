@@ -862,6 +862,77 @@ export const jeetWalletTotals = pgTable("jeet_wallet_totals", {
 export type JeetWalletTotal = typeof jeetWalletTotals.$inferSelect;
 
 // =====================================================
+// Wallet Holdings Tables - Track holder leaderboards (Diamond Hands & Whales)
+// =====================================================
+
+export const walletHoldings = pgTable("wallet_holdings", {
+  walletAddress: varchar("wallet_address", { length: 44 }).primaryKey(),
+  userId: uuid("user_id").references(() => users.id),
+  currentBalance: decimal("current_balance", { precision: 24, scale: 6 }).default("0").notNull(),
+  totalBought: decimal("total_bought", { precision: 24, scale: 6 }).default("0").notNull(),
+  totalSold: decimal("total_sold", { precision: 24, scale: 6 }).default("0").notNull(),
+  firstBuyAt: timestamp("first_buy_at"),
+  lastBuyAt: timestamp("last_buy_at"),
+  holdStartAt: timestamp("hold_start_at"),
+  buyCount: integer("buy_count").default(0).notNull(),
+  sellCount: integer("sell_count").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_wallet_holdings_balance").on(table.currentBalance),
+  index("idx_wallet_holdings_hold_start").on(table.holdStartAt),
+  index("idx_wallet_holdings_user").on(table.userId),
+]);
+
+export const insertWalletHoldingSchema = createInsertSchema(walletHoldings);
+export type InsertWalletHolding = z.infer<typeof insertWalletHoldingSchema>;
+export type WalletHolding = typeof walletHoldings.$inferSelect;
+
+export const walletBuys = pgTable("wallet_buys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  signature: varchar("signature", { length: 100 }).unique().notNull(),
+  walletAddress: varchar("wallet_address", { length: 44 }).notNull(),
+  boughtAmount: decimal("bought_amount", { precision: 20, scale: 6 }).notNull(),
+  boughtValueSol: decimal("bought_value_sol", { precision: 20, scale: 9 }),
+  priceAtBuy: decimal("price_at_buy", { precision: 20, scale: 12 }),
+  slot: integer("slot"),
+  blockTime: timestamp("block_time"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_wallet_buys_wallet").on(table.walletAddress),
+  index("idx_wallet_buys_block_time").on(table.blockTime),
+  index("idx_wallet_buys_amount").on(table.boughtAmount),
+]);
+
+export const insertWalletBuySchema = createInsertSchema(walletBuys).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertWalletBuy = z.infer<typeof insertWalletBuySchema>;
+export type WalletBuy = typeof walletBuys.$inferSelect;
+
+export type DiamondHandsEntry = {
+  rank: number;
+  walletAddress: string;
+  userId?: string | null;
+  username?: string | null;
+  currentBalance: number;
+  holdDurationSeconds: number;
+  firstBuyAt: string | null;
+  solscanUrl: string;
+};
+
+export type WhaleEntry = {
+  rank: number;
+  walletAddress: string;
+  userId?: string | null;
+  username?: string | null;
+  currentBalance: number;
+  holdDurationSeconds: number;
+  firstBuyAt: string | null;
+  solscanUrl: string;
+};
+
+// =====================================================
 // Normie token constants
 // =====================================================
 
