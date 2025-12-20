@@ -18,6 +18,7 @@ import {
 import iosHomepage from '@assets/image_1766229343927.png';
 import iosShareMenu from '@assets/image_1766229336344.png';
 import iosHomeScreen from '@assets/image_1766229330948.png';
+import desktopAddressBar from '@assets/image_1766236186657.png';
 
 interface InstallStep {
   icon: typeof Share;
@@ -70,20 +71,8 @@ const DESKTOP_STEPS: InstallStep[] = [
   {
     icon: Download,
     title: 'Look for the Install Icon',
-    description: 'In Chrome or Edge, look for an install icon in the address bar (usually on the right side).',
-    screenshotPlaceholder: '/install-screenshots/desktop-icon.png'
-  },
-  {
-    icon: Monitor,
-    title: 'Click Install',
-    description: 'Click the install icon, then click "Install" in the popup dialog.',
-    screenshotPlaceholder: '/install-screenshots/desktop-install.png'
-  },
-  {
-    icon: Check,
-    title: 'Launch the App',
-    description: 'The app will open in its own window and be available from your desktop or start menu.',
-    screenshotPlaceholder: '/install-screenshots/desktop-done.png'
+    description: 'In Chrome or Edge, look for an install icon in the address bar (on the right side, shown below).',
+    screenshotImage: desktopAddressBar
   }
 ];
 
@@ -328,6 +317,24 @@ export default function Install() {
                 {DESKTOP_STEPS.map((step, index) => (
                   <StepCard key={index} step={step} stepNumber={index + 1} />
                 ))}
+                
+                <div className="mt-4 p-4 rounded-lg bg-muted/30 space-y-3">
+                  <h4 className="font-mono font-semibold text-sm uppercase">Alternative Install Methods</h4>
+                  <ul className="text-sm text-muted-foreground space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold">1.</span>
+                      <span>Open browser menu (three dots) and select "Install Normie Nation" or "Install app"</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold">2.</span>
+                      <span>In Chrome: Menu → More tools → Create shortcut → Check "Open as window"</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold">3.</span>
+                      <span>In Edge: Menu → Apps → Install this site as an app</span>
+                    </li>
+                  </ul>
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>
