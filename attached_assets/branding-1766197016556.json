@@ -1,0 +1,82 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "sans-serif",
+      "count": 24
+    },
+    {
+      "family": "helvetica-w01-bold",
+      "count": 14
+    },
+    {
+      "family": "helvetica-w01-roman",
+      "count": 7
+    },
+    {
+      "family": "Arial",
+      "count": 3
+    },
+    {
+      "family": "Helvetica",
+      "count": 3
+    },
+    {
+      "family": "madefor-text",
+      "count": 1
+    }
+  ],
+  "colors": {
+    "primary": "#F1E3C8",
+    "accent": "#AA3D1D",
+    "background": "#FFFFFF",
+    "textPrimary": "#AA3D1D",
+    "link": "#AA3D1D"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Arial",
+      "heading": "Arial"
+    },
+    "fontStacks": {
+      "body": [
+        "Arial",
+        "Helvetica",
+        "sans-serif"
+      ],
+      "heading": [
+        "Arial",
+        "Helvetica",
+        "sans-serif"
+      ],
+      "paragraph": [
+        "helvetica-w01-bold",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "10px",
+      "h2": "10px",
+      "body": "22px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "4px"
+  },
+  "components": {},
+  "images": {
+    "logo": null,
+    "favicon": "File saved at: attached_assets/favicon.png",
+    "ogImage": "File saved at: attached_assets/ogImage.png"
+  },
+  "__framework_hints": [
+    "Wix.com Website Builder",
+    "bootstrap"
+  ],
+  "confidence": {
+    "buttons": 0,
+    "colors": 0,
+    "overall": 0
+  }
+}

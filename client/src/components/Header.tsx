@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle } from "lucide-react";
+import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle, ExternalLink } from "lucide-react";
 import { SoundToggle } from "@/components/SoundEffects";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SiTelegram, SiX } from "react-icons/si";
@@ -147,6 +147,20 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
               Soon
             </Badge>
           </Button>
+          <a
+            href="https://normienation.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="link-normie-nation"
+          >
+            <Button
+              size="sm"
+              className="ml-2 gap-1.5 font-bold bg-[#AA3D1D] text-[#F1E3C8] border border-[#AA3D1D]/50"
+            >
+              <span className="font-mono tracking-tight">NormieNation</span>
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </a>
         </nav>
 
         <div className="flex items-center gap-2">
