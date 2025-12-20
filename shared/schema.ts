@@ -510,6 +510,11 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 
+// Extended type with sender avatar for display
+export type ChatMessageWithAvatar = ChatMessage & {
+  senderAvatarUrl?: string | null;
+};
+
 // Chat room members
 export const chatRoomMembers = pgTable("chat_room_members", {
   roomId: uuid("room_id").references(() => chatRooms.id, { onDelete: "cascade" }).notNull(),
@@ -695,6 +700,11 @@ export const insertGalleryCommentSchema = createInsertSchema(galleryComments).om
 });
 export type InsertGalleryComment = z.infer<typeof insertGalleryCommentSchema>;
 export type GalleryComment = typeof galleryComments.$inferSelect;
+
+// Extended type with commenter avatar for display
+export type GalleryCommentWithAvatar = GalleryComment & {
+  userAvatarUrl?: string | null;
+};
 
 // =====================================================
 // User Feedback Table

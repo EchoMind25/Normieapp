@@ -59,6 +59,7 @@ import {
   type InsertChatRoom,
   type InsertChatRoomWithId,
   type ChatMessage,
+  type ChatMessageWithAvatar,
   type InsertChatMessage,
   type ChatRoomMember,
   type InsertChatRoomMember,
@@ -75,6 +76,7 @@ import {
   type GalleryVote,
   type InsertGalleryVote,
   type GalleryComment,
+  type GalleryCommentWithAvatar,
   type InsertGalleryComment,
   type Notification,
   type InsertNotification,
@@ -203,7 +205,7 @@ export interface IStorage {
   
   // Chat Messages
   createChatMessage(msg: InsertChatMessage): Promise<ChatMessage>;
-  getChatMessages(roomId: string, limit?: number): Promise<ChatMessage[]>;
+  getChatMessages(roomId: string, limit?: number): Promise<ChatMessageWithAvatar[]>;
   markMessageDeleted(id: string): Promise<void>;
   
   // Chat Room Members
@@ -243,7 +245,7 @@ export interface IStorage {
   hasGalleryVoted(itemId: string, visitorId: string): Promise<GalleryVote | undefined>;
   voteGalleryItem(itemId: string, visitorId: string, voteType: "up" | "down"): Promise<void>;
   incrementGalleryViews(id: string): Promise<void>;
-  getGalleryComments(itemId: string): Promise<GalleryComment[]>;
+  getGalleryComments(itemId: string): Promise<GalleryCommentWithAvatar[]>;
   createGalleryComment(comment: InsertGalleryComment): Promise<GalleryComment>;
   deleteGalleryComment(id: string): Promise<void>;
   
@@ -836,13 +838,25 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getChatMessages(roomId: string, limit: number = 50): Promise<ChatMessage[]> {
-    return db
-      .select()
+  async getChatMessages(roomId: string, limit: number = 50): Promise<ChatMessageWithAvatar[]> {
+    const messages = await db
+      .select({
+        id: chatMessages.id,
+        roomId: chatMessages.roomId,
+        senderId: chatMessages.senderId,
+        senderName: chatMessages.senderName,
+        content: chatMessages.content,
+        fileUrl: chatMessages.fileUrl,
+        isDeleted: chatMessages.isDeleted,
+        createdAt: chatMessages.createdAt,
+        senderAvatarUrl: users.avatarUrl,
+      })
       .from(chatMessages)
+      .leftJoin(users, eq(chatMessages.senderId, users.id))
       .where(and(eq(chatMessages.roomId, roomId), eq(chatMessages.isDeleted, false)))
       .orderBy(desc(chatMessages.createdAt))
       .limit(limit);
+    return messages;
   }
 
   async markMessageDeleted(id: string): Promise<void> {
@@ -1070,12 +1084,23 @@ export class DatabaseStorage implements IStorage {
     await db.update(galleryItems).set({ views: sql`${galleryItems.views} + 1` }).where(eq(galleryItems.id, id));
   }
 
-  async getGalleryComments(itemId: string): Promise<GalleryComment[]> {
-    return db
-      .select()
+  async getGalleryComments(itemId: string): Promise<GalleryCommentWithAvatar[]> {
+    const comments = await db
+      .select({
+        id: galleryComments.id,
+        galleryItemId: galleryComments.galleryItemId,
+        userId: galleryComments.userId,
+        visitorName: galleryComments.visitorName,
+        content: galleryComments.content,
+        isDeleted: galleryComments.isDeleted,
+        createdAt: galleryComments.createdAt,
+        userAvatarUrl: users.avatarUrl,
+      })
       .from(galleryComments)
+      .leftJoin(users, eq(galleryComments.userId, users.id))
       .where(and(eq(galleryComments.galleryItemId, itemId), eq(galleryComments.isDeleted, false)))
       .orderBy(desc(galleryComments.createdAt));
+    return comments;
   }
 
   async createGalleryComment(comment: InsertGalleryComment): Promise<GalleryComment> {

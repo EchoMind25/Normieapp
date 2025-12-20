@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { MessageSquare, Send, Users, Loader2, Hash, Crown, ShieldCheck, LogIn } from "lucide-react";
-import type { ChatRoom, ChatMessage } from "@shared/schema";
+import { normalizeStorageUrl } from "@/lib/utils";
+import { MessageSquare, Send, Users, Loader2, Hash, Crown, ShieldCheck, LogIn, User } from "lucide-react";
+import type { ChatRoom, ChatMessageWithAvatar } from "@shared/schema";
 
 const DEFAULT_ROOM_ID = "00000000-0000-0000-0000-000000000001";
 
 interface ChatMessageItemProps {
-  message: ChatMessage;
+  message: ChatMessageWithAvatar;
   isOwnMessage: boolean;
 }
 
@@ -28,32 +30,43 @@ function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
   const timestamp = message.createdAt ? new Date(message.createdAt) : new Date();
   const timeStr = timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const isAdmin = isNormieAdmin(message.senderName);
+  const avatarUrl = message.senderAvatarUrl ? normalizeStorageUrl(message.senderAvatarUrl) : null;
   
   return (
     <div 
-      className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"} mb-2`}
+      className={`flex gap-2 ${isOwnMessage ? "flex-row-reverse" : "flex-row"} mb-2`}
       data-testid={`chat-message-${message.id}`}
     >
-      <div className="flex items-center gap-2 mb-0.5">
-        <span className={`text-xs font-mono font-semibold ${isAdmin ? "text-yellow-500" : "text-primary"}`}>
-          {isAdmin && <Crown className="w-3 h-3 inline mr-1" />}
-          {message.senderName || "Anonymous"}
-          {isAdmin && (
-            <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px] text-yellow-500 border-yellow-500/50">
-              CEO
-            </Badge>
-          )}
-        </span>
-        <span className="text-xs text-muted-foreground">{timeStr}</span>
-      </div>
-      <div 
-        className={`max-w-[85%] px-3 py-1.5 rounded-lg text-sm touch-press ${
-          isOwnMessage 
-            ? "bg-primary text-primary-foreground" 
-            : "bg-muted"
-        }`}
-      >
-        {message.content}
+      <Avatar className="w-7 h-7 flex-shrink-0">
+        {avatarUrl ? (
+          <AvatarImage src={avatarUrl} alt={message.senderName || "User"} />
+        ) : null}
+        <AvatarFallback className="text-[10px]">
+          <User className="w-3 h-3" />
+        </AvatarFallback>
+      </Avatar>
+      <div className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className={`text-xs font-mono font-semibold ${isAdmin ? "text-yellow-500" : "text-primary"}`}>
+            {isAdmin && <Crown className="w-3 h-3 inline mr-1" />}
+            {message.senderName || "Anonymous"}
+            {isAdmin && (
+              <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px] text-yellow-500 border-yellow-500/50">
+                CEO
+              </Badge>
+            )}
+          </span>
+          <span className="text-xs text-muted-foreground">{timeStr}</span>
+        </div>
+        <div 
+          className={`max-w-[85%] px-3 py-1.5 rounded-lg text-sm touch-press ${
+            isOwnMessage 
+              ? "bg-primary text-primary-foreground" 
+              : "bg-muted"
+          }`}
+        >
+          {message.content}
+        </div>
       </div>
     </div>
   );
@@ -64,7 +77,7 @@ export function LiveChat() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
 
-  const { data: messages = [], isLoading, refetch } = useQuery<ChatMessage[]>({
+  const { data: messages = [], isLoading, refetch } = useQuery<ChatMessageWithAvatar[]>({
     queryKey: ["/api/chat/rooms", DEFAULT_ROOM_ID, "messages"],
     refetchInterval: 3000,
   });

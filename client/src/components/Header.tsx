@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import type { TokenMetrics } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthModal } from "./AuthModal";
 import { BugReportModal } from "./BugReportModal";
+import { normalizeStorageUrl } from "@/lib/utils";
 
 interface IconData {
   id: string;
@@ -215,7 +217,16 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="font-mono gap-2" data-testid="button-user-menu">
                   {isAdmin && <Shield className="h-3 w-3 text-primary" />}
-                  <User className="h-4 w-4" />
+                  {user?.avatarUrl ? (
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={normalizeStorageUrl(user.avatarUrl)} alt={user.username} />
+                      <AvatarFallback className="text-[8px]">
+                        <User className="h-3 w-3" />
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
                   <span className="hidden sm:inline max-w-[100px] truncate">
                     {user?.username}
                   </span>

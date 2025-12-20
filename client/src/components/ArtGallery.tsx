@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { normalizeStorageUrl } from "@/lib/utils";
 import { 
   Image, 
   Upload, 
@@ -25,9 +27,10 @@ import {
   Sparkles,
   Grid3X3,
   Trophy,
-  LogIn
+  LogIn,
+  User
 } from "lucide-react";
-import type { GalleryItem, GalleryComment } from "@shared/schema";
+import type { GalleryItem, GalleryCommentWithAvatar } from "@shared/schema";
 
 function getVisitorId(): string {
   let visitorId = localStorage.getItem("normie_visitor_id");
@@ -364,7 +367,7 @@ function ItemDetails({ item, onClose, onVote }: ItemDetailsProps) {
   // Use passed item directly (no extra fetch needed)
   const displayItem = item;
 
-  const { data: comments = [], refetch: refetchComments } = useQuery<GalleryComment[]>({
+  const { data: comments = [], refetch: refetchComments } = useQuery<GalleryCommentWithAvatar[]>({
     queryKey: ["/api/gallery", item.id, "comments"],
   });
 
@@ -507,18 +510,28 @@ function ItemDetails({ item, onClose, onVote }: ItemDetailsProps) {
               comments.map((comment) => (
                 <div 
                   key={comment.id} 
-                  className="bg-muted/30 rounded p-2 text-sm"
+                  className="bg-muted/30 rounded p-2 text-sm flex gap-2"
                   data-testid={`text-comment-${comment.id}`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono font-semibold text-xs text-primary">
-                      {comment.visitorName || "Anonymous"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {comment.createdAt && new Date(comment.createdAt).toLocaleDateString()}
-                    </span>
+                  <Avatar className="w-6 h-6 flex-shrink-0">
+                    {comment.userAvatarUrl ? (
+                      <AvatarImage src={normalizeStorageUrl(comment.userAvatarUrl)} alt={comment.visitorName || "User"} />
+                    ) : null}
+                    <AvatarFallback className="text-[8px]">
+                      <User className="w-3 h-3" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-semibold text-xs text-primary">
+                        {comment.visitorName || "Anonymous"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {comment.createdAt && new Date(comment.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground">{comment.content}</p>
                   </div>
-                  <p className="text-muted-foreground">{comment.content}</p>
                 </div>
               ))
             )}
