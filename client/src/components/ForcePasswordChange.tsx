@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Lock, Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Lock, Eye, EyeOff, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const passwordSchema = z.object({
@@ -39,7 +39,7 @@ const passwordSchema = z.object({
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
 export function ForcePasswordChange() {
-  const { requiresPasswordChange, forceChangePassword } = useAuth();
+  const { requiresPasswordChange, forceChangePassword, logout } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -180,6 +180,28 @@ export function ForcePasswordChange() {
               data-testid="button-change-password"
             >
               {isSubmitting ? "Changing Password..." : "Change Password"}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  or
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full gap-2 text-muted-foreground"
+              onClick={() => logout()}
+              data-testid="button-signout"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
             </Button>
           </form>
         </Form>
