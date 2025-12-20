@@ -1565,6 +1565,27 @@ export async function registerRoutes(
       res.json({ totalSellsTracked: 0, status: "error" });
     }
   });
+  
+  // Backfill historical jeet data (admin only)
+  app.post("/api/admin/jeets/backfill", requireAdmin, async (req, res) => {
+    try {
+      const { backfillHistoricalJeets, isBackfillInProgress } = await import("./solana");
+      
+      if (isBackfillInProgress()) {
+        return res.status(409).json({ error: "Backfill already in progress" });
+      }
+      
+      const limit = Math.min(parseInt(req.body.limit as string) || 100, 500);
+      
+      console.log(`[Admin] Starting jeet backfill with limit ${limit}`);
+      const result = await backfillHistoricalJeets(limit);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("[Admin] Backfill error:", error);
+      res.status(500).json({ error: "Failed to run backfill" });
+    }
+  });
 
   // =====================================================
   // Art Gallery Routes

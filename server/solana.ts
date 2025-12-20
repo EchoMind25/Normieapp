@@ -971,4 +971,134 @@ export function getActivityCache(): ActivityItem[] {
   return activityCache;
 }
 
+// =====================================================
+// Historical Jeet Backfill - Fetch historical sells from Birdeye
+// =====================================================
+
+interface BirdeyeTrade {
+  txHash: string;
+  blockUnixTime: number;
+  owner: string;
+  side: "buy" | "sell";
+  tokenAmount: number;
+  solAmount: number;
+  priceUsd: number;
+}
+
+let backfillInProgress = false;
+
+export async function backfillHistoricalJeets(limit: number = 500): Promise<{
+  success: boolean;
+  processed: number;
+  newSells: number;
+  error?: string;
+}> {
+  if (!BIRDEYE_API_KEY) {
+    return { success: false, processed: 0, newSells: 0, error: "BIRDEYE_API_KEY not configured" };
+  }
+  
+  if (backfillInProgress) {
+    return { success: false, processed: 0, newSells: 0, error: "Backfill already in progress" };
+  }
+  
+  backfillInProgress = true;
+  let processed = 0;
+  let newSells = 0;
+  
+  try {
+    console.log(`[Jeet Backfill] Starting historical backfill (limit: ${limit})...`);
+    
+    // Fetch trade history from Birdeye
+    const url = `${BIRDEYE_API}/defi/txs/token?address=${TOKEN_ADDRESS}&offset=0&limit=${Math.min(limit, 100)}&tx_type=swap`;
+    
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json",
+        "X-API-KEY": BIRDEYE_API_KEY,
+        "x-chain": "solana",
+      },
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Jeet Backfill] Birdeye API error ${response.status}: ${errorText}`);
+      backfillInProgress = false;
+      return { success: false, processed: 0, newSells: 0, error: `Birdeye API error: ${response.status}` };
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success || !data.data?.items) {
+      console.log("[Jeet Backfill] No trade data returned from Birdeye");
+      backfillInProgress = false;
+      return { success: true, processed: 0, newSells: 0, error: "No trade data available" };
+    }
+    
+    const trades: BirdeyeTrade[] = data.data.items;
+    console.log(`[Jeet Backfill] Found ${trades.length} trades from Birdeye`);
+    
+    // Process each sell trade
+    for (const trade of trades) {
+      processed++;
+      
+      // Only process sell transactions
+      if (trade.side !== "sell") continue;
+      
+      const tokenAmount = trade.tokenAmount || 0;
+      const solAmount = trade.solAmount || 0;
+      const walletAddress = trade.owner || "";
+      const signature = trade.txHash || "";
+      
+      if (!walletAddress || !signature || tokenAmount <= 0) continue;
+      
+      try {
+        // Check if already stored
+        const existing = await storage.getJeetSellBySignature(signature);
+        if (existing) continue;
+        
+        const sellTime = new Date(trade.blockUnixTime * 1000);
+        
+        // Store individual transaction
+        await storage.createJeetSell({
+          signature,
+          walletAddress,
+          soldAmount: tokenAmount.toFixed(6),
+          soldValueSol: solAmount.toFixed(9),
+          slot: null,
+          blockTime: sellTime,
+        });
+        
+        // Update wallet totals
+        await storage.upsertJeetWalletTotal(
+          walletAddress,
+          tokenAmount,
+          solAmount,
+          sellTime
+        );
+        
+        newSells++;
+        
+        if (newSells % 10 === 0) {
+          console.log(`[Jeet Backfill] Processed ${newSells} new sells...`);
+        }
+      } catch (err) {
+        console.error(`[Jeet Backfill] Error storing trade ${signature}:`, err);
+      }
+    }
+    
+    console.log(`[Jeet Backfill] Complete! Processed ${processed} trades, ${newSells} new sells stored`);
+    backfillInProgress = false;
+    
+    return { success: true, processed, newSells };
+  } catch (error) {
+    console.error("[Jeet Backfill] Error:", error);
+    backfillInProgress = false;
+    return { success: false, processed, newSells, error: String(error) };
+  }
+}
+
+export function isBackfillInProgress(): boolean {
+  return backfillInProgress;
+}
+
 initializePriceHistory();

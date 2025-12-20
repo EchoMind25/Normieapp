@@ -4,11 +4,16 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Copy, Check, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
+import { ExternalLink, Copy, Check, TrendingDown, Trophy, AlertTriangle, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { JeetLeaderboardEntry } from "@shared/schema";
 
 type TimeRange = "24h" | "7d" | "30d" | "all";
+
+interface JeetStats {
+  totalSellsTracked: number;
+  status: "tracking" | "awaiting_data" | "error";
+}
 
 export function BiggestJeetLeaderboard() {
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
@@ -18,6 +23,11 @@ export function BiggestJeetLeaderboard() {
   const { data: leaderboard, isLoading } = useQuery<JeetLeaderboardEntry[]>({
     queryKey: ["/api/leaderboard/jeets", timeRange],
     refetchInterval: 60000,
+  });
+
+  const { data: stats } = useQuery<JeetStats>({
+    queryKey: ["/api/leaderboard/jeets/stats"],
+    refetchInterval: 30000,
   });
 
   const copyWallet = (wallet: string) => {
@@ -99,8 +109,15 @@ export function BiggestJeetLeaderboard() {
           <TrendingDown className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground font-mono">No jeets found yet</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Diamond hands everywhere!
+            {stats?.status === "tracking" 
+              ? "Tracking active - waiting for sells..."
+              : "Diamond hands everywhere!"}
           </p>
+          {stats?.totalSellsTracked !== undefined && stats.totalSellsTracked > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {stats.totalSellsTracked} sells tracked
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
@@ -157,9 +174,11 @@ export function BiggestJeetLeaderboard() {
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-border">
+      <div className="mt-4 pt-4 border-t border-border flex items-center justify-center gap-2">
+        <Activity className="h-3 w-3 text-primary animate-pulse" />
         <p className="text-xs text-muted-foreground font-mono text-center">
-          Tracking sells of 100K+ $NORMIE tokens
+          Live tracking all $NORMIE sells
+          {stats?.totalSellsTracked ? ` (${stats.totalSellsTracked} tracked)` : ""}
         </p>
       </div>
     </Card>
