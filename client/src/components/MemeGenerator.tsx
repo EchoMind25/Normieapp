@@ -920,7 +920,7 @@ export function MemeGenerator() {
   };
 
   return (
-    <section id="meme-generator" className="py-8 lg:py-12 px-4 lg:px-8 bg-muted/30">
+    <section id="meme-generator" className="py-8 lg:py-12 px-4 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h2 className="text-2xl lg:text-3xl font-mono font-bold uppercase tracking-tight">
