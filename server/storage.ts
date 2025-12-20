@@ -8,6 +8,7 @@ import {
   icons,
   storedDevBuys,
   whaleBuys,
+  jeetSells,
   nfts,
   nftCollections,
   nftListings,
@@ -82,6 +83,9 @@ import {
   type InsertNotification,
   type PushSubscription,
   type InsertPushSubscription,
+  type JeetSell,
+  type InsertJeetSell,
+  type JeetLeaderboardEntry,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -268,6 +272,11 @@ export interface IStorage {
   getPushSubscriptionsForJeetAlarms(): Promise<Array<PushSubscription & { userId: string }>>;
   deletePushSubscription(endpoint: string): Promise<void>;
   deletePushSubscriptionsByUser(userId: string): Promise<void>;
+  
+  // Jeet Sells (sell transactions for leaderboard)
+  createJeetSell(sell: InsertJeetSell): Promise<JeetSell>;
+  getJeetSellBySignature(signature: string): Promise<JeetSell | undefined>;
+  getJeetLeaderboard(limit?: number, range?: "24h" | "7d" | "30d" | "all"): Promise<JeetLeaderboardEntry[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1290,6 +1299,69 @@ export class DatabaseStorage implements IStorage {
 
   async deletePushSubscriptionsByUser(userId: string): Promise<void> {
     await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+
+  // Jeet Sells
+  async createJeetSell(sell: InsertJeetSell): Promise<JeetSell> {
+    const [created] = await db.insert(jeetSells).values(sell).returning();
+    return created;
+  }
+
+  async getJeetSellBySignature(signature: string): Promise<JeetSell | undefined> {
+    const [sell] = await db.select().from(jeetSells).where(eq(jeetSells.signature, signature));
+    return sell;
+  }
+
+  async getJeetLeaderboard(limit: number = 10, range: "24h" | "7d" | "30d" | "all" = "all"): Promise<JeetLeaderboardEntry[]> {
+    let dateFilter: Date | null = null;
+    
+    if (range !== "all") {
+      const now = new Date();
+      switch (range) {
+        case "24h":
+          dateFilter = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case "7d":
+          dateFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "30d":
+          dateFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+      }
+    }
+    
+    const query = dateFilter
+      ? db
+          .select({
+            walletAddress: jeetSells.walletAddress,
+            totalSold: sql<string>`SUM(${jeetSells.soldAmount})`,
+            sellCount: sql<number>`COUNT(*)`,
+          })
+          .from(jeetSells)
+          .where(gte(jeetSells.blockTime, dateFilter))
+          .groupBy(jeetSells.walletAddress)
+          .orderBy(desc(sql`SUM(${jeetSells.soldAmount})`))
+          .limit(limit)
+      : db
+          .select({
+            walletAddress: jeetSells.walletAddress,
+            totalSold: sql<string>`SUM(${jeetSells.soldAmount})`,
+            sellCount: sql<number>`COUNT(*)`,
+          })
+          .from(jeetSells)
+          .groupBy(jeetSells.walletAddress)
+          .orderBy(desc(sql`SUM(${jeetSells.soldAmount})`))
+          .limit(limit);
+    
+    const results = await query;
+    
+    return results.map((row, index) => ({
+      rank: index + 1,
+      walletAddress: row.walletAddress,
+      totalSold: parseFloat(row.totalSold) || 0,
+      sellCount: Number(row.sellCount) || 0,
+      solscanUrl: `https://solscan.io/account/${row.walletAddress}`,
+    }));
   }
 }
 
