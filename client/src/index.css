@@ -75,47 +75,48 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* Light mode - keep dark theme as primary */
+/* Light mode - Normie Nation terracotta theme with warm cream tones */
 .light {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
-  --background: 120 5% 96%;
-  --foreground: 120 8% 8%;
-  --border: 120 5% 85%;
-  --card: 120 5% 98%;
-  --card-foreground: 120 8% 8%;
-  --card-border: 120 5% 90%;
-  --sidebar: 120 6% 94%;
-  --sidebar-foreground: 120 8% 8%;
-  --sidebar-border: 120 5% 88%;
-  --sidebar-primary: 142 72% 36%;
-  --sidebar-primary-foreground: 120 100% 98%;
-  --sidebar-accent: 120 6% 90%;
-  --sidebar-accent-foreground: 120 8% 8%;
-  --sidebar-ring: 142 72% 36%;
-  --popover: 120 5% 94%;
-  --popover-foreground: 120 8% 8%;
-  --popover-border: 120 5% 88%;
-  --primary: 142 72% 36%;
-  --primary-foreground: 120 100% 98%;
-  --secondary: 120 5% 88%;
-  --secondary-foreground: 120 8% 8%;
-  --muted: 120 4% 90%;
-  --muted-foreground: 120 3% 40%;
-  --accent: 142 12% 88%;
-  --accent-foreground: 120 8% 8%;
+  /* Warm cream/beige tones to blend with terracotta backdrop */
+  --background: 42 58% 86%;
+  --foreground: 12 50% 15%;
+  --border: 30 30% 75%;
+  --card: 42 55% 90%;
+  --card-foreground: 12 50% 15%;
+  --card-border: 30 35% 80%;
+  --sidebar: 42 50% 84%;
+  --sidebar-foreground: 12 50% 15%;
+  --sidebar-border: 30 30% 75%;
+  --sidebar-primary: 12 70% 39%;
+  --sidebar-primary-foreground: 42 60% 95%;
+  --sidebar-accent: 42 45% 80%;
+  --sidebar-accent-foreground: 12 50% 15%;
+  --sidebar-ring: 12 70% 39%;
+  --popover: 42 55% 88%;
+  --popover-foreground: 12 50% 15%;
+  --popover-border: 30 30% 75%;
+  --primary: 12 70% 39%;
+  --primary-foreground: 42 60% 95%;
+  --secondary: 30 35% 80%;
+  --secondary-foreground: 12 50% 15%;
+  --muted: 35 30% 82%;
+  --muted-foreground: 12 30% 40%;
+  --accent: 12 25% 78%;
+  --accent-foreground: 12 50% 15%;
   --destructive: 0 72% 45%;
   --destructive-foreground: 0 0% 98%;
-  --input: 120 5% 80%;
-  --ring: 142 72% 36%;
-  --chart-1: 142 72% 40%;
-  --chart-2: 180 70% 35%;
-  --chart-3: 45 90% 45%;
-  --chart-4: 280 65% 45%;
-  --chart-5: 0 70% 45%;
+  --input: 35 35% 78%;
+  --ring: 12 70% 39%;
+  --chart-1: 12 70% 45%;
+  --chart-2: 30 70% 50%;
+  --chart-3: 45 90% 50%;
+  --chart-4: 0 65% 50%;
+  --chart-5: 20 80% 55%;
 
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
