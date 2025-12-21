@@ -159,29 +159,47 @@ export default function EmbedChart() {
   const metricsAbortRef = useRef<AbortController | null>(null);
   const markersAbortRef = useRef<AbortController | null>(null);
   
+  // Request version tokens to prevent stale state updates
+  const viewVersionRef = useRef<number>(0);
+  
   // Debounce timer for view switching
   const viewSwitchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Debounced view setter to prevent rapid switches
+  // Helper to abort all pending fetches immediately
+  const abortAllFetches = useCallback(() => {
+    chartAbortRef.current?.abort();
+    leaderboardAbortRef.current?.abort();
+    metricsAbortRef.current?.abort();
+    markersAbortRef.current?.abort();
+  }, []);
+  
+  // View change handler - aborts IMMEDIATELY, debounces the actual view switch
   const handleViewChange = useCallback((newView: ViewMode) => {
+    // Immediately abort all pending fetches (don't wait for debounce)
+    abortAllFetches();
+    
+    // Increment version to invalidate any in-flight requests
+    viewVersionRef.current += 1;
+    
+    // Clear errors immediately
+    setError(null);
+    
+    // Clear the previous debounce timer
     if (viewSwitchTimeoutRef.current) {
       clearTimeout(viewSwitchTimeoutRef.current);
     }
+    
+    // Debounce the actual view switch to prevent rapid state changes
     viewSwitchTimeoutRef.current = setTimeout(() => {
-      // Cancel any pending fetches before switching views
-      chartAbortRef.current?.abort();
-      leaderboardAbortRef.current?.abort();
-      metricsAbortRef.current?.abort();
-      markersAbortRef.current?.abort();
-      
-      // Clear errors when switching views
-      setError(null);
       setCurrentView(newView);
-    }, 100);
-  }, []);
+    }, 50);
+  }, [abortAllFetches]);
 
   // Fetch token metrics (holders, burned, locked, etc.)
   const fetchMetrics = useCallback(async () => {
+    // Capture version at start of request
+    const requestVersion = viewVersionRef.current;
+    
     // Abort previous metrics fetch
     metricsAbortRef.current?.abort();
     metricsAbortRef.current = new AbortController();
@@ -195,9 +213,16 @@ export default function EmbedChart() {
         headers,
         signal: metricsAbortRef.current.signal 
       });
+      
+      // Check if view changed during fetch - don't update state if stale
+      if (viewVersionRef.current !== requestVersion) return;
+      
       if (response.ok) {
         const data: TokenMetrics = await response.json();
-        setMetrics(data);
+        // Double-check version before setting state
+        if (viewVersionRef.current === requestVersion) {
+          setMetrics(data);
+        }
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
@@ -206,6 +231,9 @@ export default function EmbedChart() {
   }, [config.token]);
 
   const fetchChartData = useCallback(async (range: TimeRange, forceRefresh = false) => {
+    // Capture version at start of request
+    const requestVersion = viewVersionRef.current;
+    
     const now = Date.now();
     // Only throttle auto-refresh, not manual range changes
     if (!forceRefresh && now - lastFetchRef.current < 5000) return;
@@ -228,6 +256,9 @@ export default function EmbedChart() {
         signal: chartAbortRef.current.signal 
       });
       
+      // Check if view changed during fetch
+      if (viewVersionRef.current !== requestVersion) return;
+      
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error("Invalid or missing embed token");
@@ -236,6 +267,10 @@ export default function EmbedChart() {
       }
       
       const data: PricePoint[] = await response.json();
+      
+      // Double-check version before setting state
+      if (viewVersionRef.current !== requestVersion) return;
+      
       const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
       setChartData(sorted);
       lastFetchRef.current = now;
@@ -248,9 +283,15 @@ export default function EmbedChart() {
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Failed to load chart");
+      // Only set error if version still matches
+      if (viewVersionRef.current === requestVersion) {
+        setError(err instanceof Error ? err.message : "Failed to load chart");
+      }
     } finally {
-      setIsLoading(false);
+      // Only update loading state if version still matches
+      if (viewVersionRef.current === requestVersion) {
+        setIsLoading(false);
+      }
     }
   }, [config.token]);
 
@@ -283,14 +324,20 @@ export default function EmbedChart() {
   useEffect(() => {
     if (currentView === "chart") return;
     
+    // Capture version at start of effect
+    const requestVersion = viewVersionRef.current;
+    
     // Abort previous leaderboard fetch
     leaderboardAbortRef.current?.abort();
     leaderboardAbortRef.current = new AbortController();
     const abortController = leaderboardAbortRef.current;
     
     const fetchLeaderboard = async () => {
+      // Check version before starting
+      if (viewVersionRef.current !== requestVersion) return;
+      
       setLeaderboardLoading(true);
-      setLeaderboardError(null); // Clear error before fetch
+      setLeaderboardError(null);
       try {
         const headers: HeadersInit = {};
         if (config.token) {
@@ -301,19 +348,31 @@ export default function EmbedChart() {
           headers,
           signal: abortController.signal 
         });
+        
+        // Check version before setting state
+        if (viewVersionRef.current !== requestVersion) return;
+        
         if (response.ok) {
           const data = await response.json();
-          setLeaderboardData(data);
-          setLeaderboardError(null); // Clear error on success
+          if (viewVersionRef.current === requestVersion) {
+            setLeaderboardData(data);
+            setLeaderboardError(null);
+          }
         } else {
-          setLeaderboardError("Failed to fetch leaderboard");
+          if (viewVersionRef.current === requestVersion) {
+            setLeaderboardError("Failed to fetch leaderboard");
+          }
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
-        setLeaderboardError(err instanceof Error ? err.message : "Failed to load leaderboard");
+        if (viewVersionRef.current === requestVersion) {
+          setLeaderboardError(err instanceof Error ? err.message : "Failed to load leaderboard");
+        }
       } finally {
-        setLeaderboardLoading(false);
-        setIsLoading(false);
+        if (viewVersionRef.current === requestVersion) {
+          setLeaderboardLoading(false);
+          setIsLoading(false);
+        }
       }
     };
     
@@ -329,12 +388,17 @@ export default function EmbedChart() {
   useEffect(() => {
     if (currentView !== "chart") return;
     
+    // Capture version at start of effect
+    const requestVersion = viewVersionRef.current;
+    
     // Abort previous markers fetch
     markersAbortRef.current?.abort();
     markersAbortRef.current = new AbortController();
     const abortController = markersAbortRef.current;
     
     const fetchMarkers = async () => {
+      if (viewVersionRef.current !== requestVersion) return;
+      
       try {
         const headers: HeadersInit = {};
         if (config.token) {
@@ -345,9 +409,14 @@ export default function EmbedChart() {
           headers,
           signal: abortController.signal 
         });
+        
+        if (viewVersionRef.current !== requestVersion) return;
+        
         if (response.ok) {
           const markers: ChartMarker[] = await response.json();
-          setChartMarkers(markers);
+          if (viewVersionRef.current === requestVersion) {
+            setChartMarkers(markers);
+          }
         }
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
