@@ -24,7 +24,7 @@ export function ConsentBanner() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-card border-t border-border shadow-lg"
+      className="fixed bottom-16 sm:bottom-0 left-0 right-0 z-[100] p-4 bg-card border-t border-border shadow-lg"
       data-testid="consent-banner"
     >
       <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4">
