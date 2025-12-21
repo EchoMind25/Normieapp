@@ -10,6 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +27,6 @@ import {
   Wallet,
   Crown,
   Shield,
-  Star,
   Clock,
   Coins,
   Copy,
@@ -29,6 +35,8 @@ import {
   UserX,
   ExternalLink,
   Calendar,
+  Image,
+  MessageSquare,
 } from "lucide-react";
 
 interface UserProfile {
@@ -43,6 +51,13 @@ interface UserProfile {
   holdDuration?: number | null;
   createdAt: string;
   isBanned?: boolean;
+  isTemporaryBan?: boolean;
+  bannedUntil?: string | null;
+  stats?: {
+    artSubmissions: number;
+    approvedArt: number;
+    chatMessages: number;
+  };
 }
 
 interface UserProfilePopupProps {
@@ -56,6 +71,7 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
   const { user: currentUser, isAdmin: isViewerAdmin } = useAuth();
   const { toast } = useToast();
   const [copiedWallet, setCopiedWallet] = useState(false);
+  const [banDuration, setBanDuration] = useState<string>("permanent");
 
   const isViewerFounder = currentUser?.role === "founder";
 
@@ -75,20 +91,21 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
   });
 
   const banMutation = useMutation({
-    mutationFn: async (ban: boolean) => {
-      const res = await apiRequest("POST", `/api/admin/users/${profile?.id}/ban`, { ban });
+    mutationFn: async ({ ban, duration }: { ban: boolean; duration?: number }) => {
+      const res = await apiRequest("POST", `/api/admin/users/${profile?.id}/ban`, { ban, duration });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to update user");
       }
       return res.json();
     },
-    onSuccess: (_, ban) => {
+    onSuccess: (_, { ban }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/users/profile", identifier] });
       toast({
         title: ban ? "User banned" : "User unbanned",
         description: `${profile?.username} has been ${ban ? "banned" : "unbanned"}`,
       });
+      setBanDuration("permanent");
     },
     onError: (error: Error) => {
       toast({
@@ -98,6 +115,11 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
       });
     },
   });
+
+  const handleBan = () => {
+    const duration = banDuration === "permanent" ? undefined : parseInt(banDuration, 10);
+    banMutation.mutate({ ban: true, duration });
+  };
 
   const copyWallet = () => {
     if (profile?.walletAddress) {
@@ -193,7 +215,10 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
                 {profile.isBanned && (
                   <Badge variant="destructive" className="text-xs">
                     <Ban className="w-3 h-3 mr-1" />
-                    Banned
+                    {profile.isTemporaryBan && profile.bannedUntil 
+                      ? `Banned until ${new Date(profile.bannedUntil).toLocaleDateString()}`
+                      : "Banned"
+                    }
                   </Badge>
                 )}
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -273,18 +298,50 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
               </div>
             )}
 
+            {profile.stats && (
+              <>
+                <Separator />
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-muted/50 rounded-md p-2 text-center">
+                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-1">
+                      <Image className="w-3 h-3" />
+                      Art
+                    </div>
+                    <p className="font-mono font-bold">{profile.stats.artSubmissions}</p>
+                    <p className="text-xs text-muted-foreground">{profile.stats.approvedArt} approved</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-md p-2 text-center">
+                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-1">
+                      <MessageSquare className="w-3 h-3" />
+                      Messages
+                    </div>
+                    <p className="font-mono font-bold">{profile.stats.chatMessages}</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-md p-2 text-center">
+                    <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground mb-1">
+                      <Calendar className="w-3 h-3" />
+                      Member
+                    </div>
+                    <p className="font-mono font-bold text-sm">
+                      {Math.floor((Date.now() - new Date(profile.createdAt).getTime()) / 86400000)}d
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+
             {(isViewerAdmin || isViewerFounder) && !isOwnProfile && (
               <>
                 <Separator />
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-mono uppercase">Admin Actions</p>
                   {canModerate && (
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
                       {profile.isBanned ? (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => banMutation.mutate(false)}
+                          onClick={() => banMutation.mutate({ ban: false })}
                           disabled={banMutation.isPending}
                           data-testid="button-unban-user"
                         >
@@ -292,16 +349,32 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
                           Unban User
                         </Button>
                       ) : (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => banMutation.mutate(true)}
-                          disabled={banMutation.isPending}
-                          data-testid="button-ban-user"
-                        >
-                          <Ban className="w-4 h-4 mr-1" />
-                          Ban User
-                        </Button>
+                        <div className="flex gap-2 items-center flex-wrap">
+                          <Select value={banDuration} onValueChange={setBanDuration}>
+                            <SelectTrigger className="w-32" data-testid="select-ban-duration">
+                              <SelectValue placeholder="Duration" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 hour</SelectItem>
+                              <SelectItem value="6">6 hours</SelectItem>
+                              <SelectItem value="24">1 day</SelectItem>
+                              <SelectItem value="72">3 days</SelectItem>
+                              <SelectItem value="168">1 week</SelectItem>
+                              <SelectItem value="720">30 days</SelectItem>
+                              <SelectItem value="permanent">Permanent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleBan}
+                            disabled={banMutation.isPending}
+                            data-testid="button-ban-user"
+                          >
+                            <Ban className="w-4 h-4 mr-1" />
+                            Ban
+                          </Button>
+                        </div>
                       )}
                     </div>
                   )}
