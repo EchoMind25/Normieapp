@@ -293,19 +293,10 @@ export default function MyNfts() {
   const [selectedListing, setSelectedListing] = useState<NftListing | null>(null);
   const [listPrice, setListPrice] = useState("");
 
-  // Fetch marketplace config first to check if marketplace is open
+  // All hooks must be called before any conditional returns
   const { data: config, isLoading: configLoading } = useQuery<MarketplaceConfig>({
     queryKey: ["/api/marketplace/config"],
   });
-
-  // Access check - allow if marketplace is open to all OR user is admin/founder
-  const accessCheck = AccessCheck({ 
-    isLoading: authLoading || configLoading, 
-    isAuthenticated, 
-    isAdmin, 
-    marketplaceOpen: config?.isOpen ?? false 
-  });
-  if (accessCheck) return accessCheck;
 
   const { data: ownedNfts, isLoading: nftsLoading } = useQuery<Nft[]>({
     queryKey: ["/api/user", user?.id, "nfts"],
@@ -387,6 +378,15 @@ export default function MyNfts() {
       toast({ title: "Failed to respond to offer", description: error.message, variant: "destructive" });
     },
   });
+
+  // Access check - allow if marketplace is open to all OR user is admin/founder
+  const accessCheck = AccessCheck({ 
+    isLoading: authLoading || configLoading, 
+    isAuthenticated, 
+    isAdmin, 
+    marketplaceOpen: config?.isOpen ?? false 
+  });
+  if (accessCheck) return accessCheck;
 
   const handleList = (nft: Nft) => {
     setSelectedNft(nft);
