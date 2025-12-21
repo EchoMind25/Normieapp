@@ -587,6 +587,7 @@ export default function Admin() {
     }
   };
 
+  // Show loading while auth is being determined
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -595,9 +596,19 @@ export default function Admin() {
     );
   }
 
-  if (!isAuthenticated || !user || !hasAdminAccess) {
+  // Only redirect after loading is complete and we know the user doesn't have access
+  if (!isLoading && (!isAuthenticated || !user || !hasAdminAccess)) {
     setLocation("/");
     return null;
+  }
+
+  // Extra safety check - show loading if user hasn't loaded yet
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (

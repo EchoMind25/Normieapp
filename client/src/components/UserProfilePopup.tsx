@@ -59,9 +59,19 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
 
   const isViewerFounder = currentUser?.role === "founder";
 
+  const identifier = userId || username;
   const { data: profile, isLoading, isError } = useQuery<UserProfile>({
-    queryKey: ["/api/users/profile", userId || username],
-    enabled: isOpen && !!(userId || username),
+    queryKey: ["/api/auth/users/profile", identifier],
+    queryFn: async () => {
+      if (!identifier) throw new Error("No identifier");
+      const res = await fetch(`/api/auth/users/profile/${encodeURIComponent(identifier)}`);
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: "User not found" }));
+        throw new Error(error.error || "User not found");
+      }
+      return res.json();
+    },
+    enabled: isOpen && !!identifier,
   });
 
   const banMutation = useMutation({
@@ -74,7 +84,7 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
       return res.json();
     },
     onSuccess: (_, ban) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users/profile", userId || username] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/users/profile", identifier] });
       toast({
         title: ban ? "User banned" : "User unbanned",
         description: `${profile?.username} has been ${ban ? "banned" : "unbanned"}`,
