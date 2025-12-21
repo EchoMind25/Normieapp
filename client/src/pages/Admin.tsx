@@ -595,7 +595,7 @@ export default function Admin() {
     );
   }
 
-  if (!isAuthenticated || !user || user.role !== "admin") {
+  if (!isAuthenticated || !user || !hasAdminAccess) {
     setLocation("/");
     return null;
   }
