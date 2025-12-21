@@ -10,6 +10,7 @@ import {
   storePrivateKey,
   hasStoredPrivateKey,
   generatePublicKeyFromPrivate,
+  initializeEncryptionKeys,
 } from "@/lib/encryption";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,7 +105,7 @@ export default function MessagesPage() {
       setIsSettingUpEncryption(true);
 
       try {
-        const storedPrivateKey = getStoredPrivateKey();
+        const storedPrivateKey = await initializeEncryptionKeys();
 
         if (storedPrivateKey) {
           const localPublicKey = generatePublicKeyFromPrivate(storedPrivateKey);
@@ -116,11 +117,11 @@ export default function MessagesPage() {
           }
         } else if (!myKey) {
           const keyPair = generateKeyPair();
-          storePrivateKey(keyPair.privateKey);
+          await storePrivateKey(keyPair.privateKey);
           await uploadKeyMutation.mutateAsync(keyPair.publicKey);
         } else {
           const keyPair = generateKeyPair();
-          storePrivateKey(keyPair.privateKey);
+          await storePrivateKey(keyPair.privateKey);
           await uploadKeyMutation.mutateAsync(keyPair.publicKey);
           toast({
             title: "New encryption key generated",
