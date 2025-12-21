@@ -691,7 +691,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
             isLoading={isLoading}
           />
           <a
-            href="https://app.streamflow.finance/contract/solana/mainnet/26Nrbi6tXhPWnMHDU1iB9twshqkZpEGLFPdLAaL8SYJJ"
+            href="https://app.streamflow.finance/project-dashboard/solana/mainnet/FrSFwE2BxWADEyUWFXDMAeomzuB4r83ZvzdG9sevpump"
             target="_blank"
             rel="noopener noreferrer"
             className="block"
