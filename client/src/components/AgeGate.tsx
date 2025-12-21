@@ -16,6 +16,12 @@ export function AgeGate() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Skip age verification on embed routes
+    if (window.location.pathname.startsWith("/embed/")) {
+      setIsLoading(false);
+      return;
+    }
+    
     // Check server-side age verification status
     fetch("/api/auth/age-status", { credentials: "include" })
       .then((res) => res.json())
