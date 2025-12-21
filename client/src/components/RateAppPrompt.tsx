@@ -18,8 +18,11 @@ export function RateAppPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    // Only show rate prompt for native app store downloads, not web/dev preview
+    if (!isNative) return;
+
     const dismissed = localStorage.getItem(RATE_DISMISSED_KEY);
-    if (dismissed) return;
+    if (dismissed === "true") return;
 
     const count = parseInt(localStorage.getItem(USAGE_KEY) || "0", 10);
     const newCount = count + 1;
