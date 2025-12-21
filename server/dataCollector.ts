@@ -3,12 +3,13 @@ import { NORMIE_TOKEN } from "@shared/schema";
 
 class DataCollector {
   private isRunning: boolean = false;
-  private collectionInterval: NodeJS.Timer | null = null;
-  private cleanupInterval: NodeJS.Timer | null = null;
+  private collectionInterval: ReturnType<typeof setInterval> | null = null;
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private consecutiveErrors: number = 0;
   private maxConsecutiveErrors: number = 5;
   private baseInterval: number = 60000;
   private currentInterval: number = 60000;
+  private pendingIntervalChange: number | null = null;
 
   async collectTokenData(): Promise<void> {
     try {
@@ -22,24 +23,29 @@ class DataCollector {
       
       const newInterval = await smartDataFetcher.determinePollInterval(NORMIE_TOKEN.address);
       if (newInterval !== this.currentInterval) {
-        this.currentInterval = newInterval;
-        this.restartCollection();
+        this.pendingIntervalChange = newInterval;
       }
     } catch (error) {
       this.consecutiveErrors++;
       console.error(`[DataCollector] Error collecting data (${this.consecutiveErrors}/${this.maxConsecutiveErrors}):`, error);
       
       if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
-        this.currentInterval = Math.min(this.currentInterval * 2, 300000);
-        this.restartCollection();
-        console.warn(`[DataCollector] Too many errors, backing off to ${this.currentInterval}ms interval`);
+        this.pendingIntervalChange = Math.min(this.currentInterval * 2, 300000);
+        console.warn(`[DataCollector] Too many errors, will back off to ${this.pendingIntervalChange}ms interval`);
       }
+    }
+    
+    if (this.pendingIntervalChange !== null) {
+      this.currentInterval = this.pendingIntervalChange;
+      this.pendingIntervalChange = null;
+      this.restartCollection();
     }
   }
 
   private restartCollection(): void {
     if (this.collectionInterval) {
       clearInterval(this.collectionInterval);
+      this.collectionInterval = null;
     }
     
     this.collectionInterval = setInterval(

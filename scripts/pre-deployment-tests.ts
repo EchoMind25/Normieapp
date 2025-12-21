@@ -13,6 +13,7 @@ interface TestResult {
   name: string;
   passed: boolean;
   message: string;
+  critical?: boolean;
 }
 
 const results: TestResult[] = [];
@@ -29,29 +30,39 @@ function log(message: string, type: 'info' | 'success' | 'error' | 'warn' = 'inf
   console.log(`${colors[type]}${message}${reset}`);
 }
 
-function addResult(name: string, passed: boolean, message: string) {
-  results.push({ name, passed, message });
+function addResult(name: string, passed: boolean, message: string, critical = false) {
+  results.push({ name, passed, message, critical });
   log(`${passed ? 'PASS' : 'FAIL'}: ${name} - ${message}`, passed ? 'success' : 'error');
+  return passed;
 }
 
-async function testBuildCompiles(): Promise<void> {
+async function testBuildCompiles(): Promise<boolean> {
   log('\n--- Testing Build ---', 'info');
   try {
     execSync('npm run build', { stdio: 'pipe' });
-    addResult('Build compiles', true, 'Production build successful');
+    return addResult('Build compiles', true, 'Production build successful', true);
   } catch (error: any) {
-    addResult('Build compiles', false, `Build failed: ${error.message}`);
+    addResult('Build compiles', false, `Build failed: ${error.message}`, true);
+    return false;
   }
 }
 
-async function testTypeCheck(): Promise<void> {
+async function testTypeCheck(): Promise<boolean> {
   log('\n--- Testing TypeScript ---', 'info');
   try {
     execSync('npx tsc --noEmit', { stdio: 'pipe' });
-    addResult('TypeScript check', true, 'No type errors');
+    return addResult('TypeScript check', true, 'No type errors', true);
   } catch (error: any) {
-    addResult('TypeScript check', false, 'Type errors found');
+    addResult('TypeScript check', false, 'Type errors found', true);
+    return false;
   }
+}
+
+async function httpGet(url: string, options: RequestInit = {}): Promise<Response> {
+  if (typeof globalThis.fetch === 'function') {
+    return globalThis.fetch(url, options);
+  }
+  throw new Error('fetch not available');
 }
 
 async function testAPIEndpoints(): Promise<void> {
@@ -66,7 +77,7 @@ async function testAPIEndpoints(): Promise<void> {
 
   for (const endpoint of endpoints) {
     try {
-      const response = await fetch(`${API_BASE}${endpoint.path}`);
+      const response = await httpGet(`${API_BASE}${endpoint.path}`);
       const passed = response.status === endpoint.expectedStatus;
       addResult(
         `API ${endpoint.path}`,
@@ -83,7 +94,7 @@ async function testDatabaseConnection(): Promise<void> {
   log('\n--- Testing Database ---', 'info');
   
   try {
-    const response = await fetch(`${API_BASE}/api/health`);
+    const response = await httpGet(`${API_BASE}/api/health`);
     const data = await response.json();
     const passed = data.database === 'connected' || response.ok;
     addResult('Database connection', passed, passed ? 'Connected' : 'Not connected');
@@ -99,7 +110,7 @@ async function testLegalPages(): Promise<void> {
   
   for (const page of pages) {
     try {
-      const response = await fetch(`${API_BASE}${page}`);
+      const response = await httpGet(`${API_BASE}${page}`);
       const passed = response.status === 200;
       addResult(`Legal page ${page}`, passed, `Status: ${response.status}`);
     } catch (error: any) {
@@ -112,7 +123,7 @@ async function testSecurityHeaders(): Promise<void> {
   log('\n--- Testing Security ---', 'info');
   
   try {
-    const response = await fetch(`${API_BASE}/api/health`);
+    const response = await httpGet(`${API_BASE}/api/health`);
     const headers = response.headers;
     
     // Check for common security headers
@@ -213,20 +224,42 @@ async function main() {
   log('========================================', 'info');
   log(`API Base: ${API_BASE}`, 'info');
   log(`Time: ${new Date().toISOString()}`, 'info');
+  log(`Node version: ${process.version}`, 'info');
   
-  // Run tests
+  // Critical tests - bail early if these fail
+  log('\n--- Critical Checks ---', 'info');
+  
+  const typeCheckPassed = await testTypeCheck();
+  if (!typeCheckPassed) {
+    log('\nCRITICAL: Type check failed. Fix errors before continuing.', 'error');
+    printSummary();
+    return;
+  }
+  
+  const buildPassed = await testBuildCompiles();
+  if (!buildPassed) {
+    log('\nCRITICAL: Build failed. Fix errors before continuing.', 'error');
+    printSummary();
+    return;
+  }
+  
+  // Non-critical tests
   await testEnvironmentVariables();
   await testFileStructure();
   
-  // Only run network tests if server is running
+  // Only run network tests if server is running and fetch is available
   try {
-    await fetch(`${API_BASE}/api/health`, { method: 'HEAD' });
+    await httpGet(`${API_BASE}/api/health`, { method: 'HEAD' });
     await testDatabaseConnection();
     await testAPIEndpoints();
     await testLegalPages();
     await testSecurityHeaders();
-  } catch {
-    log('\nWARN: Server not running, skipping API tests', 'warn');
+  } catch (error: any) {
+    if (error.message === 'fetch not available') {
+      log('\nWARN: fetch not available in this Node version, skipping API tests', 'warn');
+    } else {
+      log('\nWARN: Server not running, skipping API tests', 'warn');
+    }
     log('Start the server and run tests again for full coverage.\n', 'warn');
   }
   
