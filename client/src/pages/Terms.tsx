@@ -2,7 +2,8 @@ import { Link } from 'wouter';
 import { ArrowLeft, FileText, AlertTriangle, Ban, Scale, Users, Gavel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { POLICY_VERSION } from '@/lib/native-utils';
+
+const POLICY_DATE = 'December 20, 2025';
 
 export default function Terms() {
   return (
@@ -16,7 +17,7 @@ export default function Terms() {
           </Link>
           <div className="flex-1">
             <h1 className="font-mono font-bold uppercase tracking-wide">Terms of Service</h1>
-            <p className="text-xs text-muted-foreground">Last updated: {POLICY_VERSION}</p>
+            <p className="text-xs text-muted-foreground">Last updated: {POLICY_DATE}</p>
           </div>
         </div>
       </header>
