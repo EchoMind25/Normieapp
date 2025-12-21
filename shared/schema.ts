@@ -108,6 +108,7 @@ export const users = pgTable("users", {
   notifyJeetAlarms: boolean("notify_jeet_alarms").default(true),
   notifyArtworkStatus: boolean("notify_artwork_status").default(true),
   themePreference: varchar("theme_preference", { length: 10 }).default("system"),
+  walletFeaturesUnlocked: boolean("wallet_features_unlocked").default(false),
   bannedAt: timestamp("banned_at"),
   bannedUntil: timestamp("banned_until"),
   createdAt: timestamp("created_at").defaultNow(),
