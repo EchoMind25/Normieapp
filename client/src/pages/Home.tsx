@@ -63,18 +63,30 @@ export default function Home() {
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
     
+    // Aggressive scroll to top function
+    const forceScrollTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    
     // Force scroll to top immediately
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
+    forceScrollTop();
     
     // Multiple attempts to catch async rendering and lazy loading
-    queueMicrotask(() => window.scrollTo(0, 0));
-    requestAnimationFrame(() => window.scrollTo(0, 0));
+    queueMicrotask(forceScrollTop);
+    requestAnimationFrame(forceScrollTop);
     
-    const timeoutId = setTimeout(() => window.scrollTo(0, 0), 150);
+    // Staggered timeouts to catch lazy-loaded content
+    const timeouts = [
+      setTimeout(forceScrollTop, 0),
+      setTimeout(forceScrollTop, 50),
+      setTimeout(forceScrollTop, 150),
+      setTimeout(forceScrollTop, 300),
+      setTimeout(forceScrollTop, 500),
+    ];
     
-    return () => clearTimeout(timeoutId);
+    return () => timeouts.forEach(clearTimeout);
   }, []);
 
   useEffect(() => {

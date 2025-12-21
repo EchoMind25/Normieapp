@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent browser scroll anchoring and auto-scrolling */
+html {
+  overflow-anchor: none;
+  scroll-behavior: auto !important;
+}
+
+/* Ensure page always starts at top on load */
+html, body {
+  scroll-behavior: auto;
+}
+
 /* 4CHAN-INSPIRED DARK MODE - Terminal aesthetic with green accents */
 :root {
   --button-outline: rgba(0,0,0, .10);
