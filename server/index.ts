@@ -7,6 +7,7 @@ import { createServer } from "http";
 import { storage } from "./storage";
 import { hashPassword, ADMIN_USERNAME, ADMIN_EMAIL, ADMIN2_USERNAME, ADMIN2_EMAIL, ADMIN3_USERNAME, ADMIN3_EMAIL } from "./auth";
 import { verifyDatabaseConnection, checkTablesExist, getEnvironmentName } from "./db";
+import { dataCollector } from "./dataCollector";
 
 const app = express();
 const httpServer = createServer(app);
@@ -235,6 +236,11 @@ export function isDatabaseConnected() { return databaseConnected; }
     await seedDefaultChatRoom();
     await seedMarketplaceConfig();
     // Demo polls seeding removed - admins create polls manually
+    
+    // Start background data collection for price history
+    dataCollector.start().catch((err) => {
+      log(`Warning: Data collector failed to start: ${err.message}`, "startup");
+    });
   }
   
   await registerRoutes(httpServer, app);

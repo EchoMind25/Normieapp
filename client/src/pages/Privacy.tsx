@@ -45,22 +45,37 @@ export default function Privacy() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
+              <h3 className="font-semibold text-sm mb-2">Publicly Available Blockchain Data</h3>
+              <p className="text-sm text-muted-foreground mb-2">
+                We primarily use publicly available blockchain data from the Solana network. This includes token prices, transaction volumes, and wallet activity that is already public on the blockchain. We do not access any private or off-chain data.
+              </p>
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                <li>Token price and market data from public blockchain APIs</li>
+                <li>Transaction history visible on the public ledger</li>
+                <li>Wallet addresses displayed in shortened/hashed format for privacy</li>
+              </ul>
+            </div>
+            <div>
               <h3 className="font-semibold text-sm mb-2">Information You Provide</h3>
               <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
                 <li>Account information (username, email address) if you create an account</li>
-                <li>Wallet addresses you choose to track (we do not store private keys)</li>
-                <li>Price alert preferences and watchlist data</li>
+                <li>Wallet addresses you choose to connect (we never store private keys or seed phrases)</li>
                 <li>User-generated content such as memes and community posts</li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-sm mb-2">Automatically Collected Information</h3>
+              <h3 className="font-semibold text-sm mb-2">Minimal Analytics</h3>
+              <p className="text-sm text-muted-foreground mb-2">
+                We believe in respecting your privacy. We only collect basic, non-invasive analytics:
+              </p>
               <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                <li>Device information (device type, operating system)</li>
-                <li>Usage data (pages visited, features used, time spent)</li>
-                <li>IP address and approximate location (country/region)</li>
-                <li>App performance and crash data</li>
+                <li>Pages visited and when (basic navigation tracking)</li>
+                <li>Button clicks and feature usage (to improve the app)</li>
+                <li>Error logs for debugging purposes only</li>
               </ul>
+              <p className="text-sm text-muted-foreground mt-2">
+                We do not use invasive tracking, behavioral profiling, or sell your data to advertisers.
+              </p>
             </div>
           </CardContent>
         </Card>

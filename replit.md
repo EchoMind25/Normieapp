@@ -133,3 +133,33 @@ Set `EMBED_SECRET` environment variable to require token authentication for embe
 
 ### Documentation
 See `EMBED_INTEGRATION_GUIDE.md` for complete integration instructions for external developers.
+
+## Mobile App Deployment (December 2025)
+
+### Capacitor Configuration
+- **Config**: `capacitor.config.ts`
+- **App ID**: com.normie.observer
+- **App Name**: Normie Observer
+- **Web Dir**: dist (Vite build output)
+
+### Background Data Collection
+- **Service**: `server/dataCollector.ts` - Runs periodic price collection
+- **Smart Fetcher**: `server/smartDataFetcher.ts` - Adaptive polling with change detection
+- **Database Tables**: `price_history`, `api_cache` for reducing external API calls
+
+### Pre-Deployment Testing
+- **Script**: `scripts/pre-deployment-tests.ts`
+- **Run**: `npx tsx scripts/pre-deployment-tests.ts`
+
+### App Icon Generation
+- **Script**: `scripts/generate-app-icons.sh`
+- **Requires**: ImageMagick
+- **Usage**: `./scripts/generate-app-icons.sh path/to/icon.png`
+
+### Deployment Documentation
+- **Guide**: `docs/DEPLOYMENT.md` - Complete iOS/Android submission guide
+
+### Legal Pages
+- **Privacy Policy**: `/privacy` - Updated for minimal analytics, public blockchain data only
+- **Terms of Service**: `/terms` - Crypto disclaimers, age requirements
+- **Support Email**: support@tryechomind.net
