@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, gt, desc, sql, or, asc, ilike, gte, lte } from "drizzle-orm";
+import { eq, and, gt, desc, sql, or, asc, ilike, gte, lte, notInArray } from "drizzle-orm";
 import {
   users,
   sessions,
@@ -323,6 +323,7 @@ export interface IStorage {
   updateFounderWallet(id: string, data: Partial<InsertFounderWallet>): Promise<FounderWallet | undefined>;
   deleteFounderWallet(id: string): Promise<void>;
   getAllFounderWalletAddresses(): Promise<string[]>;
+  getFounderWalletsToExcludeFromLeaderboard(): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1559,7 +1560,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDiamondHandsLeaderboard(limit: number = 20): Promise<DiamondHandsEntry[]> {
+    // Get founder wallets to exclude from leaderboard
+    const excludedWallets = await this.getFounderWalletsToExcludeFromLeaderboard();
+    
     // LEFT JOIN with users to get usernames for linked wallets
+    const whereConditions = [gt(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`, 0)];
+    if (excludedWallets.length > 0) {
+      whereConditions.push(notInArray(walletHoldings.walletAddress, excludedWallets));
+    }
+    
     const results = await db
       .select({
         walletAddress: walletHoldings.walletAddress,
@@ -1571,7 +1580,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(walletHoldings)
       .leftJoin(users, eq(walletHoldings.userId, users.id))
-      .where(gt(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`, 0))
+      .where(and(...whereConditions))
       .orderBy(asc(walletHoldings.holdStartAt))
       .limit(limit);
 
@@ -1589,7 +1598,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWhalesLeaderboard(limit: number = 20): Promise<WhaleEntry[]> {
+    // Get founder wallets to exclude from leaderboard
+    const excludedWallets = await this.getFounderWalletsToExcludeFromLeaderboard();
+    
     // LEFT JOIN with users to get usernames for linked wallets
+    const whereConditions = [gt(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`, 0)];
+    if (excludedWallets.length > 0) {
+      whereConditions.push(notInArray(walletHoldings.walletAddress, excludedWallets));
+    }
+    
     const results = await db
       .select({
         walletAddress: walletHoldings.walletAddress,
@@ -1601,7 +1618,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(walletHoldings)
       .leftJoin(users, eq(walletHoldings.userId, users.id))
-      .where(gt(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`, 0))
+      .where(and(...whereConditions))
       .orderBy(desc(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`))
       .limit(limit);
 
@@ -1740,6 +1757,17 @@ export class DatabaseStorage implements IStorage {
       .select({ walletAddress: founderWallets.walletAddress })
       .from(founderWallets)
       .where(eq(founderWallets.isActive, true));
+    return wallets.map(w => w.walletAddress);
+  }
+
+  async getFounderWalletsToExcludeFromLeaderboard(): Promise<string[]> {
+    const wallets = await db
+      .select({ walletAddress: founderWallets.walletAddress })
+      .from(founderWallets)
+      .where(and(
+        eq(founderWallets.isActive, true),
+        eq(founderWallets.showOnLeaderboard, false)
+      ));
     return wallets.map(w => w.walletAddress);
   }
 }
