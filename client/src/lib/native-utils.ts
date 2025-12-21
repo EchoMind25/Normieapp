@@ -4,6 +4,7 @@ import { Share } from '@capacitor/share';
 import { Network } from '@capacitor/network';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
 
 export const isNative = Capacitor.isNativePlatform();
 export const isIOS = Capacitor.getPlatform() === 'ios';
@@ -245,4 +246,147 @@ export function acceptDisclaimer(): void {
   } catch {
     console.debug('localStorage not available');
   }
+}
+
+export interface CameraPhoto {
+  dataUrl: string;
+  format: string;
+  webPath?: string;
+}
+
+export async function requestCameraPermissions(): Promise<boolean> {
+  if (!isNative) return true;
+  
+  try {
+    const permissions = await Camera.requestPermissions({
+      permissions: ['camera', 'photos'],
+    });
+    return permissions.camera === 'granted' || permissions.photos === 'granted';
+  } catch (e) {
+    console.debug('Camera permissions request failed:', e);
+    return false;
+  }
+}
+
+export async function checkCameraPermissions(): Promise<{ camera: boolean; photos: boolean }> {
+  if (!isNative) return { camera: true, photos: true };
+  
+  try {
+    const permissions = await Camera.checkPermissions();
+    return {
+      camera: permissions.camera === 'granted',
+      photos: permissions.photos === 'granted',
+    };
+  } catch (e) {
+    console.debug('Camera permissions check failed:', e);
+    return { camera: false, photos: false };
+  }
+}
+
+export async function pickImageFromGallery(): Promise<CameraPhoto | null> {
+  if (!isNative) return null;
+  
+  try {
+    const hasPermission = await requestCameraPermissions();
+    if (!hasPermission) {
+      throw new Error('Photo library permission denied');
+    }
+    
+    const photo = await Camera.getPhoto({
+      quality: 90,
+      allowEditing: false,
+      resultType: CameraResultType.DataUrl,
+      source: CameraSource.Photos,
+      promptLabelHeader: 'Select Image',
+      promptLabelPhoto: 'Choose from Gallery',
+    });
+    
+    return {
+      dataUrl: photo.dataUrl || '',
+      format: photo.format,
+      webPath: photo.webPath,
+    };
+  } catch (e: any) {
+    if (e?.message?.includes('cancelled') || e?.message?.includes('User cancelled')) {
+      return null;
+    }
+    console.error('Pick image failed:', e);
+    throw e;
+  }
+}
+
+export async function takePhoto(): Promise<CameraPhoto | null> {
+  if (!isNative) return null;
+  
+  try {
+    const hasPermission = await requestCameraPermissions();
+    if (!hasPermission) {
+      throw new Error('Camera permission denied');
+    }
+    
+    const photo = await Camera.getPhoto({
+      quality: 90,
+      allowEditing: false,
+      resultType: CameraResultType.DataUrl,
+      source: CameraSource.Camera,
+    });
+    
+    return {
+      dataUrl: photo.dataUrl || '',
+      format: photo.format,
+      webPath: photo.webPath,
+    };
+  } catch (e: any) {
+    if (e?.message?.includes('cancelled') || e?.message?.includes('User cancelled')) {
+      return null;
+    }
+    console.error('Take photo failed:', e);
+    throw e;
+  }
+}
+
+export async function pickOrTakePhoto(): Promise<CameraPhoto | null> {
+  if (!isNative) return null;
+  
+  try {
+    const hasPermission = await requestCameraPermissions();
+    if (!hasPermission) {
+      throw new Error('Camera/Photo library permission denied');
+    }
+    
+    const photo = await Camera.getPhoto({
+      quality: 90,
+      allowEditing: false,
+      resultType: CameraResultType.DataUrl,
+      source: CameraSource.Prompt,
+      promptLabelHeader: 'Add Image',
+      promptLabelPhoto: 'Choose from Gallery',
+      promptLabelPicture: 'Take Photo',
+    });
+    
+    return {
+      dataUrl: photo.dataUrl || '',
+      format: photo.format,
+      webPath: photo.webPath,
+    };
+  } catch (e: any) {
+    if (e?.message?.includes('cancelled') || e?.message?.includes('User cancelled')) {
+      return null;
+    }
+    console.error('Pick or take photo failed:', e);
+    throw e;
+  }
+}
+
+export function dataUrlToFile(dataUrl: string, filename: string): File {
+  const arr = dataUrl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
 }

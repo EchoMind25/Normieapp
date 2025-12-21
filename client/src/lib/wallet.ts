@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
 import { apiRequest } from "./queryClient";
+import { isNative, isIOS, isAndroid } from "./native-utils";
 
 declare global {
   interface Window {
@@ -24,6 +25,82 @@ declare global {
 }
 
 export type WalletProvider = "phantom" | "solflare";
+
+// Mobile wallet app detection and deep linking
+export function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+export function getMobileWalletDeepLink(provider: WalletProvider, action: 'connect' | 'browse' = 'browse'): string {
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const encodedUrl = encodeURIComponent(currentUrl);
+  
+  if (provider === 'phantom') {
+    // Phantom universal link for browsing dApp in wallet browser
+    return `https://phantom.app/ul/v1/browse/${encodedUrl}`;
+  } else {
+    // Solflare deep link for browsing dApp in wallet browser
+    return `solflare://v1/browse/${currentUrl}`;
+  }
+}
+
+export function getWalletAppStoreLink(provider: WalletProvider): { ios: string; android: string; universal: string } {
+  if (provider === 'phantom') {
+    return {
+      ios: 'https://apps.apple.com/app/phantom-solana-wallet/id1598432977',
+      android: 'https://play.google.com/store/apps/details?id=app.phantom',
+      universal: 'https://phantom.app/download',
+    };
+  } else {
+    return {
+      ios: 'https://apps.apple.com/app/solflare-solana-wallet/id1580902717',
+      android: 'https://play.google.com/store/apps/details?id=com.solflare.mobile',
+      universal: 'https://solflare.com/download',
+    };
+  }
+}
+
+export function openInWalletBrowser(provider: WalletProvider): void {
+  const deepLink = getMobileWalletDeepLink(provider, 'browse');
+  
+  if (isNative) {
+    // On native Capacitor app, use the Browser plugin
+    import('@capacitor/browser').then(({ Browser }) => {
+      Browser.open({ url: deepLink, windowName: '_system' });
+    }).catch(() => {
+      window.open(deepLink, '_system');
+    });
+  } else {
+    // On mobile web, redirect to deep link
+    window.location.href = deepLink;
+  }
+}
+
+export function getWalletDownloadLink(provider: WalletProvider): string {
+  const links = getWalletAppStoreLink(provider);
+  
+  if (isIOS) return links.ios;
+  if (isAndroid) return links.android;
+  
+  // Check user agent for mobile web
+  if (typeof navigator !== 'undefined') {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('iphone') || ua.includes('ipad')) return links.ios;
+    if (ua.includes('android')) return links.android;
+  }
+  
+  return links.universal;
+}
+
+export function hasWalletInstalled(provider: WalletProvider): boolean {
+  if (provider === 'phantom') {
+    return !!window.solana?.isPhantom;
+  } else if (provider === 'solflare') {
+    return !!window.solflare?.isSolflare;
+  }
+  return false;
+}
 
 // Browser-native base64 encoding for Uint8Array (replaces Node.js Buffer)
 function uint8ArrayToBase64(bytes: Uint8Array): string {
@@ -51,25 +128,70 @@ export function getWallet(provider: WalletProvider) {
   return null;
 }
 
+export interface WalletConnectionResult {
+  address: string | null;
+  needsWalletApp: boolean;
+  downloadUrl?: string;
+  deepLinkUrl?: string;
+}
+
 export async function connectWallet(provider: WalletProvider): Promise<string | null> {
   const wallet = getWallet(provider);
-  if (!wallet) {
-    window.open(
-      provider === "phantom" 
-        ? "https://phantom.app/" 
-        : "https://solflare.com/",
-      "_blank"
-    );
+  
+  // If wallet extension/app is available, use it directly
+  if (wallet) {
+    try {
+      const response = await wallet.connect();
+      return response.publicKey.toBase58();
+    } catch (error) {
+      console.error("Wallet connect error:", error);
+      return null;
+    }
+  }
+  
+  // For mobile devices without wallet detected, provide options
+  if (isMobileDevice() || isNative) {
+    console.log(`[Wallet] Mobile device detected without ${provider} wallet`);
+    // Return null but don't open anything - let the UI handle the options
     return null;
   }
+  
+  // Desktop without extension - open download page
+  window.open(
+    provider === "phantom" 
+      ? "https://phantom.app/" 
+      : "https://solflare.com/",
+    "_blank"
+  );
+  return null;
+}
 
-  try {
-    const response = await wallet.connect();
-    return response.publicKey.toBase58();
-  } catch (error) {
-    console.error("Wallet connect error:", error);
-    return null;
+export async function connectWalletWithMobileSupport(provider: WalletProvider): Promise<WalletConnectionResult> {
+  const wallet = getWallet(provider);
+  
+  // If wallet extension/app is available, use it directly
+  if (wallet) {
+    try {
+      const response = await wallet.connect();
+      return {
+        address: response.publicKey.toBase58(),
+        needsWalletApp: false,
+      };
+    } catch (error) {
+      console.error("Wallet connect error:", error);
+      return { address: null, needsWalletApp: false };
+    }
   }
+  
+  // Wallet not detected - provide appropriate links
+  const isMobile = isMobileDevice() || isNative;
+  
+  return {
+    address: null,
+    needsWalletApp: true,
+    downloadUrl: getWalletDownloadLink(provider),
+    deepLinkUrl: isMobile ? getMobileWalletDeepLink(provider, 'browse') : undefined,
+  };
 }
 
 export async function disconnectWallet(provider: WalletProvider): Promise<void> {

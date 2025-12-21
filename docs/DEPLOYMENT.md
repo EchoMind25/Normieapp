@@ -95,12 +95,29 @@ Features:
 solana, memecoin, crypto, token, price tracker, defi, web3, nft, community
 ```
 
+### iOS Required Permissions
+
+Add these to `ios/App/App/Info.plist`:
+
+```xml
+<!-- Camera and Photo Library (Required for Art Gallery uploads) -->
+<key>NSCameraUsageDescription</key>
+<string>Normie Observer needs camera access to take photos for the Art Gallery and meme creation.</string>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Normie Observer needs photo library access to select images for the Art Gallery and meme creation.</string>
+
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Normie Observer needs permission to save memes and artwork to your photo library.</string>
+```
+
 ### Review Guidelines Compliance
 
-- Age Rating: 17+ (Financial/Gambling Content)
+- Age Rating: 18+ (Financial Information, Investment Education, Cryptocurrency Content)
 - No private key storage or wallet signing for transfers
 - Cryptocurrency content disclaimer required
 - No guarantees of profits or financial advice
+- Minimum age requirement: 18 years old
 
 ### Build and Submit
 
@@ -123,6 +140,25 @@ solana, memecoin, crypto, token, price tracker, defi, web3, nft, community
 2. In Android Studio:
    - Update the signing configuration
    - Generate a signed release APK/AAB
+
+### Android Required Permissions
+
+Add these to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<!-- Camera and Photo Library (Required for Art Gallery uploads) -->
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+    android:maxSdkVersion="32" />
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+    android:maxSdkVersion="29" />
+
+<!-- Optional: Camera feature (not required, allows install on devices without camera) -->
+<uses-feature android:name="android.hardware.camera" android:required="false" />
+```
+
+Note: The Capacitor Camera plugin should automatically add most permissions, but verify they are present before building.
 
 ### Generate Signed Bundle
 
@@ -180,7 +216,7 @@ Fill out the Data Safety form:
 - [ ] Privacy Policy accessible at /privacy
 - [ ] Terms of Service accessible at /terms
 - [ ] Support email working (support@tryechomind.net)
-- [ ] Age rating appropriate (17+)
+- [ ] Age rating appropriate (18+)
 - [ ] Cryptocurrency disclaimers included
 
 ### Content Requirements

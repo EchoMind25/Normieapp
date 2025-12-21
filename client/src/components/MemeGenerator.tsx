@@ -1085,6 +1085,7 @@ export function MemeGenerator() {
                       searchPlaceholder="Search emoji..."
                       previewConfig={{ showPreview: false }}
                       lazyLoadEmojis
+                      autoFocusSearch={false}
                     />
                   </div>
                 </TabsContent>

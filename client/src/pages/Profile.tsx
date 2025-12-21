@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -27,9 +27,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon, Palette, Check, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon, Palette, Check, Link as LinkIcon, Coins, Clock } from "lucide-react";
 import { getAvailableWallets, linkWalletToAccount, type WalletProvider } from "@/lib/wallet";
 import { NotificationSettings } from "@/components/NotificationSettings";
+
+interface HoldingsData {
+  balance: number | null;
+  hasWallet: boolean;
+  walletAddress?: string;
+  holdDuration?: number | null;
+  firstBuyAt?: string | null;
+  message?: string;
+}
 
 const profileSchema = z.object({
   username: z
@@ -86,10 +95,35 @@ export default function Profile() {
     queryKey: ["/api/icons"],
     enabled: isAuthenticated,
   });
+
+  const profileForm = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      username: user?.username || "",
+      bio: user?.bio || "",
+      avatarUrl: user?.avatarUrl || "",
+      holdingsVisible: user?.holdingsVisible || false,
+    },
+  });
+
+  // Watch the live form state for holdings visibility toggle
+  const watchedHoldingsVisible = profileForm.watch("holdingsVisible");
+
+  // Fetch user's wallet holdings balance (reacts to live toggle state)
+  const { data: holdingsData, isLoading: isLoadingHoldings, isError: isHoldingsError } = useQuery<HoldingsData>({
+    queryKey: ["/api/auth/holdings"],
+    enabled: isAuthenticated && !!user?.walletAddress && watchedHoldingsVisible,
+  });
+
+  // Invalidate and refetch holdings when toggle becomes enabled
+  useEffect(() => {
+    if (watchedHoldingsVisible && user?.walletAddress && isAuthenticated) {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/holdings"] });
+    }
+  }, [watchedHoldingsVisible, user?.walletAddress, isAuthenticated, queryClient]);
   
   const { uploadFile, isUploading, progress, error: uploadError } = useUpload({
     onSuccess: (response) => {
-      // objectPath already includes /objects/ prefix (e.g., /objects/uploads/uuid)
       const publicUrl = response.objectPath;
       profileForm.setValue("avatarUrl", publicUrl);
       setAvatarPreview(publicUrl);
@@ -104,16 +138,6 @@ export default function Profile() {
         description: error.message,
         variant: "destructive",
       });
-    },
-  });
-
-  const profileForm = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      username: user?.username || "",
-      bio: user?.bio || "",
-      avatarUrl: user?.avatarUrl || "",
-      holdingsVisible: user?.holdingsVisible || false,
     },
   });
 
@@ -489,6 +513,48 @@ export default function Profile() {
                     </FormItem>
                   )}
                 />
+
+                {user?.walletAddress && watchedHoldingsVisible && (
+                  <div className="rounded-md border p-4 bg-muted/30" data-testid="section-holdings">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Coins className="h-4 w-4 text-primary" />
+                      <span className="font-mono text-sm font-medium">Your Holdings</span>
+                    </div>
+                    {isLoadingHoldings ? (
+                      <div className="text-muted-foreground text-sm" data-testid="status-holdings-loading">Loading balance...</div>
+                    ) : isHoldingsError ? (
+                      <div className="text-muted-foreground text-sm" data-testid="status-holdings-error">
+                        Unable to fetch holdings. Please try again later.
+                      </div>
+                    ) : holdingsData?.hasWallet ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground text-sm">Balance</span>
+                          <span className="font-mono font-bold text-primary" data-testid="text-holdings-balance">
+                            {holdingsData.balance !== null 
+                              ? Number(holdingsData.balance).toLocaleString() 
+                              : "0"} $NORMIE
+                          </span>
+                        </div>
+                        {holdingsData.holdDuration && holdingsData.holdDuration > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground text-sm flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Holding since
+                            </span>
+                            <span className="font-mono text-xs text-muted-foreground" data-testid="text-hold-duration">
+                              {Math.floor(holdingsData.holdDuration / 86400)}d {Math.floor((holdingsData.holdDuration % 86400) / 3600)}h
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground text-sm" data-testid="text-holdings-message">
+                        No holdings data available for your linked wallet.
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <Button
                   type="submit"

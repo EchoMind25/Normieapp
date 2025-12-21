@@ -53,9 +53,21 @@ After opening in Xcode:
 Add these to `ios/App/App/Info.plist`:
 
 ```xml
-<key>NSUserTrackingUsageDescription</key>
-<string>We use data to improve your experience</string>
+<!-- Camera and Photo Library (Required for Art Gallery uploads) -->
+<key>NSCameraUsageDescription</key>
+<string>Normie Observer needs camera access to take photos for the Art Gallery and meme creation.</string>
 
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Normie Observer needs photo library access to select images for the Art Gallery and meme creation.</string>
+
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Normie Observer needs permission to save memes and artwork to your photo library.</string>
+
+<!-- Tracking (required for App Store) -->
+<key>NSUserTrackingUsageDescription</key>
+<string>We use anonymous data to improve app experience. No personal information is collected.</string>
+
+<!-- Encryption declaration (required for export compliance) -->
 <key>ITSAppUsesNonExemptEncryption</key>
 <false/>
 ```

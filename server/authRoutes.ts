@@ -497,6 +497,50 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Get user's wallet holdings balance (for displaying on profile when holdingsVisible is true)
+router.get("/holdings", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    if (!req.user.walletAddress) {
+      res.json({ 
+        balance: null, 
+        hasWallet: false,
+        message: "No wallet linked to account"
+      });
+      return;
+    }
+
+    const holding = await storage.getWalletHolding(req.user.walletAddress);
+    
+    if (!holding) {
+      res.json({ 
+        balance: 0, 
+        hasWallet: true,
+        walletAddress: req.user.walletAddress,
+        message: "No holdings found for wallet"
+      });
+      return;
+    }
+
+    res.json({
+      balance: holding.currentBalance || 0,
+      hasWallet: true,
+      walletAddress: req.user.walletAddress,
+      holdDuration: holding.holdStartAt ? 
+        Math.floor((Date.now() - new Date(holding.holdStartAt).getTime()) / 1000) : 
+        null,
+      firstBuyAt: holding.firstBuyAt,
+    });
+  } catch (error) {
+    console.error("[Auth] Get holdings error:", error);
+    res.status(500).json({ error: "Failed to get holdings" });
+  }
+});
+
 router.post(
   "/force-change-password",
   authMiddleware,

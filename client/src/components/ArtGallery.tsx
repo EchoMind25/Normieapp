@@ -14,6 +14,7 @@ import { useUpload } from "@/hooks/use-upload";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { normalizeStorageUrl } from "@/lib/utils";
+import { isNative, pickOrTakePhoto, dataUrlToFile } from "@/lib/native-utils";
 import { 
   Image, 
   Upload, 
@@ -28,7 +29,9 @@ import {
   Grid3X3,
   Trophy,
   LogIn,
-  User
+  User,
+  Camera,
+  X
 } from "lucide-react";
 import type { GalleryItem, GalleryCommentWithAvatar } from "@shared/schema";
 
@@ -127,8 +130,10 @@ function UploadForm({ onSuccess }: UploadFormProps) {
   const [creatorName, setCreatorName] = useState("");
   const [tags, setTags] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const { uploadFile, isUploading } = useUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useMutation({
     mutationFn: async (data: { title: string; description: string; imageUrl: string; creatorName: string; tags: string[] }) => {
@@ -159,6 +164,24 @@ function UploadForm({ onSuccess }: UploadFormProps) {
   ];
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+  const handleNativeImagePick = async () => {
+    try {
+      const photo = await pickOrTakePhoto();
+      if (photo && photo.dataUrl) {
+        const file = dataUrlToFile(photo.dataUrl, `photo_${Date.now()}.${photo.format || 'jpeg'}`);
+        setSelectedFile(file);
+        setPreviewUrl(photo.dataUrl);
+        setImageUrl("");
+      }
+    } catch (e: any) {
+      toast({ 
+        title: "Error", 
+        description: e.message || "Could not access camera or photos. Please check app permissions.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -177,7 +200,19 @@ function UploadForm({ onSuccess }: UploadFormProps) {
         return;
       }
       setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
       setImageUrl("");
+    }
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -233,31 +268,75 @@ function UploadForm({ onSuccess }: UploadFormProps) {
       </div>
       <div>
         <Label htmlFor="imageFile">Upload Image *</Label>
-        <Input
-          id="imageFile"
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,image/svg+xml,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.svg,.webp,.heic,.heif"
-          capture="environment"
-          onChange={handleFileChange}
-          className="font-mono cursor-pointer"
-          data-testid="input-gallery-file"
-        />
-        {selectedFile && (
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-xs text-primary flex-1">
-              Selected: {selectedFile.name}
-            </p>
+        {isNative ? (
+          <div className="space-y-2">
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedFile(null)}
-              className="h-6 px-2 text-xs"
-              data-testid="button-clear-file"
+              variant="outline"
+              className="w-full font-mono"
+              onClick={handleNativeImagePick}
+              data-testid="button-native-image-pick"
             >
-              Clear
+              <Camera className="w-4 h-4 mr-2" />
+              {selectedFile ? "Change Image" : "Take Photo or Choose from Gallery"}
             </Button>
+            {previewUrl && selectedFile && (
+              <div className="relative">
+                <img 
+                  src={previewUrl} 
+                  alt="Preview" 
+                  className="w-full max-h-48 object-contain rounded-md border border-border"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearFile}
+                  className="absolute top-1 right-1 h-6 w-6 bg-background/80"
+                  data-testid="button-clear-image"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            )}
           </div>
+        ) : (
+          <>
+            <Input
+              id="imageFile"
+              type="file"
+              ref={fileInputRef}
+              accept="image/jpeg,image/jpg,image/png,image/svg+xml,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.svg,.webp,.heic,.heif"
+              capture="environment"
+              onChange={handleFileChange}
+              className="font-mono cursor-pointer"
+              data-testid="input-gallery-file"
+            />
+            {selectedFile && previewUrl && (
+              <div className="mt-2 space-y-1">
+                <img 
+                  src={previewUrl} 
+                  alt="Preview" 
+                  className="w-full max-h-32 object-contain rounded-md border border-border"
+                />
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-primary flex-1 truncate">
+                    {selectedFile.name}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFile}
+                    className="h-6 px-2 text-xs"
+                    data-testid="button-clear-file"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
         <p className="text-xs text-muted-foreground mt-1">
           JPG, PNG, SVG, WEBP, or HEIC - max 10MB
