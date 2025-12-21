@@ -20,7 +20,8 @@ import {
   LogIn, 
   User, 
   Shield,
-  ArrowDown
+  ArrowDown,
+  Mail
 } from "lucide-react";
 import { UserProfilePopup } from "@/components/UserProfilePopup";
 import type { ChatMessageWithAvatar } from "@shared/schema";
@@ -206,10 +207,19 @@ export default function ChatPage() {
               <h1 className="font-mono text-lg font-bold">Normie Nation Chat</h1>
             </div>
           </div>
-          <Badge variant="outline" className="font-mono text-xs">
-            <Hash className="w-3 h-3 mr-1" />
-            general
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Link href="/messages">
+              <Button variant="outline" size="sm" className="gap-1.5" data-testid="button-private-messages">
+                <Mail className="w-4 h-4" />
+                <span className="hidden sm:inline">Private Messages</span>
+                <span className="sm:hidden">DMs</span>
+              </Button>
+            </Link>
+            <Badge variant="outline" className="font-mono text-xs">
+              <Hash className="w-3 h-3 mr-1" />
+              general
+            </Badge>
+          </div>
         </div>
         {isAuthenticated && user && (
           <div className="flex items-center gap-2 px-4 pb-2 border-b border-border/50">

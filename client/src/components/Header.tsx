@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle, ExternalLink, Bug, Image, Palette } from "lucide-react";
+import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle, ExternalLink, Bug, Image, Palette, Mail } from "lucide-react";
 import { SoundToggle } from "@/components/SoundEffects";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SiTelegram, SiX } from "react-icons/si";
@@ -139,6 +139,16 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
             data-testid="nav-community"
           >
             Community
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/messages")}
+            className="gap-1"
+            data-testid="nav-messages"
+          >
+            <Mail className="h-4 w-4" />
+            Messages
           </Button>
           <Button
             variant="ghost"
