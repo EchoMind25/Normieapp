@@ -109,6 +109,7 @@ export const users = pgTable("users", {
   notifyArtworkStatus: boolean("notify_artwork_status").default(true),
   themePreference: varchar("theme_preference", { length: 10 }).default("system"),
   bannedAt: timestamp("banned_at"),
+  bannedUntil: timestamp("banned_until"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -121,6 +122,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true, 
   updatedAt: true,
   bannedAt: true,
+  bannedUntil: true,
 });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

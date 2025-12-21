@@ -108,7 +108,7 @@ export interface IStorage {
   getUserByWallet(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
-  banUser(id: string): Promise<void>;
+  banUser(id: string, bannedUntil?: Date | null): Promise<void>;
   unbanUser(id: string): Promise<void>;
   countUsers(): Promise<number>;
   
@@ -362,12 +362,18 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async banUser(id: string): Promise<void> {
-    await db.update(users).set({ bannedAt: new Date() }).where(eq(users.id, id));
+  async banUser(id: string, bannedUntil?: Date | null): Promise<void> {
+    await db.update(users).set({ 
+      bannedAt: new Date(),
+      bannedUntil: bannedUntil || null,
+    }).where(eq(users.id, id));
   }
 
   async unbanUser(id: string): Promise<void> {
-    await db.update(users).set({ bannedAt: null }).where(eq(users.id, id));
+    await db.update(users).set({ 
+      bannedAt: null,
+      bannedUntil: null,
+    }).where(eq(users.id, id));
   }
 
   async countUsers(): Promise<number> {

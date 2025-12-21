@@ -925,6 +925,10 @@ router.get("/users/profile/:identifier", async (req: Request, res: Response) => 
       }
     }
 
+    // Get user stats (art submissions and chat messages)
+    const artSubmissions = await storage.getUserGalleryItems(user.id);
+    const chatMessages = await storage.getUserChatMessages(user.id, 1000);
+
     // Only expose wallet address if user has explicitly enabled holdings visibility
     // This is a privacy-conscious approach
     const publicWalletInfo = user.holdingsVisible && user.walletAddress 
@@ -939,6 +943,11 @@ router.get("/users/profile/:identifier", async (req: Request, res: Response) => 
           holdDuration: null,
         };
 
+    // Check if temporary ban has expired
+    const now = new Date();
+    const isBanned = user.bannedAt && (!user.bannedUntil || user.bannedUntil > now);
+    const isTemporaryBan = user.bannedAt && user.bannedUntil && user.bannedUntil > now;
+
     res.json({
       id: user.id,
       username: user.username,
@@ -947,7 +956,14 @@ router.get("/users/profile/:identifier", async (req: Request, res: Response) => 
       role: user.role,
       holdingsVisible: user.holdingsVisible,
       createdAt: user.createdAt?.toISOString(),
-      isBanned: !!user.bannedAt,
+      isBanned: !!isBanned,
+      isTemporaryBan,
+      bannedUntil: user.bannedUntil?.toISOString() || null,
+      stats: {
+        artSubmissions: artSubmissions.length,
+        approvedArt: artSubmissions.filter(a => a.status === "approved").length,
+        chatMessages: chatMessages.length,
+      },
       ...publicWalletInfo,
     });
   } catch (error) {

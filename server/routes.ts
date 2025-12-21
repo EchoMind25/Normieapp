@@ -1254,21 +1254,32 @@ export async function registerRoutes(
     }
   });
 
-  // Admin: Ban user
+  // Admin: Ban user (supports temporary bans with duration in hours)
   app.post("/api/admin/users/:userId/ban", requireAdmin, async (req, res) => {
     try {
       const { userId } = req.params;
+      const { duration } = req.body; // Duration in hours, undefined/null = permanent ban
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      if (user.role === "admin") {
-        return res.status(400).json({ error: "Cannot ban admin users" });
+      if (user.role === "admin" || user.role === "founder") {
+        return res.status(400).json({ error: "Cannot ban admin or founder users" });
       }
       
-      await storage.banUser(userId);
+      // Calculate bannedUntil if duration is provided
+      let bannedUntil: Date | null = null;
+      if (duration && typeof duration === "number" && duration > 0) {
+        bannedUntil = new Date(Date.now() + duration * 60 * 60 * 1000);
+      }
+      
+      await storage.banUser(userId, bannedUntil);
       await storage.deleteUserSessions(userId);
-      res.json({ success: true, message: "User banned and logged out" });
+      
+      const message = bannedUntil 
+        ? `User banned until ${bannedUntil.toISOString()}`
+        : "User banned permanently";
+      res.json({ success: true, message, bannedUntil: bannedUntil?.toISOString() });
     } catch (error) {
       console.error("[Admin] Error banning user:", error);
       res.status(500).json({ error: "Failed to ban user" });
