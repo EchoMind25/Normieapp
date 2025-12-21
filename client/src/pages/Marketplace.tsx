@@ -194,6 +194,19 @@ export default function Marketplace() {
     queryKey: ["/api/marketplace/config"],
   });
 
+  // All hooks must be called before any conditional returns
+  const { data: listings, isLoading: listingsLoading } = useQuery<ListingWithNft[]>({
+    queryKey: ["/api/marketplace/listings"],
+  });
+
+  const { data: collections, isLoading: collectionsLoading } = useQuery<NftCollection[]>({
+    queryKey: ["/api/collections"],
+  });
+
+  const { data: recentSales } = useQuery<any[]>({
+    queryKey: ["/api/marketplace/recent-sales", { limit: 10 }],
+  });
+
   const isFounder = user?.role === "founder";
   const marketplaceOpen = config?.isOpen ?? false;
 
@@ -218,6 +231,12 @@ export default function Marketplace() {
       });
     },
   });
+
+  const filteredListings = listings?.filter(listing =>
+    !searchQuery || 
+    listing.nft.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    listing.nft.mintAddress.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Access check - allow if marketplace is open to all OR user is admin/founder
   if (authLoading || configLoading) {
@@ -253,23 +272,6 @@ export default function Marketplace() {
     );
   }
 
-  const { data: listings, isLoading: listingsLoading } = useQuery<ListingWithNft[]>({
-    queryKey: ["/api/marketplace/listings"],
-  });
-
-  const { data: collections, isLoading: collectionsLoading } = useQuery<NftCollection[]>({
-    queryKey: ["/api/collections"],
-  });
-
-  const { data: recentSales } = useQuery<any[]>({
-    queryKey: ["/api/marketplace/recent-sales", { limit: 10 }],
-  });
-
-  const filteredListings = listings?.filter(listing => 
-    !searchQuery || 
-    listing.nft.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    listing.nft.mintAddress.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div className="min-h-screen bg-background">
