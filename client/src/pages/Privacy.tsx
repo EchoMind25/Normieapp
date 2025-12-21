@@ -189,7 +189,7 @@ export default function Privacy() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Our Service is not intended for users under the age of 17. We do not knowingly collect personal information from children under 17. If you believe we have collected information from a child under 17, please contact us immediately.
+              Our Service is not intended for users under the age of 18. We do not knowingly collect personal information from children under 18. If you believe we have collected information from a child under 18, please contact us immediately.
             </p>
           </CardContent>
         </Card>

@@ -146,6 +146,15 @@ export function Footer() {
               >
                 pump.fun <ExternalLink className="h-3 w-3" />
               </a>
+              <a
+                href="https://normienation.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                data-testid="footer-community-website"
+              >
+                normienation.com <ExternalLink className="h-3 w-3" />
+              </a>
             </nav>
           </div>
 

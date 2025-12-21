@@ -102,10 +102,10 @@ export default function Terms() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              You must be at least 17 years old to use this Service. By using the Service, you represent and warrant that:
+              You must be at least 18 years old to use this Service. By using the Service, you represent and warrant that:
             </p>
             <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mt-4">
-              <li>You are at least 17 years of age</li>
+              <li>You are at least 18 years of age</li>
               <li>You have the legal capacity to enter into this agreement</li>
               <li>You are not barred from using the Service under applicable law</li>
               <li>You will comply with all applicable laws and regulations</li>
