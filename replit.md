@@ -52,6 +52,7 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Drizzle ORM (schema in `/shared/schema.ts`)
 - **Real-time Updates**: HTTP polling every 5 seconds from client, backend caches Solana RPC responses
 - **Fallback Data**: Hardcoded fallback metrics when RPC is unavailable
+- **ETag Caching**: All API endpoints support conditional GET with ETags. Frontend sends If-None-Match headers and skips state updates on 304 Not Modified responses, reducing unnecessary re-renders and data transfers when data hasn't changed.
 
 ### Solana Integration
 - **RPC Endpoint**: Public node at `https://solana-rpc.publicnode.com`
