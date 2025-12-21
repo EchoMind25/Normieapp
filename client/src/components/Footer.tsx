@@ -31,7 +31,7 @@ export function Footer() {
   return (
     <footer className="border-t border-border bg-card/50 py-8 sm:py-12 px-4 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 mb-6 sm:mb-8">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Terminal className="h-6 w-6 text-primary" />
@@ -145,6 +145,33 @@ export function Footer() {
                 data-testid="footer-community-pumpfun"
               >
                 pump.fun <ExternalLink className="h-3 w-3" />
+              </a>
+            </nav>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-mono font-bold uppercase text-sm tracking-wider">Legal</h4>
+            <nav className="flex flex-col gap-2">
+              <Link
+                href="/privacy"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="footer-link-privacy"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                href="/terms"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="footer-link-terms"
+              >
+                Terms of Service
+              </Link>
+              <a
+                href="mailto:support@tryechomind.net"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="footer-link-support"
+              >
+                Contact Support
               </a>
             </nav>
           </div>

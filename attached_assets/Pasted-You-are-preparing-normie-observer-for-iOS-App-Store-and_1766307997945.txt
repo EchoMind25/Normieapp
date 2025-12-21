@@ -1,0 +1,1069 @@
+You are preparing normie.observer for iOS App Store and Google Play Store submission while optimizing performance and implementing proper data persistence.
+
+CRITICAL CONTEXT:
+- normie.observer is a Solana memecoin/NFT tracking web app
+- Currently missing: native platform folders, legal pages, app assets, database persistence
+- Support email: support@tryechomind.net
+- Must maintain all current functionality while preparing for mobile deployment
+- Need to store historical chart data and user data in database (not just external API calls)
+
+YOUR MISSION:
+Complete ALL preparatory work that can be done in Replit before the Mac/Xcode build step.
+
+═══════════════════════════════════════════════════════════════
+PHASE 1: LEGAL COMPLIANCE (HIGHEST PRIORITY)
+═══════════════════════════════════════════════════════════════
+
+Create these required legal pages:
+
+**1. Privacy Policy (/privacy-policy)**
+
+Create a GDPR/CCPA compliant privacy policy at `/privacy-policy` route:
+
+Must include:
+- What data is collected (email, wallet addresses, usage analytics)
+- How data is used (price alerts, personalization, analytics)
+- Third-party services (DexScreener API, analytics, hosting)
+- Data retention policy (how long data is kept)
+- User rights (access, deletion, portability under GDPR/CCPA)
+- Cookie usage
+- Contact: support@tryechomind.net
+- Last updated date
+
+Template structure:
+Privacy Policy for Normie Observer
+Last Updated: [Current Date]
+Contact: support@tryechomind.net
+Information We Collect
+[Details about user data, analytics, wallet addresses if applicable]
+How We Use Your Information
+[Purpose of data collection]
+Third-Party Services
+We use the following services:
+
+DexScreener API (price data)
+[Analytics provider if any]
+[Hosting provider]
+
+Data Storage & Security
+[How data is stored, encrypted, protected]
+Your Rights
+Under GDPR and CCPA, you have the right to:
+
+Access your personal data
+Request deletion of your data
+Opt-out of data collection
+Export your data
+
+To exercise these rights, contact: support@tryechomind.net
+Children's Privacy
+This service is not intended for users under 17.
+Changes to This Policy
+We may update this policy. Check this page for updates.
+Contact Us
+Email: support@tryechomind.net
+
+**2. Terms of Service (/terms)**
+
+Create comprehensive Terms of Service:
+
+Must include:
+- Age requirement (17+ due to financial content)
+- Acceptable use policy
+- Disclaimer of financial advice
+- Risk warnings about cryptocurrency volatility
+- Limitation of liability
+- No guarantees about price accuracy
+- User responsibilities
+- Termination rights
+- Governing law
+- Dispute resolution
+- Contact: support@tryechomind.net
+
+Template structure:
+Terms of Service
+Effective Date: [Current Date]
+Contact: support@tryechomind.net
+1. Acceptance of Terms
+By accessing Normie Observer, you agree to these Terms of Service.
+2. Age Requirement
+You must be 17 years or older to use this service.
+3. Description of Service
+Normie Observer provides informational price tracking for Solana-based tokens and NFTs. We do NOT:
+
+Provide financial advice
+Facilitate cryptocurrency purchases
+Guarantee price accuracy
+Endorse any specific tokens or investments
+
+4. Financial Disclaimer
+IMPORTANT: All price information is for educational purposes only. Cryptocurrency investments carry significant risk. Past performance does not indicate future results. You should consult a financial advisor before making investment decisions.
+5. Risk Warning
+Cryptocurrency markets are highly volatile and speculative. You may lose some or all of your invested capital.
+6. User Conduct
+You agree NOT to:
+
+Use the service for illegal activities
+Attempt to manipulate price data
+Harass other users
+Upload malicious content
+Scrape data without permission
+
+7. Limitation of Liability
+Normie Observer is provided "AS IS" without warranties. We are not liable for:
+
+Investment losses
+Data inaccuracies
+Service interruptions
+Third-party actions
+
+8. Termination
+We reserve the right to terminate accounts that violate these Terms.
+9. Governing Law
+These Terms are governed by [Your Jurisdiction] law.
+10. Changes to Terms
+We may update these Terms. Continued use constitutes acceptance.
+11. Contact
+Questions? Email: support@tryechomind.net
+
+**3. Add Links to Legal Pages**
+
+Update these locations to include Privacy Policy and Terms links:
+- Footer on every page
+- User registration/signup flow
+- Settings page
+- About page
+- App Store listing (Privacy Policy URL field)
+
+═══════════════════════════════════════════════════════════════
+PHASE 2: DATABASE ARCHITECTURE & DATA PERSISTENCE
+═══════════════════════════════════════════════════════════════
+
+**CURRENT PROBLEM:**
+The app currently makes external API calls every time users need data, which is:
+- Expensive (API costs add up)
+- Slow (network latency)
+- Wasteful (fetching same data repeatedly)
+- Unreliable (external API downtime breaks app)
+
+**SOLUTION:**
+Implement comprehensive database storage for all critical data.
+
+**Database Schema (PostgreSQL or SQLite):**
+```sql
+-- Users table
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE,
+  username VARCHAR(100) UNIQUE,
+  wallet_address VARCHAR(44),
+  created_at TIMESTAMP DEFAULT NOW(),
+  last_login TIMESTAMP,
+  preferences JSONB DEFAULT '{}',
+  INDEX idx_email (email),
+  INDEX idx_wallet (wallet_address)
+);
+
+-- Price history (CRITICAL for charts)
+CREATE TABLE price_history (
+  id SERIAL PRIMARY KEY,
+  token_address VARCHAR(44) NOT NULL,
+  token_symbol VARCHAR(20),
+  token_name VARCHAR(100),
+  price DECIMAL(30, 18) NOT NULL,
+  volume_24h DECIMAL(20, 2),
+  market_cap DECIMAL(20, 2),
+  price_change_24h DECIMAL(10, 4),
+  liquidity DECIMAL(20, 2),
+  holder_count INTEGER,
+  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  source VARCHAR(50) DEFAULT 'dexscreener',
+  INDEX idx_token_time (token_address, timestamp),
+  INDEX idx_timestamp (timestamp),
+  INDEX idx_symbol (token_symbol)
+);
+
+-- NFT collections
+CREATE TABLE nft_collections (
+  id SERIAL PRIMARY KEY,
+  collection_address VARCHAR(44) UNIQUE NOT NULL,
+  name VARCHAR(255),
+  symbol VARCHAR(20),
+  floor_price DECIMAL(20, 10),
+  volume_24h DECIMAL(20, 2),
+  volume_7d DECIMAL(20, 2),
+  total_supply INTEGER,
+  holder_count INTEGER,
+  description TEXT,
+  image_url TEXT,
+  twitter_url TEXT,
+  discord_url TEXT,
+  website_url TEXT,
+  metadata JSONB,
+  last_updated TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW(),
+  INDEX idx_floor_price (floor_price),
+  INDEX idx_updated (last_updated)
+);
+
+-- NFT collection history (for floor price charts)
+CREATE TABLE nft_price_history (
+  id SERIAL PRIMARY KEY,
+  collection_address VARCHAR(44) NOT NULL,
+  floor_price DECIMAL(20, 10),
+  volume_24h DECIMAL(20, 2),
+  sales_count INTEGER,
+  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (collection_address) REFERENCES nft_collections(collection_address),
+  INDEX idx_collection_time (collection_address, timestamp)
+);
+
+-- User watchlists
+CREATE TABLE watchlists (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  token_address VARCHAR(44) NOT NULL,
+  token_type VARCHAR(20) DEFAULT 'token', -- 'token' or 'nft'
+  added_at TIMESTAMP DEFAULT NOW(),
+  notes TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(user_id, token_address),
+  INDEX idx_user_watchlist (user_id)
+);
+
+-- Price alerts
+CREATE TABLE price_alerts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  token_address VARCHAR(44) NOT NULL,
+  alert_type VARCHAR(20) NOT NULL, -- 'above', 'below', 'percent_change'
+  target_price DECIMAL(30, 18),
+  percent_change DECIMAL(10, 2),
+  triggered BOOLEAN DEFAULT FALSE,
+  triggered_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user_alerts (user_id),
+  INDEX idx_active_alerts (triggered, token_address)
+);
+
+-- API cache (reduce external calls)
+CREATE TABLE api_cache (
+  id SERIAL PRIMARY KEY,
+  cache_key VARCHAR(255) UNIQUE NOT NULL,
+  endpoint VARCHAR(500),
+  response_data JSONB NOT NULL,
+  etag VARCHAR(100),
+  last_modified TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  hit_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  INDEX idx_key_expires (cache_key, expires_at),
+  INDEX idx_expires (expires_at)
+);
+
+-- User activity log (analytics, debugging)
+CREATE TABLE activity_log (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER,
+  action VARCHAR(100) NOT NULL,
+  details JSONB,
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  timestamp TIMESTAMP DEFAULT NOW(),
+  INDEX idx_user_activity (user_id, timestamp),
+  INDEX idx_timestamp (timestamp)
+);
+
+-- Bug reports (from the bug report feature)
+CREATE TABLE bug_reports (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER,
+  description TEXT NOT NULL,
+  page_url TEXT,
+  user_agent TEXT,
+  screenshot_url TEXT,
+  image_audit JSONB,
+  broken_images_count INTEGER DEFAULT 0,
+  viewport JSONB,
+  performance_metrics JSONB,
+  status VARCHAR(20) DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT NOW(),
+  resolved_at TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_status (status),
+  INDEX idx_created (created_at)
+);
+```
+
+**Database Initialization Script:**
+
+Create `database/init.sql` with all the CREATE TABLE statements above.
+
+Create `database/migrate.js`:
+```javascript
+const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
+
+async function runMigrations() {
+  const sqlFile = fs.readFileSync(path.join(__dirname, 'init.sql'), 'utf8');
+  
+  try {
+    await pool.query(sqlFile);
+    console.log('✅ Database migrations completed');
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+}
+
+runMigrations();
+```
+
+═══════════════════════════════════════════════════════════════
+PHASE 3: BACKEND DATA COLLECTION SERVICE
+═══════════════════════════════════════════════════════════════
+
+**Create automated data collection to populate the database:**
+
+Create `backend/services/dataCollector.js`:
+```javascript
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+class DataCollector {
+  constructor() {
+    this.isRunning = false;
+    this.collectionInterval = 60000; // 1 minute
+  }
+
+  async start() {
+    console.log('🚀 Data collector starting...');
+    this.isRunning = true;
+    this.collectLoop();
+  }
+
+  async collectLoop() {
+    while (this.isRunning) {
+      try {
+        await this.collectPriceData();
+        await this.collectNFTData();
+        await this.checkPriceAlerts();
+        await this.cleanupOldCache();
+      } catch (error) {
+        console.error('Collection error:', error);
+      }
+      
+      await this.sleep(this.collectionInterval);
+    }
+  }
+
+  async collectPriceData() {
+    // Get list of tokens to track (from watchlists + trending)
+    const tokens = await pool.query(`
+      SELECT DISTINCT token_address 
+      FROM watchlists 
+      UNION 
+      SELECT DISTINCT token_address 
+      FROM price_history 
+      WHERE timestamp > NOW() - INTERVAL '24 hours'
+      LIMIT 100
+    `);
+
+    for (const token of tokens.rows) {
+      // Fetch from DexScreener API
+      const priceData = await this.fetchTokenPrice(token.token_address);
+      
+      if (priceData) {
+        // Store in database
+        await pool.query(`
+          INSERT INTO price_history (
+            token_address, token_symbol, token_name, price, 
+            volume_24h, market_cap, price_change_24h, 
+            liquidity, holder_count, source
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `, [
+          token.token_address,
+          priceData.symbol,
+          priceData.name,
+          priceData.price,
+          priceData.volume24h,
+          priceData.marketCap,
+          priceData.priceChange24h,
+          priceData.liquidity,
+          priceData.holders,
+          'dexscreener'
+        ]);
+      }
+      
+      // Rate limiting
+      await this.sleep(100);
+    }
+  }
+
+  async fetchTokenPrice(tokenAddress) {
+    const cacheKey = `token_price_${tokenAddress}`;
+    
+    // Check cache first
+    const cached = await pool.query(`
+      SELECT response_data, expires_at
+      FROM api_cache
+      WHERE cache_key = $1 AND expires_at > NOW()
+    `, [cacheKey]);
+
+    if (cached.rows.length > 0) {
+      await pool.query(`
+        UPDATE api_cache 
+        SET hit_count = hit_count + 1 
+        WHERE cache_key = $1
+      `, [cacheKey]);
+      
+      return cached.rows[0].response_data;
+    }
+
+    // Fetch from API
+    try {
+      const response = await fetch(
+        `https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`
+      );
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      
+      // Cache for 1 minute
+      await pool.query(`
+        INSERT INTO api_cache (cache_key, endpoint, response_data, expires_at)
+        VALUES ($1, $2, $3, NOW() + INTERVAL '1 minute')
+        ON CONFLICT (cache_key) 
+        DO UPDATE SET 
+          response_data = $3,
+          expires_at = NOW() + INTERVAL '1 minute',
+          updated_at = NOW()
+      `, [
+        cacheKey,
+        `dexscreener_token_${tokenAddress}`,
+        JSON.stringify(data.pairs[0])
+      ]);
+      
+      return data.pairs[0];
+    } catch (error) {
+      console.error(`Error fetching ${tokenAddress}:`, error.message);
+      return null;
+    }
+  }
+
+  async collectNFTData() {
+    // Similar to collectPriceData but for NFT collections
+    const collections = await pool.query(`
+      SELECT collection_address FROM nft_collections
+      WHERE last_updated < NOW() - INTERVAL '5 minutes'
+      LIMIT 50
+    `);
+
+    for (const collection of collections.rows) {
+      // Fetch NFT data and store
+      // Implementation depends on your NFT data source
+    }
+  }
+
+  async checkPriceAlerts() {
+    const activeAlerts = await pool.query(`
+      SELECT pa.*, ph.price as current_price
+      FROM price_alerts pa
+      JOIN LATERAL (
+        SELECT price 
+        FROM price_history 
+        WHERE token_address = pa.token_address 
+        ORDER BY timestamp DESC 
+        LIMIT 1
+      ) ph ON true
+      WHERE pa.triggered = FALSE
+    `);
+
+    for (const alert of activeAlerts.rows) {
+      let shouldTrigger = false;
+
+      if (alert.alert_type === 'above' && alert.current_price >= alert.target_price) {
+        shouldTrigger = true;
+      } else if (alert.alert_type === 'below' && alert.current_price <= alert.target_price) {
+        shouldTrigger = true;
+      }
+
+      if (shouldTrigger) {
+        await pool.query(`
+          UPDATE price_alerts 
+          SET triggered = TRUE, triggered_at = NOW() 
+          WHERE id = $1
+        `, [alert.id]);
+
+        // Send notification (email, push, etc.)
+        await this.sendPriceAlert(alert);
+      }
+    }
+  }
+
+  async cleanupOldCache() {
+    // Delete expired cache entries
+    await pool.query(`DELETE FROM api_cache WHERE expires_at < NOW()`);
+    
+    // Delete old price history (keep 90 days)
+    await pool.query(`
+      DELETE FROM price_history 
+      WHERE timestamp < NOW() - INTERVAL '90 days'
+    `);
+  }
+
+  async sendPriceAlert(alert) {
+    // TODO: Implement email/push notification
+    console.log(`Alert triggered for user ${alert.user_id}: ${alert.token_address}`);
+  }
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  stop() {
+    this.isRunning = false;
+  }
+}
+
+module.exports = DataCollector;
+```
+
+**Start data collector in your server:**
+
+In `server.js` or `index.js`:
+```javascript
+const DataCollector = require('./backend/services/dataCollector');
+
+const collector = new DataCollector();
+collector.start();
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  collector.stop();
+  process.exit(0);
+});
+```
+
+═══════════════════════════════════════════════════════════════
+PHASE 4: FRONTEND API UPDATES (USE DATABASE, NOT EXTERNAL API)
+═══════════════════════════════════════════════════════════════
+
+**Update frontend to fetch from YOUR database instead of external APIs:**
+
+**Old approach (BAD - expensive, slow):**
+```javascript
+// Frontend makes external API call every time
+const response = await fetch('https://api.dexscreener.com/tokens/...');
+```
+
+**New approach (GOOD - fast, cheap, reliable):**
+```javascript
+// Frontend calls YOUR backend, which serves from database
+const response = await fetch('/api/prices/TOKEN_ADDRESS');
+```
+
+**Create API endpoints that serve from database:**
+
+Create `backend/routes/prices.js`:
+```javascript
+const express = require('express');
+const router = express.Router();
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// Get current price for a token
+router.get('/prices/:tokenAddress', async (req, res) => {
+  const { tokenAddress } = req.params;
+  
+  const result = await pool.query(`
+    SELECT * FROM price_history
+    WHERE token_address = $1
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `, [tokenAddress]);
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: 'Token not found' });
+  }
+
+  res.json(result.rows[0]);
+});
+
+// Get price chart data
+router.get('/chart/:tokenAddress', async (req, res) => {
+  const { tokenAddress } = req.params;
+  const { timeframe = '24h' } = req.query;
+
+  const intervals = {
+    '1h': "1 minute",
+    '24h': "5 minutes",
+    '7d': "1 hour",
+    '30d': "4 hours"
+  };
+
+  const timeRanges = {
+    '1h': "1 hour",
+    '24h': "24 hours",
+    '7d': "7 days",
+    '30d': "30 days"
+  };
+
+  const chartData = await pool.query(`
+    SELECT 
+      date_trunc($1, timestamp) as time,
+      AVG(price) as price,
+      MAX(price) as high,
+      MIN(price) as low,
+      FIRST_VALUE(price) OVER (PARTITION BY date_trunc($1, timestamp) ORDER BY timestamp) as open,
+      LAST_VALUE(price) OVER (PARTITION BY date_trunc($1, timestamp) ORDER BY timestamp) as close,
+      AVG(volume_24h) as volume
+    FROM price_history
+    WHERE token_address = $2
+      AND timestamp > NOW() - INTERVAL $3
+    GROUP BY date_trunc($1, timestamp)
+    ORDER BY time ASC
+  `, [intervals[timeframe], tokenAddress, timeRanges[timeframe]]);
+
+  res.json(chartData.rows);
+});
+
+// Get trending tokens (most watched)
+router.get('/trending', async (req, res) => {
+  const trending = await pool.query(`
+    SELECT 
+      ph.token_address,
+      ph.token_symbol,
+      ph.token_name,
+      ph.price,
+      ph.price_change_24h,
+      ph.volume_24h,
+      COUNT(w.id) as watchlist_count
+    FROM price_history ph
+    LEFT JOIN watchlists w ON ph.token_address = w.token_address
+    WHERE ph.timestamp > NOW() - INTERVAL '5 minutes'
+    GROUP BY ph.token_address, ph.token_symbol, ph.token_name, 
+             ph.price, ph.price_change_24h, ph.volume_24h
+    ORDER BY watchlist_count DESC, ph.volume_24h DESC
+    LIMIT 20
+  `);
+
+  res.json(trending.rows);
+});
+
+module.exports = router;
+```
+
+**Update frontend components to use new endpoints:**
+```javascript
+// Old (direct external API call)
+async function fetchTokenPrice(tokenAddress) {
+  const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
+  return response.json();
+}
+
+// New (use your backend/database)
+async function fetchTokenPrice(tokenAddress) {
+  const response = await fetch(`/api/prices/${tokenAddress}`);
+  return response.json();
+}
+
+async function fetchChartData(tokenAddress, timeframe) {
+  const response = await fetch(`/api/chart/${tokenAddress}?timeframe=${timeframe}`);
+  return response.json();
+}
+```
+
+═══════════════════════════════════════════════════════════════
+PHASE 5: PERFORMANCE OPTIMIZATIONS
+═══════════════════════════════════════════════════════════════
+
+**1. Enable Compression:**
+```javascript
+// In server.js
+const compression = require('compression');
+app.use(compression());
+```
+
+**2. Implement Response Caching:**
+```javascript
+// Cache middleware
+const apicache = require('apicache');
+const cache = apicache.middleware;
+
+app.use('/api/prices', cache('1 minute'));
+app.use('/api/chart', cache('5 minutes'));
+app.use('/api/trending', cache('2 minutes'));
+```
+
+**3. Database Connection Pooling:**
+```javascript
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 20, // Maximum pool size
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000
+});
+```
+
+**4. Optimize Images:**
+- Create script to compress all images
+- Use WebP format where possible
+- Implement lazy loading
+
+Create `scripts/optimize-images.js`:
+```javascript
+const sharp = require('sharp');
+const glob = require('glob');
+const fs = require('fs');
+
+const images = glob.sync('public/**/*.{png,jpg,jpeg}');
+
+images.forEach(async (imagePath) => {
+  const outputPath = imagePath.replace(/\.(png|jpg|jpeg)$/, '.webp');
+  
+  await sharp(imagePath)
+    .webp({ quality: 80 })
+    .toFile(outputPath);
+  
+  console.log(`✅ Optimized: ${imagePath} → ${outputPath}`);
+});
+```
+
+**5. Add Service Worker for Offline Support:**
+
+Create `public/service-worker.js`:
+```javascript
+const CACHE_NAME = 'normie-observer-v1';
+const urlsToCache = [
+  '/',
+  '/static/css/main.css',
+  '/static/js/main.js',
+  '/manifest.json'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => response || fetch(event.request))
+  );
+});
+```
+
+**6. Implement Rate Limiting:**
+```javascript
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+app.use('/api/', limiter);
+```
+
+═══════════════════════════════════════════════════════════════
+PHASE 6: APP ASSETS (CAN BE DONE IN REPLIT)
+═══════════════════════════════════════════════════════════════
+
+**Generate placeholder app icons and splash screens:**
+
+Create `assets/generate-icons.js`:
+```javascript
+const sharp = require('sharp');
+const fs = require('fs').promises;
+
+const sizes = {
+  ios: [20, 29, 40, 58, 60, 76, 80, 87, 120, 152, 167, 180, 1024],
+  android: [36, 48, 72, 96, 144, 192, 512]
+};
+
+async function generateIcons() {
+  // Create base 1024x1024 icon (you'll need to design this)
+  // For now, create a placeholder
+  
+  const svgIcon = `
+    <svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1024" height="1024" fill="#000000"/>
+      <text x="50%" y="50%" 
+            font-family="Arial" 
+            font-size="400" 
+            fill="#00ff88" 
+            text-anchor="middle" 
+            dominant-baseline="middle">N</text>
+    </svg>
+  `;
+
+  await fs.mkdir('assets/icons', { recursive: true });
+
+  // Generate iOS icons
+  for (const size of sizes.ios) {
+    await sharp(Buffer.from(svgIcon))
+      .resize(size, size)
+      .png()
+      .toFile(`assets/icons/icon-${size}.png`);
+    
+    console.log(`✅ Generated icon-${size}.png`);
+  }
+
+  // Generate Android icons
+  for (const size of sizes.android) {
+    await sharp(Buffer.from(svgIcon))
+      .resize(size, size)
+      .png()
+      .toFile(`assets/icons/android-icon-${size}.png`);
+    
+    console.log(`✅ Generated android-icon-${size}.png`);
+  }
+
+  console.log('✅ All icons generated. Replace with actual logo later.');
+}
+
+generateIcons();
+```
+
+═══════════════════════════════════════════════════════════════
+PHASE 7: ENVIRONMENT SETUP & CONFIGURATION
+═══════════════════════════════════════════════════════════════
+
+**Create `.env.example` with all required environment variables:**
+```bash
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/normie_observer
+
+# Email (for bug reports, alerts)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# API Keys (if needed)
+DEXSCREENER_API_KEY=optional
+
+# App Configuration
+APP_URL=https://normie.observer
+SUPPORT_EMAIL=support@tryechomind.net
+
+# Security
+JWT_SECRET=your-super-secret-jwt-key-change-this
+SESSION_SECRET=your-session-secret
+
+# Node Environment
+NODE_ENV=production
+PORT=3000
+```
+
+**Update `capacitor.config.ts` with correct URLs:**
+```typescript
+import { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.normie.observer',
+  appName: 'Normie Observer',
+  webDir: 'dist', // or 'build'
+  bundledWebRuntime: false,
+  server: {
+    url: process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3000' 
+      : 'https://normie.observer',
+    cleartext: true
+  },
+  ios: {
+    contentInset: 'automatic',
+    scrollEnabled: true,
+    backgroundColor: '#000000'
+  },
+  android: {
+    backgroundColor: '#000000',
+    allowMixedContent: false
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      backgroundColor: '#000000',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      androidSpinnerStyle: 'large',
+      iosSpinnerStyle: 'small',
+      spinnerColor: '#00ff88'
+    }
+  }
+};
+
+export default config;
+```
+
+═══════════════════════════════════════════════════════════════
+PHASE 8: TESTING & VALIDATION
+═══════════════════════════════════════════════════════════════
+
+**Create comprehensive test suite:**
+
+Create `tests/pre-deployment.test.js`:
+```javascript
+const assert = require('assert');
+const fetch = require('node-fetch');
+
+const BASE_URL = process.env.APP_URL || 'http://localhost:3000';
+
+async function runTests() {
+  console.log('🧪 Running pre-deployment tests...\n');
+
+  // Test 1: Legal pages exist
+  console.log('Testing legal pages...');
+  const privacyResp = await fetch(`${BASE_URL}/privacy-policy`);
+  assert(privacyResp.ok, 'Privacy Policy page should exist');
+  
+  const termsResp = await fetch(`${BASE_URL}/terms`);
+  assert(termsResp.ok, 'Terms of Service page should exist');
+  
+  console.log('✅ Legal pages exist\n');
+
+  // Test 2: API endpoints work
+  console.log('Testing API endpoints...');
+  const trendingResp = await fetch(`${BASE_URL}/api/trending`);
+  const trendingData = await trendingResp.json();
+  assert(Array.isArray(trendingData), 'Trending should return array');
+  
+  console.log('✅ API endpoints working\n');
+
+  // Test 3: Database connection
+  console.log('Testing database...');
+  const dbResp = await fetch(`${BASE_URL}/api/health/db`);
+  assert(dbResp.ok, 'Database should be connected');
+  
+  console.log('✅ Database connected\n');
+
+  // Test 4: Support email correct everywhere
+  console.log('Checking support email...');
+  const indexResp = await fetch(BASE_URL);
+  const indexHTML = await indexResp.text();
+  assert(
+    indexHTML.includes('support@tryechomind.net'),
+    'Support email should be support@tryechomind.net'
+  );
+  
+  console.log('✅ Support email correct\n');
+
+  // Test 5: Performance
+  console.log('Testing load time...');
+  const start = Date.now();
+  await fetch(BASE_URL);
+  const loadTime = Date.now() - start;
+  assert(loadTime < 3000, `Load time should be under 3s (was ${loadTime}ms)`);
+  
+  console.log(`✅ Load time: ${loadTime}ms\n`);
+
+  console.log('🎉 All tests passed!');
+}
+
+runTests().catch(error => {
+  console.error('❌ Tests failed:', error);
+  process.exit(1);
+});
+```
+
+═══════════════════════════════════════════════════════════════
+DELIVERABLES
+═══════════════════════════════════════════════════════════════
+
+Provide these complete, production-ready files:
+
+1. **Legal Pages:**
+   - `/privacy-policy` route with full Privacy Policy
+   - `/terms` route with full Terms of Service
+   - Footer component updated with links
+
+2. **Database:**
+   - `database/init.sql` (complete schema)
+   - `database/migrate.js` (migration runner)
+   - Database seeding script (optional sample data)
+
+3. **Backend Services:**
+   - `backend/services/dataCollector.js` (automated data collection)
+   - `backend/routes/prices.js` (API endpoints serving from DB)
+   - Server integration code
+
+4. **Performance:**
+   - Compression enabled
+   - Caching middleware
+   - Rate limiting
+   - Service worker
+   - Image optimization script
+
+5. **Assets:**
+   - Icon generation script
+   - Placeholder icons (1024x1024, all sizes)
+   - Splash screen templates
+
+6. **Configuration:**
+   - `.env.example` with all variables
+   - Updated `capacitor.config.ts`
+   - `package.json` with all dependencies
+
+7. **Testing:**
+   - Pre-deployment test suite
+   - Database health check endpoint
+   - Performance monitoring
+
+8. **Documentation:**
+   - `DEPLOYMENT.md` (how to deploy)
+   - `DATABASE.md` (schema documentation)
+   - `API.md` (API endpoint documentation)
+   - `PERFORMANCE.md` (optimization guide)
+   - `MOBILE_BUILD.md` (next steps for iOS/Android)
+
+═══════════════════════════════════════════════════════════════
+SUCCESS CRITERIA
+═══════════════════════════════════════════════════════════════
+
+Before considering this complete, verify:
+
+- [ ] Privacy Policy accessible at /privacy-policy
+- [ ] Terms of Service accessible at /terms
+- [ ] All support emails changed to support@tryechomind.net
+- [ ] Database schema created and tested
+- [ ] Data collector service running and populating DB
+- [ ] Frontend using backend APIs (not external APIs directly)
+- [ ] Chart data loading from database
+- [ ] API response times under 200ms
+- [ ] Page load time under 3 seconds
+- [ ] All images optimized
+- [ ] Service worker registered
+- [ ] Rate limiting enabled
+- [ ] All tests passing
+- [ ] No console errors in browser
+- [ ] Works offline (graceful degradation)
+
+═══════════════════════════════════════════════════════════════
+CONSTRAINTS
+═══════════════════════════════════════════════════════════════
+
+- Do NOT break existing functionality
+- Do NOT change UI/UX (only backend/performance)
+- Do NOT add features not mentioned
+- MUST use support@tryechomind.net everywhere
+- MUST store data in database (reduce external API calls)
+- MUST be production-ready code
+- Database queries MUST be parameterized (SQL injection prevention)
+- All user input MUST be validated
+- All errors MUST be handled gracefully
+
+Work methodically through each phase. After completing each phase, provide a summary of what was done and move to the next phase. This is critical infrastructure work that must be done carefully and correctly before mobile deployment.
