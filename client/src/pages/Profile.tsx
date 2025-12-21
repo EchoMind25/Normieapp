@@ -27,7 +27,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon, Palette, Check, Link as LinkIcon, Coins, Clock } from "lucide-react";
+import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon, Palette, Check, Link as LinkIcon, Unlink, Coins, Clock } from "lucide-react";
 import { getAvailableWallets, linkWalletToAccount, type WalletProvider } from "@/lib/wallet";
 import { NotificationSettings } from "@/components/NotificationSettings";
 
@@ -283,7 +283,30 @@ export default function Profile() {
 
   const hasEmailAuth = !!user.email;
   const hasWalletAuth = !!user.walletAddress;
-  const isAdmin = user.role === "admin";
+  const isAdmin = user.role === "admin" || user.role === "founder";
+  const [isUnlinkingWallet, setIsUnlinkingWallet] = useState(false);
+
+  const handleUnlinkWallet = async () => {
+    if (!hasWalletAuth) return;
+    
+    setIsUnlinkingWallet(true);
+    try {
+      await apiRequest("POST", "/api/auth/wallet/unlink");
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({
+        title: "Wallet unlinked",
+        description: "Your wallet has been disconnected from your account",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unlink failed",
+        description: error.message || "Failed to unlink wallet",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUnlinkingWallet(false);
+    }
+  };
 
   const handleLinkWallet = async (provider: WalletProvider) => {
     if (hasWalletAuth) {
@@ -371,6 +394,19 @@ export default function Profile() {
                     </span>
                   )}
                 </div>
+                {hasWalletAuth && hasEmailAuth && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUnlinkWallet}
+                    disabled={isUnlinkingWallet}
+                    className="mt-2"
+                    data-testid="button-unlink-wallet"
+                  >
+                    <Unlink className="h-3 w-3 mr-1" />
+                    {isUnlinkingWallet ? "Unlinking..." : "Unlink Wallet"}
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>

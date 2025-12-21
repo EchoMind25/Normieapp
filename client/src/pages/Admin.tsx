@@ -71,29 +71,32 @@ export default function Admin() {
   const { uploadFile, isUploading: isUploadingAdminArt } = useUpload();
   const { uploadFile: uploadFavicon, isUploading: isUploadingFavicon } = useUpload();
 
+  // Check if user has admin privileges (admin or founder role)
+  const hasAdminAccess = user?.role === "admin" || user?.role === "founder";
+
   const { data: manualDevBuys = [], isLoading: loadingBuys } = useQuery<ManualDevBuy[]>({
     queryKey: ["/api/admin/dev-buys"],
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && hasAdminAccess,
   });
 
   const { data: pendingGallery = [], isLoading: loadingPending, refetch: refetchPending } = useQuery<GalleryItem[]>({
     queryKey: ["/api/admin/gallery/pending"],
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && hasAdminAccess,
   });
 
   const { data: allGallery = [], refetch: refetchGallery } = useQuery<GalleryItem[]>({
     queryKey: ["/api/gallery"],
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && hasAdminAccess,
   });
 
   const { data: polls = [], refetch: refetchPolls } = useQuery<Poll[]>({
     queryKey: ["/api/admin/polls"],
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && hasAdminAccess,
   });
 
   const { data: stats, isLoading: loadingStats } = useQuery<{ totalUsers: number }>({
     queryKey: ["/api/admin/stats"],
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && hasAdminAccess,
   });
 
   // User Management Queries
@@ -112,7 +115,7 @@ export default function Admin() {
   
   const { data: allUsers = [], refetch: refetchUsers } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && hasAdminAccess,
   });
 
   interface UserDetails {
@@ -123,7 +126,7 @@ export default function Admin() {
   
   const { data: userDetails, isLoading: loadingUserDetails } = useQuery<UserDetails>({
     queryKey: ["/api/admin/users", selectedUserId],
-    enabled: !!selectedUserId && isAuthenticated && user?.role === "admin",
+    enabled: !!selectedUserId && isAuthenticated && hasAdminAccess,
   });
 
   // Favicon Management Queries
@@ -137,7 +140,7 @@ export default function Admin() {
   
   const { data: favicons = [], refetch: refetchFavicons } = useQuery<AdminFavicon[]>({
     queryKey: ["/api/admin/favicons"],
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && hasAdminAccess,
   });
 
   const addDevBuyMutation = useMutation({

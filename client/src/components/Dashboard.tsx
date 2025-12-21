@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
+import { FounderWalletCards } from "@/components/FounderWalletCards";
 import {
   TrendingUp,
   TrendingDown,
@@ -145,6 +147,9 @@ interface ChartMarker {
 }
 
 export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnected }: DashboardProps) {
+  const { user, isAuthenticated } = useAuth();
+  const isFounder = user?.role === "founder";
+  
   const [timeRange, setTimeRange] = useState("24h");
   const [chartData, setChartData] = useState<PricePoint[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
@@ -701,6 +706,12 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
             isLoading={isLoading}
           />
         </div>
+
+        {isAuthenticated && isFounder && (
+          <div className="mb-8">
+            <FounderWalletCards userWalletAddress={user?.walletAddress} />
+          </div>
+        )}
 
         <Card className="p-4 lg:p-6 mb-6">
           <div className="flex items-center justify-between gap-4 mb-4">
