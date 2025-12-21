@@ -25,6 +25,15 @@ declare global {
 
 export type WalletProvider = "phantom" | "solflare";
 
+// Browser-native base64 encoding for Uint8Array (replaces Node.js Buffer)
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 export function getAvailableWallets(): WalletProvider[] {
   const wallets: WalletProvider[] = [];
   if (window.solana?.isPhantom) wallets.push("phantom");
@@ -105,8 +114,8 @@ export async function signMessage(
     }
     
     return {
-      signature: Buffer.from(signature).toString("base64"),
-      publicKey: Buffer.from(wallet.publicKey.toBytes()).toString("base64"),
+      signature: uint8ArrayToBase64(signature),
+      publicKey: uint8ArrayToBase64(wallet.publicKey.toBytes()),
     };
   } catch (error: any) {
     console.error("Sign message error:", error?.message || error);

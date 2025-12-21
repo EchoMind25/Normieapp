@@ -219,6 +219,7 @@ export function Footer() {
               <FeedbackForm />
               <span>Built with chaos</span>
               <span className="text-primary">by Normies, for Normies</span>
+              <span className="opacity-50" data-testid="text-app-version">v1.0.0</span>
             </div>
           </div>
         </div>

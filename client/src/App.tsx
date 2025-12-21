@@ -1,5 +1,5 @@
 import { Switch, Route } from "wouter";
-import { lazy, Suspense, useEffect, Component, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, Component, type ReactNode } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,6 +12,9 @@ import { DynamicFavicon } from "@/components/DynamicFavicon";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { SplashScreen } from "@/components/SplashScreen";
+import { RateAppPrompt } from "@/components/RateAppPrompt";
+import { ConsentBanner } from "@/components/ConsentBanner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -126,6 +129,8 @@ function Router() {
 }
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     if (isNative) {
       initStatusBar();
@@ -138,13 +143,16 @@ function App() {
       <AuthProvider>
         <SoundProvider>
           <TooltipProvider>
+            {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
             <DynamicFavicon />
             <Toaster />
             <OfflineBanner />
+            <ConsentBanner />
             <DisclaimerModal />
             <ForcePasswordChange />
             <NotificationPrompt />
             <PWAInstallPrompt />
+            <RateAppPrompt />
             <Router />
           </TooltipProvider>
         </SoundProvider>
