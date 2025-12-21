@@ -1,6 +1,5 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import path from "path";
@@ -139,19 +138,7 @@ async function requireFounder(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-const apiLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
-  max: 300,
-  message: { error: "Too many requests, try again later" },
-  validate: { xForwardedForHeader: false },
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { error: "Too many authentication attempts, try again later" },
-  validate: { xForwardedForHeader: false },
-});
+import { apiLimiter, embedLimiter } from "./rateLimiters";
 
 // Allowed origins for embed CORS - exact match only
 const EMBED_ALLOWED_ORIGINS = new Set([
@@ -161,14 +148,6 @@ const EMBED_ALLOWED_ORIGINS = new Set([
   "http://localhost:5173",
   "http://localhost:5000",
 ]);
-
-// Embed rate limiter (more restrictive for external usage)
-const embedLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
-  max: 120,
-  message: { error: "Rate limit exceeded for embed API" },
-  validate: { xForwardedForHeader: false },
-});
 
 // CORS middleware for embed endpoints - strict origin validation
 function embedCors(req: Request, res: Response, next: NextFunction) {
@@ -563,7 +542,8 @@ export async function registerRoutes(
     }
   });
 
-  app.use("/api/auth", authLimiter, authRoutes);
+  // Auth routes use per-endpoint rate limiting (see authRoutes.ts)
+  app.use("/api/auth", authRoutes);
   
   app.use("/api", apiLimiter);
 

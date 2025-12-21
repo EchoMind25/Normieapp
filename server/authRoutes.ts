@@ -15,6 +15,7 @@ import {
   ADMIN_USERNAME,
   type AuthRequest,
 } from "./auth";
+import { authLimiter, authSessionLimiter } from "./rateLimiters";
 
 const router = Router();
 
@@ -29,7 +30,7 @@ const PASSWORD_RESET_EXPIRY_HOURS = 1;
 // Wallet Authentication
 // =====================================================
 
-router.post("/wallet/challenge", async (req: Request, res: Response) => {
+router.post("/wallet/challenge", authLimiter, async (req: Request, res: Response) => {
   try {
     const { walletAddress } = req.body;
     
@@ -54,7 +55,7 @@ router.post("/wallet/challenge", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/wallet/verify", async (req: Request, res: Response) => {
+router.post("/wallet/verify", authLimiter, async (req: Request, res: Response) => {
   try {
     const { walletAddress, challenge, signature, publicKey } = req.body;
 
@@ -143,6 +144,7 @@ router.post("/wallet/verify", async (req: Request, res: Response) => {
 
 router.post(
   "/register",
+  authLimiter,
   [
     body("email").isEmail().normalizeEmail(),
     body("password")
@@ -230,6 +232,7 @@ router.post(
 
 router.post(
   "/login",
+  authLimiter,
   [
     body("identifier").notEmpty().withMessage("Username or email is required"),
     body("password").notEmpty(),
@@ -331,7 +334,7 @@ router.post("/logout", authMiddleware, async (req: AuthRequest, res: Response) =
 // Age Verification (Server-side tracking)
 // =====================================================
 
-router.post("/verify-age", (req: Request, res: Response) => {
+router.post("/verify-age", authSessionLimiter, (req: Request, res: Response) => {
   try {
     const { confirmed } = req.body;
     
@@ -356,7 +359,7 @@ router.post("/verify-age", (req: Request, res: Response) => {
   }
 });
 
-router.get("/age-status", (req: Request, res: Response) => {
+router.get("/age-status", authSessionLimiter, (req: Request, res: Response) => {
   try {
     const verified = req.signedCookies?.ageVerified === "true";
     res.json({ verified });
@@ -507,7 +510,7 @@ router.post(
 // Current User
 // =====================================================
 
-router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/me", authSessionLimiter, authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       res.status(401).json({ error: "Not authenticated" });
@@ -536,7 +539,7 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 // Get user's wallet holdings balance (for displaying on profile when holdingsVisible is true)
-router.get("/holdings", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/holdings", authSessionLimiter, authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       res.status(401).json({ error: "Not authenticated" });
@@ -924,7 +927,7 @@ router.post("/wallet/link-verify", authMiddleware, async (req: AuthRequest, res:
 // Public User Profile Lookup
 // =====================================================
 
-router.get("/users/profile/:identifier", async (req: Request, res: Response) => {
+router.get("/users/profile/:identifier", authSessionLimiter, async (req: Request, res: Response) => {
   try {
     const { identifier } = req.params;
     
