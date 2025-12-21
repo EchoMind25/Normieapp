@@ -62,9 +62,10 @@ interface StatCardProps {
   icon: React.ReactNode;
   color?: string;
   isLoading?: boolean;
+  subtitle?: string;
 }
 
-function StatCard({ title, value, change, icon, color = "text-primary", isLoading }: StatCardProps) {
+function StatCard({ title, value, change, icon, color = "text-primary", isLoading, subtitle }: StatCardProps) {
   const [isPulsing, setIsPulsing] = useState(false);
   const prevValue = useRef(value);
 
@@ -118,6 +119,11 @@ function StatCard({ title, value, change, icon, color = "text-primary", isLoadin
                 {change.toFixed(2)}%
               </span>
             </div>
+          )}
+          {subtitle && (
+            <p className="text-xs font-mono text-muted-foreground underline underline-offset-2">
+              {subtitle}
+            </p>
           )}
         </div>
         <div className={`p-2 rounded-md bg-muted ${color}`}>{icon}</div>
@@ -697,6 +703,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
               icon={<Lock className="h-5 w-5" />}
               color="text-chart-3"
               isLoading={isLoading}
+              subtitle="View contract on Streamflow"
             />
           </a>
           <StatCard
