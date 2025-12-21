@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import normieLogoPath from "@assets/generated_images/normie_logo_sticker.png";
+import normieLogoPath from "@assets/Normie-Favicon_1766311150538.png";
 
 interface SplashScreenProps {
   onComplete?: () => void;
@@ -36,7 +36,7 @@ export function SplashScreen({ onComplete, minDuration = 1500 }: SplashScreenPro
         <img
           src={normieLogoPath}
           alt="Normie"
-          className="w-32 h-32 animate-pulse"
+          className="w-48 h-48 animate-pulse"
         />
         <div className="text-center">
           <h1 className="text-white font-mono text-2xl font-bold tracking-wider">
