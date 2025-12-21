@@ -328,6 +328,44 @@ router.post("/logout", authMiddleware, async (req: AuthRequest, res: Response) =
 });
 
 // =====================================================
+// Age Verification (Server-side tracking)
+// =====================================================
+
+router.post("/verify-age", (req: Request, res: Response) => {
+  try {
+    const { confirmed } = req.body;
+    
+    if (confirmed !== true) {
+      res.status(400).json({ error: "Age confirmation required" });
+      return;
+    }
+
+    // Set a signed cookie valid for 1 year
+    res.cookie("ageVerified", "true", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+      signed: true,
+    });
+
+    res.json({ verified: true });
+  } catch (error) {
+    console.error("[Auth] Age verification error:", error);
+    res.status(500).json({ error: "Age verification failed" });
+  }
+});
+
+router.get("/age-status", (req: Request, res: Response) => {
+  try {
+    const verified = req.signedCookies?.ageVerified === "true";
+    res.json({ verified });
+  } catch (error) {
+    res.json({ verified: false });
+  }
+});
+
+// =====================================================
 // Password Reset
 // =====================================================
 

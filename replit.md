@@ -157,6 +157,46 @@ Set `EMBED_SECRET` environment variable to require token authentication for embe
 ### Documentation
 See `EMBED_INTEGRATION_GUIDE.md` for complete integration instructions for external developers.
 
+## Apple App Store Compliance (December 2025)
+
+### Age Verification
+- **Server-side**: Signed cookie verification via `/api/auth/verify-age` and `/api/auth/age-status`
+- **Client-side**: Age gate modal on first launch with fallback to localStorage
+- **Requirement**: Users must confirm 18+ before accessing cryptocurrency content
+
+### Friend System
+- **Tables**: `friendships` - manages friend requests and relationships
+- **Status**: pending, accepted, blocked
+- **API Endpoints**:
+  - `POST /api/friends/request` - Send friend request (block-checked)
+  - `POST /api/friends/accept/:id` - Accept request
+  - `POST /api/friends/decline/:id` - Decline request
+  - `DELETE /api/friends/:id` - Unfriend
+
+### E2E Encrypted Private Messaging
+- **Encryption**: tweetnacl for X25519 key exchange and secretbox encryption
+- **Tables**: `privateConversations`, `privateMessages`, `userEncryptionKeys`
+- **Requirement**: Must be friends before messaging
+- **Block Check**: Messages blocked if either user has blocked the other
+- **Client Library**: `client/src/lib/encryption.ts`
+
+### User Reporting System
+- **Types**: harassment, spam, inappropriate_content, impersonation, other
+- **Table**: `userReports` with status (pending, reviewed, resolved, dismissed)
+- **Deduplication**: Only one pending report per reporter-target pair
+- **Description Limit**: 1000 characters max
+- **Admin Review**: `/admin` dashboard for moderators
+
+### User Blocking System
+- **Table**: `userBlocks` - one-directional blocking
+- **Effects**: Blocks prevent friend requests, messages, and visibility
+- **Bidirectional Check**: `isBlockedEitherWay()` used throughout
+
+### Component Integration
+- **UserProfilePopup**: Report/block dropdown menu with confirmation dialogs
+- **AgeGate**: Server-verified age confirmation modal
+- **MessageThread**: E2E encrypted message display
+
 ## Mobile App Deployment (December 2025)
 
 ### Capacitor Configuration

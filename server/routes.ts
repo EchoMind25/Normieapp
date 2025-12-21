@@ -223,7 +223,13 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  app.use(cookieParser());
+  // Cookie parser with secret for signed cookies (age verification)
+  // SESSION_SECRET is required for signed cookies - log warning if not set
+  const cookieSecret = process.env.SESSION_SECRET;
+  if (!cookieSecret) {
+    console.warn("[Security] SESSION_SECRET not set - signed cookies will be insecure in development");
+  }
+  app.use(cookieParser(cookieSecret || undefined));
   
   // Initialize push notifications
   initializePushNotifications();
@@ -3696,7 +3702,7 @@ export async function registerRoutes(
     next();
   };
 
-  // Create a report
+  // Create a report (with duplicate prevention)
   app.post("/api/moderation/report", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const reporterId = req.user!.id;
@@ -3721,11 +3727,19 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Reported user not found" });
       }
 
+      // Check for existing pending report to prevent spam
+      const existingReport = await storage.getPendingReportByReporterAndTarget(reporterId, reportedUserId);
+      if (existingReport) {
+        return res.status(400).json({ 
+          error: "You already have a pending report against this user. Please wait for it to be reviewed." 
+        });
+      }
+
       const report = await storage.createReport({
         reporterId,
         reportedUserId,
         reportType,
-        description: description || null,
+        description: description ? String(description).slice(0, 1000) : null,
         relatedMessageId: relatedMessageId || null,
         relatedConversationId: relatedConversationId || null,
         status: "pending",

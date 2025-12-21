@@ -25,7 +25,17 @@ This guide covers deploying Normie Observer to the iOS App Store and Google Play
 
 ## Build Process
 
-### 1. Build the Web App
+### 1. Clone and Install Dependencies (Local Machine)
+
+First, download the project to your local machine with Xcode/Android Studio:
+
+```bash
+git clone <your-repo-url>
+cd normie-observer
+npm install
+```
+
+### 2. Build the Web App
 
 ```bash
 npm run build
@@ -33,7 +43,21 @@ npm run build
 
 This creates the production build in the `dist/` directory.
 
-### 2. Sync with Capacitor
+### 3. Add Native Platforms (First Time Only)
+
+If the `ios` and `android` folders don't exist, create them:
+
+```bash
+# For iOS (requires macOS with Xcode installed)
+npx cap add ios
+
+# For Android (requires Android Studio)
+npx cap add android
+```
+
+### 4. Sync with Capacitor
+
+After building, sync the web code to native platforms:
 
 ```bash
 npx cap sync
@@ -41,7 +65,7 @@ npx cap sync
 
 This copies the web build to native platforms and updates native dependencies.
 
-### 3. Generate App Icons
+### 5. Generate App Icons
 
 ```bash
 chmod +x scripts/generate-app-icons.sh
@@ -218,6 +242,15 @@ Fill out the Data Safety form:
 - [ ] Support email working (support@tryechomind.net)
 - [ ] Age rating appropriate (18+)
 - [ ] Cryptocurrency disclaimers included
+- [ ] Age gate modal shows on first launch (requires 18+ confirmation)
+
+### Apple Compliance (Content Moderation)
+
+- [ ] Users can report other users (harassment, spam, inappropriate content, impersonation)
+- [ ] Users can block other users
+- [ ] Admin dashboard to review reports (/admin)
+- [ ] E2E encrypted private messaging (only between friends)
+- [ ] Friend request system (prevents unwanted contact)
 
 ### Content Requirements
 

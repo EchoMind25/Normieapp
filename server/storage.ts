@@ -383,6 +383,7 @@ export interface IStorage {
   resolveReport(reportId: string, resolution: string, resolvedBy: string): Promise<UserReport | undefined>;
   dismissReport(reportId: string, resolvedBy: string): Promise<UserReport | undefined>;
   countPendingReports(): Promise<number>;
+  getPendingReportByReporterAndTarget(reporterId: string, reportedUserId: string): Promise<UserReport | undefined>;
   
   // User Blocks
   blockUser(blockerId: string, blockedId: string, reason?: string): Promise<UserBlock>;
@@ -2198,6 +2199,20 @@ export class DatabaseStorage implements IStorage {
       .from(userReports)
       .where(eq(userReports.status, "pending"));
     return result?.count || 0;
+  }
+
+  async getPendingReportByReporterAndTarget(reporterId: string, reportedUserId: string): Promise<UserReport | undefined> {
+    const [report] = await db
+      .select()
+      .from(userReports)
+      .where(
+        and(
+          eq(userReports.reporterId, reporterId),
+          eq(userReports.reportedUserId, reportedUserId),
+          eq(userReports.status, "pending")
+        )
+      );
+    return report;
   }
 
   // User Blocks

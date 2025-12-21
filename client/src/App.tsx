@@ -15,6 +15,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { SplashScreen } from "@/components/SplashScreen";
 import { RateAppPrompt } from "@/components/RateAppPrompt";
 import { ConsentBanner } from "@/components/ConsentBanner";
+import { AgeGate } from "@/components/AgeGate";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -176,6 +177,7 @@ function App() {
             <Toaster />
             <OfflineBanner />
             <ConsentBanner />
+            <AgeGate />
             <DisclaimerModal />
             <ForcePasswordChange />
             <NotificationPrompt />

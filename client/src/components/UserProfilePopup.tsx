@@ -40,7 +40,29 @@ import {
   UserPlus,
   UserCheck,
   Loader2,
+  Flag,
+  ShieldX,
+  ShieldCheck,
+  MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface UserProfile {
   id: string;
@@ -85,6 +107,10 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
   const { toast } = useToast();
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [banDuration, setBanDuration] = useState<string>("permanent");
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [reportType, setReportType] = useState<string>("harassment");
+  const [reportDescription, setReportDescription] = useState("");
 
   const isViewerFounder = currentUser?.role === "founder";
 
@@ -167,6 +193,79 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  const { data: blockStatus } = useQuery<{ isBlocked: boolean; isBlockedByThem: boolean }>({
+    queryKey: ["/api/moderation/blocked-status", profile?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/moderation/blocked-status/${profile!.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch block status");
+      return res.json();
+    },
+    enabled: isOpen && !!profile?.id && isAuthenticated && currentUser?.id !== profile?.id,
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/moderation/block", { blockedId: profile!.id });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to block user");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/moderation/blocked-status", profile?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/moderation/blocked"] });
+      setShowBlockDialog(false);
+      toast({ title: "User blocked", description: `${profile?.username} has been blocked` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to block", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const unblockMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", `/api/moderation/block/${profile!.id}`);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to unblock user");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/moderation/blocked-status", profile?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/moderation/blocked"] });
+      toast({ title: "User unblocked", description: `${profile?.username} has been unblocked` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to unblock", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/moderation/report", { 
+        reportedUserId: profile!.id,
+        reportType,
+        description: reportDescription || undefined,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to submit report");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowReportDialog(false);
+      setReportType("harassment");
+      setReportDescription("");
+      toast({ title: "Report submitted", description: "Thank you for helping keep our community safe" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to report", description: error.message, variant: "destructive" });
     },
   });
 
@@ -354,8 +453,45 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
             </div>
 
             {!isOwnProfile && isAuthenticated && (
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap items-center">
                 {renderFriendButton()}
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" data-testid="button-user-actions">
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {blockStatus?.isBlocked ? (
+                      <DropdownMenuItem 
+                        onClick={() => unblockMutation.mutate()}
+                        disabled={unblockMutation.isPending}
+                        data-testid="menu-item-unblock"
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        Unblock User
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem 
+                        onClick={() => setShowBlockDialog(true)}
+                        data-testid="menu-item-block"
+                      >
+                        <ShieldX className="w-4 h-4 mr-2" />
+                        Block User
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => setShowReportDialog(true)}
+                      className="text-destructive focus:text-destructive"
+                      data-testid="menu-item-report"
+                    >
+                      <Flag className="w-4 h-4 mr-2" />
+                      Report User
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
 
@@ -520,6 +656,89 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
           </div>
         )}
       </DialogContent>
+
+      <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Block {profile?.username}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Blocking this user will prevent them from messaging you, sending friend requests, 
+              and seeing your content. You can unblock them at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-block">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => blockMutation.mutate()}
+              disabled={blockMutation.isPending}
+              className="bg-destructive text-destructive-foreground"
+              data-testid="button-confirm-block"
+            >
+              {blockMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <ShieldX className="w-4 h-4 mr-1" />
+              )}
+              Block User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Report {profile?.username}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Help us understand why you are reporting this user. Your report will be reviewed by our moderation team.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reason</label>
+              <Select value={reportType} onValueChange={setReportType}>
+                <SelectTrigger data-testid="select-report-type">
+                  <SelectValue placeholder="Select reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="harassment">Harassment or bullying</SelectItem>
+                  <SelectItem value="spam">Spam or scam</SelectItem>
+                  <SelectItem value="inappropriate_content">Inappropriate content</SelectItem>
+                  <SelectItem value="impersonation">Impersonation</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Additional details (optional)</label>
+              <Textarea
+                value={reportDescription}
+                onChange={(e) => setReportDescription(e.target.value)}
+                placeholder="Provide any additional context..."
+                className="resize-none"
+                rows={3}
+                data-testid="textarea-report-description"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-report">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => reportMutation.mutate()}
+              disabled={reportMutation.isPending}
+              className="bg-destructive text-destructive-foreground"
+              data-testid="button-confirm-report"
+            >
+              {reportMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Flag className="w-4 h-4 mr-1" />
+              )}
+              Submit Report
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
