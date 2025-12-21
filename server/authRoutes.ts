@@ -93,6 +93,9 @@ router.post("/wallet/verify", async (req: Request, res: Response) => {
         username,
         role,
       });
+      
+      // Link any existing wallet holdings to this new user (for leaderboard display)
+      await storage.linkWalletHoldingToUser(walletAddress, user.id);
     } else if (user.role !== "admin" && determineRole(walletAddress) === "admin") {
       user = await storage.updateUser(user.id, { role: "admin" }) || user;
     }
@@ -814,6 +817,9 @@ router.post("/wallet/link-verify", authMiddleware, async (req: AuthRequest, res:
       res.status(500).json({ error: "Failed to link wallet" });
       return;
     }
+
+    // Also link any existing wallet holdings to this user (for leaderboard display)
+    await storage.linkWalletHoldingToUser(walletAddress, req.user.id);
 
     console.log(`[Auth] Wallet linked successfully for user ${req.user.id}: ${walletAddress.slice(0, 8)}...`);
     res.json({

@@ -237,6 +237,16 @@ export function isDatabaseConnected() { return databaseConnected; }
     await seedMarketplaceConfig();
     // Demo polls seeding removed - admins create polls manually
     
+    // Backfill wallet holdings with user IDs for leaderboard username display
+    try {
+      const linkedCount = await storage.backfillWalletHoldingsUserIds();
+      if (linkedCount > 0) {
+        log(`Backfilled ${linkedCount} wallet holdings with user IDs for leaderboard`, "seed");
+      }
+    } catch (error: any) {
+      log(`Warning: Failed to backfill wallet holdings: ${error.message}`, "seed");
+    }
+    
     // Start background data collection for price history
     dataCollector.start().catch((err) => {
       log(`Warning: Data collector failed to start: ${err.message}`, "startup");

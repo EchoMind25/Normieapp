@@ -305,6 +305,10 @@ export interface IStorage {
   getWalletHolding(walletAddress: string): Promise<WalletHolding | undefined>;
   getWalletBuyCount(): Promise<number>;
   getWalletHoldingsCount(): Promise<number>;
+  
+  // Link wallet to user account
+  linkWalletHoldingToUser(walletAddress: string, userId: string): Promise<void>;
+  backfillWalletHoldingsUserIds(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1540,15 +1544,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDiamondHandsLeaderboard(limit: number = 20): Promise<DiamondHandsEntry[]> {
+    // LEFT JOIN with users to get usernames for linked wallets
     const results = await db
       .select({
         walletAddress: walletHoldings.walletAddress,
         userId: walletHoldings.userId,
+        username: users.username,
         currentBalance: walletHoldings.currentBalance,
         holdStartAt: walletHoldings.holdStartAt,
         firstBuyAt: walletHoldings.firstBuyAt,
       })
       .from(walletHoldings)
+      .leftJoin(users, eq(walletHoldings.userId, users.id))
       .where(gt(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`, 0))
       .orderBy(asc(walletHoldings.holdStartAt))
       .limit(limit);
@@ -1558,7 +1565,7 @@ export class DatabaseStorage implements IStorage {
       rank: index + 1,
       walletAddress: row.walletAddress,
       userId: row.userId,
-      username: null,
+      username: row.username || null,
       currentBalance: parseFloat(row.currentBalance) || 0,
       holdDurationSeconds: row.holdStartAt ? Math.floor((now - row.holdStartAt.getTime()) / 1000) : 0,
       firstBuyAt: row.firstBuyAt?.toISOString() || null,
@@ -1567,15 +1574,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWhalesLeaderboard(limit: number = 20): Promise<WhaleEntry[]> {
+    // LEFT JOIN with users to get usernames for linked wallets
     const results = await db
       .select({
         walletAddress: walletHoldings.walletAddress,
         userId: walletHoldings.userId,
+        username: users.username,
         currentBalance: walletHoldings.currentBalance,
         holdStartAt: walletHoldings.holdStartAt,
         firstBuyAt: walletHoldings.firstBuyAt,
       })
       .from(walletHoldings)
+      .leftJoin(users, eq(walletHoldings.userId, users.id))
       .where(gt(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`, 0))
       .orderBy(desc(sql`CAST(${walletHoldings.currentBalance} AS NUMERIC)`))
       .limit(limit);
@@ -1585,7 +1595,7 @@ export class DatabaseStorage implements IStorage {
       rank: index + 1,
       walletAddress: row.walletAddress,
       userId: row.userId,
-      username: null,
+      username: row.username || null,
       currentBalance: parseFloat(row.currentBalance) || 0,
       holdDurationSeconds: row.holdStartAt ? Math.floor((now - row.holdStartAt.getTime()) / 1000) : 0,
       firstBuyAt: row.firstBuyAt?.toISOString() || null,
@@ -1606,6 +1616,55 @@ export class DatabaseStorage implements IStorage {
   async getWalletHoldingsCount(): Promise<number> {
     const [result] = await db.select({ count: sql<number>`count(*)` }).from(walletHoldings);
     return Number(result?.count || 0);
+  }
+
+  async linkWalletHoldingToUser(walletAddress: string, userId: string): Promise<void> {
+    // Update any existing wallet holdings to link to this user
+    await db
+      .update(walletHoldings)
+      .set({
+        userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(walletHoldings.walletAddress, walletAddress));
+    
+    console.log(`[Storage] Linked wallet holdings for ${walletAddress.slice(0, 8)}... to user ${userId}`);
+  }
+
+  // Backfill all wallet holdings with user IDs based on matching wallet addresses in users table
+  async backfillWalletHoldingsUserIds(): Promise<number> {
+    // Find all users with wallet addresses
+    const usersWithWallets = await db
+      .select({ id: users.id, walletAddress: users.walletAddress })
+      .from(users)
+      .where(sql`${users.walletAddress} IS NOT NULL`);
+    
+    let linkedCount = 0;
+    for (const user of usersWithWallets) {
+      if (user.walletAddress) {
+        const result = await db
+          .update(walletHoldings)
+          .set({
+            userId: user.id,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(walletHoldings.walletAddress, user.walletAddress),
+              sql`${walletHoldings.userId} IS NULL`
+            )
+          )
+          .returning();
+        
+        if (result.length > 0) {
+          linkedCount++;
+          console.log(`[Storage] Backfilled wallet ${user.walletAddress.slice(0, 8)}... to user ${user.id}`);
+        }
+      }
+    }
+    
+    console.log(`[Storage] Backfill complete: ${linkedCount} wallet holdings linked to users`);
+    return linkedCount;
   }
 }
 
