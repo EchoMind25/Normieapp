@@ -37,6 +37,9 @@ import {
   Calendar,
   Image,
   MessageSquare,
+  UserPlus,
+  UserCheck,
+  Loader2,
 } from "lucide-react";
 
 interface UserProfile {
@@ -60,6 +63,16 @@ interface UserProfile {
   };
 }
 
+interface FriendshipStatus {
+  status: "none" | "pending" | "accepted" | "declined" | "blocked";
+  friendship: {
+    id: string;
+    isRequester: boolean;
+    createdAt: string;
+    respondedAt: string | null;
+  } | null;
+}
+
 interface UserProfilePopupProps {
   userId?: string;
   username?: string;
@@ -68,7 +81,7 @@ interface UserProfilePopupProps {
 }
 
 export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProfilePopupProps) {
-  const { user: currentUser, isAdmin: isViewerAdmin } = useAuth();
+  const { user: currentUser, isAdmin: isViewerAdmin, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [banDuration, setBanDuration] = useState<string>("permanent");
@@ -88,6 +101,47 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
       return res.json();
     },
     enabled: isOpen && !!identifier,
+  });
+
+  const { data: friendshipStatus, isLoading: friendshipLoading } = useQuery<FriendshipStatus>({
+    queryKey: ["/api/friends/status", profile?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/friends/status/${profile!.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch friendship status");
+      return res.json();
+    },
+    enabled: isOpen && !!profile?.id && isAuthenticated && currentUser?.id !== profile?.id,
+  });
+
+  const sendFriendRequestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/friends/request", { addresseeId: profile!.id });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/status", profile?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/sent"] });
+      toast({ title: "Friend request sent", description: `Request sent to ${profile?.username}` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send request", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const acceptFriendRequestMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const res = await apiRequest("POST", `/api/friends/accept/${requestId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/status", profile?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
+      toast({ title: "Friend request accepted", description: `You are now friends with ${profile?.username}` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to accept request", description: error.message, variant: "destructive" });
+    },
   });
 
   const banMutation = useMutation({
@@ -170,6 +224,77 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
     }
   };
 
+  const renderFriendButton = () => {
+    if (!isAuthenticated || !profile || currentUser?.id === profile.id) return null;
+
+    if (friendshipLoading) {
+      return (
+        <Button variant="outline" size="sm" disabled>
+          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+          Loading...
+        </Button>
+      );
+    }
+
+    if (!friendshipStatus) return null;
+
+    const { status, friendship } = friendshipStatus;
+
+    if (status === "accepted") {
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <UserCheck className="w-3 h-3" />
+          Friends
+        </Badge>
+      );
+    }
+
+    if (status === "pending" && friendship) {
+      if (friendship.isRequester) {
+        return (
+          <Badge variant="outline" className="gap-1">
+            <Clock className="w-3 h-3" />
+            Request Pending
+          </Badge>
+        );
+      } else {
+        return (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => acceptFriendRequestMutation.mutate(friendship.id)}
+            disabled={acceptFriendRequestMutation.isPending}
+            data-testid="button-accept-friend-request"
+          >
+            {acceptFriendRequestMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <UserCheck className="w-4 h-4 mr-1" />
+            )}
+            Accept Request
+          </Button>
+        );
+      }
+    }
+
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => sendFriendRequestMutation.mutate()}
+        disabled={sendFriendRequestMutation.isPending}
+        data-testid="button-send-friend-request"
+      >
+        {sendFriendRequestMutation.isPending ? (
+          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+        ) : (
+          <UserPlus className="w-4 h-4 mr-1" />
+        )}
+        Add Friend
+      </Button>
+    );
+  };
+
   const isOwnProfile = currentUser?.id === profile?.id;
   const canModerate = (isViewerAdmin || isViewerFounder) && !isOwnProfile && profile?.role !== "founder" && profile?.role !== "admin";
 
@@ -227,6 +352,12 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
                 </div>
               </div>
             </div>
+
+            {!isOwnProfile && isAuthenticated && (
+              <div className="flex gap-2 flex-wrap">
+                {renderFriendButton()}
+              </div>
+            )}
 
             {profile.bio && (
               <div className="bg-muted/50 rounded-md p-3">

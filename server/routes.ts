@@ -3061,5 +3061,970 @@ export async function registerRoutes(
     }
   });
 
+  // =====================================================
+  // FRIENDS API ROUTES
+  // =====================================================
+
+  // Send friend request
+  app.post("/api/friends/request", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { addresseeId } = req.body;
+      const requesterId = req.user!.id;
+
+      if (!addresseeId) {
+        return res.status(400).json({ error: "addresseeId is required" });
+      }
+
+      // Can't friend yourself
+      if (addresseeId === requesterId) {
+        return res.status(400).json({ error: "You cannot send a friend request to yourself" });
+      }
+
+      // Check if addressee exists
+      const addressee = await storage.getUser(addresseeId);
+      if (!addressee) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if either user has blocked the other
+      const isBlocked = await storage.isBlockedEitherWay(requesterId, addresseeId);
+      if (isBlocked) {
+        return res.status(403).json({ error: "Cannot send friend request to this user" });
+      }
+
+      // Check for existing friendship in either direction
+      const existingFriendship = await storage.getFriendshipBetweenUsers(requesterId, addresseeId);
+      if (existingFriendship) {
+        if (existingFriendship.status === "accepted") {
+          return res.status(400).json({ error: "You are already friends with this user" });
+        }
+        if (existingFriendship.status === "pending") {
+          return res.status(400).json({ error: "A friend request already exists between you and this user" });
+        }
+        if (existingFriendship.status === "blocked") {
+          return res.status(400).json({ error: "Cannot send friend request" });
+        }
+      }
+
+      const friendship = await storage.sendFriendRequest(requesterId, addresseeId);
+      res.status(201).json(friendship);
+    } catch (error) {
+      console.error("[Friends] Error sending friend request:", error);
+      res.status(500).json({ error: "Failed to send friend request" });
+    }
+  });
+
+  // Get pending friend requests (received)
+  app.get("/api/friends/requests/pending", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const requests = await storage.getPendingFriendRequests(req.user!.id);
+      res.json(requests);
+    } catch (error) {
+      console.error("[Friends] Error fetching pending requests:", error);
+      res.status(500).json({ error: "Failed to fetch pending requests" });
+    }
+  });
+
+  // Get sent friend requests
+  app.get("/api/friends/requests/sent", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const requests = await storage.getSentFriendRequests(req.user!.id);
+      res.json(requests);
+    } catch (error) {
+      console.error("[Friends] Error fetching sent requests:", error);
+      res.status(500).json({ error: "Failed to fetch sent requests" });
+    }
+  });
+
+  // Get all friends
+  app.get("/api/friends", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const friends = await storage.getFriends(req.user!.id);
+      res.json(friends);
+    } catch (error) {
+      console.error("[Friends] Error fetching friends:", error);
+      res.status(500).json({ error: "Failed to fetch friends" });
+    }
+  });
+
+  // Accept friend request
+  app.post("/api/friends/accept/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const friendship = await storage.getFriendRequest(id);
+      if (!friendship) {
+        return res.status(404).json({ error: "Friend request not found" });
+      }
+
+      // Only the addressee can accept
+      if (friendship.addresseeId !== userId) {
+        return res.status(403).json({ error: "You can only accept your own incoming friend requests" });
+      }
+
+      if (friendship.status !== "pending") {
+        return res.status(400).json({ error: "This friend request has already been responded to" });
+      }
+
+      const updated = await storage.acceptFriendRequest(id);
+      res.json(updated);
+    } catch (error) {
+      console.error("[Friends] Error accepting friend request:", error);
+      res.status(500).json({ error: "Failed to accept friend request" });
+    }
+  });
+
+  // Decline friend request
+  app.post("/api/friends/decline/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const friendship = await storage.getFriendRequest(id);
+      if (!friendship) {
+        return res.status(404).json({ error: "Friend request not found" });
+      }
+
+      // Only the addressee can decline
+      if (friendship.addresseeId !== userId) {
+        return res.status(403).json({ error: "You can only decline your own incoming friend requests" });
+      }
+
+      if (friendship.status !== "pending") {
+        return res.status(400).json({ error: "This friend request has already been responded to" });
+      }
+
+      const updated = await storage.declineFriendRequest(id);
+      res.json(updated);
+    } catch (error) {
+      console.error("[Friends] Error declining friend request:", error);
+      res.status(500).json({ error: "Failed to decline friend request" });
+    }
+  });
+
+  // Cancel sent friend request
+  app.delete("/api/friends/request/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const friendship = await storage.getFriendRequest(id);
+      if (!friendship) {
+        return res.status(404).json({ error: "Friend request not found" });
+      }
+
+      // Only the requester can cancel
+      if (friendship.requesterId !== userId) {
+        return res.status(403).json({ error: "You can only cancel your own sent friend requests" });
+      }
+
+      if (friendship.status !== "pending") {
+        return res.status(400).json({ error: "This friend request cannot be cancelled" });
+      }
+
+      await storage.cancelFriendRequest(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Friends] Error cancelling friend request:", error);
+      res.status(500).json({ error: "Failed to cancel friend request" });
+    }
+  });
+
+  // Unfriend (remove friendship)
+  app.delete("/api/friends/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const friendship = await storage.getFriendRequest(id);
+      if (!friendship) {
+        return res.status(404).json({ error: "Friendship not found" });
+      }
+
+      // Either party can unfriend
+      if (friendship.requesterId !== userId && friendship.addresseeId !== userId) {
+        return res.status(403).json({ error: "You are not part of this friendship" });
+      }
+
+      if (friendship.status !== "accepted") {
+        return res.status(400).json({ error: "This is not an active friendship" });
+      }
+
+      await storage.unfriend(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Friends] Error unfriending:", error);
+      res.status(500).json({ error: "Failed to unfriend" });
+    }
+  });
+
+  // Check friendship status with a user
+  app.get("/api/friends/status/:userId", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { userId: targetUserId } = req.params;
+      const currentUserId = req.user!.id;
+
+      if (targetUserId === currentUserId) {
+        return res.json({ status: "self" });
+      }
+
+      const friendship = await storage.getFriendshipBetweenUsers(currentUserId, targetUserId);
+      
+      if (!friendship) {
+        return res.json({ status: "none", friendship: null });
+      }
+
+      // Determine if current user is requester or addressee
+      const isRequester = friendship.requesterId === currentUserId;
+
+      res.json({
+        status: friendship.status,
+        friendship: {
+          id: friendship.id,
+          isRequester,
+          createdAt: friendship.createdAt,
+          respondedAt: friendship.respondedAt,
+        },
+      });
+    } catch (error) {
+      console.error("[Friends] Error checking friendship status:", error);
+      res.status(500).json({ error: "Failed to check friendship status" });
+    }
+  });
+
+  // =====================================================
+  // Private Messaging API Routes (E2E Encrypted DMs)
+  // =====================================================
+
+  // Helper function to validate base64 encoded public key
+  function isValidBase64(str: string): boolean {
+    try {
+      return Buffer.from(str, 'base64').toString('base64') === str;
+    } catch {
+      return false;
+    }
+  }
+
+  // Get own public key
+  app.get("/api/messages/keys/me", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const key = await storage.getUserEncryptionKey(req.user!.id);
+      res.json(key || null);
+    } catch (error) {
+      console.error("[Messages] Error fetching own encryption key:", error);
+      res.status(500).json({ error: "Failed to fetch encryption key" });
+    }
+  });
+
+  // Set own public key
+  app.post("/api/messages/keys", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { publicKey } = req.body;
+      
+      if (!publicKey || typeof publicKey !== 'string') {
+        return res.status(400).json({ error: "Public key is required" });
+      }
+
+      if (!isValidBase64(publicKey)) {
+        return res.status(400).json({ error: "Public key must be base64 encoded" });
+      }
+
+      const key = await storage.setUserEncryptionKey(req.user!.id, publicKey);
+      res.status(201).json(key);
+    } catch (error) {
+      console.error("[Messages] Error setting encryption key:", error);
+      res.status(500).json({ error: "Failed to set encryption key" });
+    }
+  });
+
+  // Get another user's public key
+  app.get("/api/messages/keys/:userId", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Verify user exists
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Verify friendship (must be friends to get key)
+      const areFriends = await storage.areFriends(req.user!.id, userId);
+      if (!areFriends) {
+        return res.status(403).json({ error: "You must be friends with this user to get their encryption key" });
+      }
+
+      const key = await storage.getUserEncryptionKey(userId);
+      res.json(key || null);
+    } catch (error) {
+      console.error("[Messages] Error fetching user encryption key:", error);
+      res.status(500).json({ error: "Failed to fetch encryption key" });
+    }
+  });
+
+  // Get total unread message count
+  app.get("/api/messages/unread-count", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const count = await storage.getUnreadMessageCount(req.user!.id);
+      res.json({ count });
+    } catch (error) {
+      console.error("[Messages] Error fetching unread count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
+  // List user's conversations with last message preview and unread count
+  app.get("/api/messages/conversations", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const conversations = await storage.getUserConversations(userId);
+      
+      // Enrich each conversation with other participant info and unread count
+      const enrichedConversations = await Promise.all(
+        conversations.map(async (conv) => {
+          const otherParticipantId = conv.participant1Id === userId 
+            ? conv.participant2Id 
+            : conv.participant1Id;
+          
+          const otherUser = await storage.getUser(otherParticipantId);
+          
+          // Get last message preview
+          const messages = await storage.getPrivateMessages(conv.id, 1);
+          const lastMessage = messages[0] || null;
+          
+          // Count unread messages in this conversation
+          const allMessages = await storage.getPrivateMessages(conv.id, 1000);
+          const unreadCount = allMessages.filter(
+            (m) => m.senderId !== userId && !m.isRead
+          ).length;
+          
+          return {
+            id: conv.id,
+            participant: otherUser ? {
+              id: otherUser.id,
+              username: otherUser.username,
+              avatarUrl: otherUser.avatarUrl,
+            } : null,
+            lastMessageAt: conv.lastMessageAt,
+            lastMessage: lastMessage ? {
+              id: lastMessage.id,
+              senderId: lastMessage.senderId,
+              createdAt: lastMessage.createdAt,
+              isRead: lastMessage.isRead,
+            } : null,
+            unreadCount,
+            createdAt: conv.createdAt,
+          };
+        })
+      );
+      
+      res.json(enrichedConversations);
+    } catch (error) {
+      console.error("[Messages] Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // Create/get conversation with another user
+  app.post("/api/messages/conversations", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { userId: targetUserId } = req.body;
+      const currentUserId = req.user!.id;
+      
+      if (!targetUserId) {
+        return res.status(400).json({ error: "Target user ID is required" });
+      }
+
+      // Prevent messaging self
+      if (targetUserId === currentUserId) {
+        return res.status(400).json({ error: "You cannot message yourself" });
+      }
+
+      // Verify target user exists
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if either user has blocked the other
+      const isBlocked = await storage.isBlockedEitherWay(currentUserId, targetUserId);
+      if (isBlocked) {
+        return res.status(403).json({ error: "Cannot start conversation with this user" });
+      }
+
+      // Verify users are friends
+      const areFriends = await storage.areFriends(currentUserId, targetUserId);
+      if (!areFriends) {
+        return res.status(403).json({ error: "You must be friends with this user to start a conversation" });
+      }
+
+      // Check for existing or create new
+      const conversation = await storage.createConversation(currentUserId, targetUserId);
+      
+      res.status(201).json({
+        id: conversation.id,
+        participant: {
+          id: targetUser.id,
+          username: targetUser.username,
+          avatarUrl: targetUser.avatarUrl,
+        },
+        lastMessageAt: conversation.lastMessageAt,
+        createdAt: conversation.createdAt,
+      });
+    } catch (error) {
+      console.error("[Messages] Error creating conversation:", error);
+      res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+
+  // Get conversation details
+  app.get("/api/messages/conversations/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Verify user is participant
+      if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+
+      const otherParticipantId = conversation.participant1Id === userId 
+        ? conversation.participant2Id 
+        : conversation.participant1Id;
+      
+      const otherUser = await storage.getUser(otherParticipantId);
+
+      res.json({
+        id: conversation.id,
+        participant: otherUser ? {
+          id: otherUser.id,
+          username: otherUser.username,
+          avatarUrl: otherUser.avatarUrl,
+        } : null,
+        lastMessageAt: conversation.lastMessageAt,
+        createdAt: conversation.createdAt,
+        isActive: conversation.isActive,
+      });
+    } catch (error) {
+      console.error("[Messages] Error fetching conversation:", error);
+      res.status(500).json({ error: "Failed to fetch conversation" });
+    }
+  });
+
+  // Get messages in conversation (with pagination)
+  app.get("/api/messages/conversations/:id/messages", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      const before = req.query.before ? new Date(req.query.before as string) : undefined;
+      
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Verify user is participant
+      if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+
+      const messages = await storage.getPrivateMessages(id, limit, before);
+      
+      // Enrich with sender info
+      const enrichedMessages = await Promise.all(
+        messages.map(async (msg) => {
+          const sender = await storage.getUser(msg.senderId);
+          return {
+            ...msg,
+            sender: sender ? {
+              id: sender.id,
+              username: sender.username,
+              avatarUrl: sender.avatarUrl,
+            } : null,
+          };
+        })
+      );
+
+      res.json(enrichedMessages);
+    } catch (error) {
+      console.error("[Messages] Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Send message
+  app.post("/api/messages/conversations/:id/messages", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      const { encryptedContent, nonce } = req.body;
+      
+      if (!encryptedContent || typeof encryptedContent !== 'string') {
+        return res.status(400).json({ error: "Encrypted content is required" });
+      }
+
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Verify user is participant
+      if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+
+      // Verify users are still friends
+      const otherParticipantId = conversation.participant1Id === userId 
+        ? conversation.participant2Id 
+        : conversation.participant1Id;
+      
+      // Check if either user has blocked the other
+      const isBlocked = await storage.isBlockedEitherWay(userId, otherParticipantId);
+      if (isBlocked) {
+        return res.status(403).json({ error: "Cannot send messages to this user" });
+      }
+
+      const areFriends = await storage.areFriends(userId, otherParticipantId);
+      if (!areFriends) {
+        return res.status(403).json({ error: "You can only message friends" });
+      }
+
+      const message = await storage.createPrivateMessage({
+        conversationId: id,
+        senderId: userId,
+        encryptedContent,
+        nonce: nonce || null,
+      });
+
+      const sender = await storage.getUser(userId);
+      
+      res.status(201).json({
+        ...message,
+        sender: sender ? {
+          id: sender.id,
+          username: sender.username,
+          avatarUrl: sender.avatarUrl,
+        } : null,
+      });
+    } catch (error) {
+      console.error("[Messages] Error sending message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // Mark messages as read
+  app.post("/api/messages/conversations/:id/read", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+      
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Verify user is participant
+      if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
+        return res.status(403).json({ error: "You are not a participant in this conversation" });
+      }
+
+      await storage.markMessagesAsRead(id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Messages] Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // Delete a message (soft delete)
+  app.delete("/api/messages/:messageId", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { messageId } = req.params;
+      const userId = req.user!.id;
+      
+      // Get all user's conversations to find the message
+      const conversations = await storage.getUserConversations(userId);
+      let foundMessage = null;
+      
+      for (const conv of conversations) {
+        const messages = await storage.getPrivateMessages(conv.id, 1000);
+        const message = messages.find(m => m.id === messageId);
+        if (message) {
+          foundMessage = message;
+          break;
+        }
+      }
+      
+      if (!foundMessage) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      // Only the sender can delete their own message
+      if (foundMessage.senderId !== userId) {
+        return res.status(403).json({ error: "You can only delete your own messages" });
+      }
+
+      await storage.deletePrivateMessage(messageId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Messages] Error deleting message:", error);
+      res.status(500).json({ error: "Failed to delete message" });
+    }
+  });
+
+  // =====================================================
+  // MODERATION API ROUTES (User-facing)
+  // =====================================================
+
+  const VALID_REPORT_TYPES = ["harassment", "spam", "inappropriate_content", "impersonation", "other"];
+
+  // Admin middleware - checks for admin or founder role
+  const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (req.user.role !== "admin" && req.user.role !== "founder") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    next();
+  };
+
+  // Create a report
+  app.post("/api/moderation/report", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const reporterId = req.user!.id;
+      const { reportedUserId, reportType, description, relatedMessageId, relatedConversationId } = req.body;
+
+      if (!reportedUserId) {
+        return res.status(400).json({ error: "reportedUserId is required" });
+      }
+
+      if (!reportType || !VALID_REPORT_TYPES.includes(reportType)) {
+        return res.status(400).json({ 
+          error: `reportType must be one of: ${VALID_REPORT_TYPES.join(", ")}` 
+        });
+      }
+
+      if (reportedUserId === reporterId) {
+        return res.status(400).json({ error: "You cannot report yourself" });
+      }
+
+      const reportedUser = await storage.getUser(reportedUserId);
+      if (!reportedUser) {
+        return res.status(404).json({ error: "Reported user not found" });
+      }
+
+      const report = await storage.createReport({
+        reporterId,
+        reportedUserId,
+        reportType,
+        description: description || null,
+        relatedMessageId: relatedMessageId || null,
+        relatedConversationId: relatedConversationId || null,
+        status: "pending",
+      });
+
+      res.status(201).json(report);
+    } catch (error) {
+      console.error("[Moderation] Error creating report:", error);
+      res.status(500).json({ error: "Failed to create report" });
+    }
+  });
+
+  // Block a user
+  app.post("/api/moderation/block", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const blockerId = req.user!.id;
+      const { blockedId, reason } = req.body;
+
+      if (!blockedId) {
+        return res.status(400).json({ error: "blockedId is required" });
+      }
+
+      if (blockedId === blockerId) {
+        return res.status(400).json({ error: "You cannot block yourself" });
+      }
+
+      const blockedUser = await storage.getUser(blockedId);
+      if (!blockedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const alreadyBlocked = await storage.isBlocked(blockerId, blockedId);
+      if (alreadyBlocked) {
+        return res.status(400).json({ error: "User is already blocked" });
+      }
+
+      const block = await storage.blockUser(blockerId, blockedId, reason);
+      res.status(201).json(block);
+    } catch (error) {
+      console.error("[Moderation] Error blocking user:", error);
+      res.status(500).json({ error: "Failed to block user" });
+    }
+  });
+
+  // Unblock a user
+  app.delete("/api/moderation/block/:blockedId", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const blockerId = req.user!.id;
+      const { blockedId } = req.params;
+
+      const isBlocked = await storage.isBlocked(blockerId, blockedId);
+      if (!isBlocked) {
+        return res.status(404).json({ error: "Block not found" });
+      }
+
+      await storage.unblockUser(blockerId, blockedId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Moderation] Error unblocking user:", error);
+      res.status(500).json({ error: "Failed to unblock user" });
+    }
+  });
+
+  // List blocked users
+  app.get("/api/moderation/blocked", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const blocks = await storage.getBlockedUsers(req.user!.id);
+      
+      const enrichedBlocks = await Promise.all(
+        blocks.map(async (block) => {
+          const blockedUser = await storage.getUser(block.blockedId);
+          return {
+            ...block,
+            blockedUser: blockedUser ? {
+              id: blockedUser.id,
+              username: blockedUser.username,
+              avatarUrl: blockedUser.avatarUrl,
+            } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedBlocks);
+    } catch (error) {
+      console.error("[Moderation] Error fetching blocked users:", error);
+      res.status(500).json({ error: "Failed to fetch blocked users" });
+    }
+  });
+
+  // Check if blocked by another user (useful for UI)
+  app.get("/api/moderation/blocked-status/:userId", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const currentUserId = req.user!.id;
+      const { userId: targetUserId } = req.params;
+
+      const isBlockedEitherWay = await storage.isBlockedEitherWay(currentUserId, targetUserId);
+      const iBlockedThem = await storage.isBlocked(currentUserId, targetUserId);
+      const theyBlockedMe = await storage.isBlocked(targetUserId, currentUserId);
+
+      res.json({
+        isBlockedEitherWay,
+        iBlockedThem,
+        theyBlockedMe,
+      });
+    } catch (error) {
+      console.error("[Moderation] Error checking block status:", error);
+      res.status(500).json({ error: "Failed to check block status" });
+    }
+  });
+
+  // =====================================================
+  // ADMIN MODERATION ROUTES
+  // =====================================================
+
+  // List reports by status
+  app.get("/api/admin/reports", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const status = (req.query.status as string) || "pending";
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const reports = await storage.getReportsByStatus(status, limit);
+      
+      const enrichedReports = await Promise.all(
+        reports.map(async (report) => {
+          const reporter = report.reporterId ? await storage.getUser(report.reporterId) : null;
+          const reportedUser = await storage.getUser(report.reportedUserId);
+          const resolvedByUser = report.resolvedBy ? await storage.getUser(report.resolvedBy) : null;
+          
+          return {
+            ...report,
+            reporter: reporter ? {
+              id: reporter.id,
+              username: reporter.username,
+              avatarUrl: reporter.avatarUrl,
+            } : null,
+            reportedUser: reportedUser ? {
+              id: reportedUser.id,
+              username: reportedUser.username,
+              avatarUrl: reportedUser.avatarUrl,
+            } : null,
+            resolvedByUser: resolvedByUser ? {
+              id: resolvedByUser.id,
+              username: resolvedByUser.username,
+            } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedReports);
+    } catch (error) {
+      console.error("[Admin] Error fetching reports:", error);
+      res.status(500).json({ error: "Failed to fetch reports" });
+    }
+  });
+
+  // Get pending reports count
+  app.get("/api/admin/reports/pending/count", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const count = await storage.countPendingReports();
+      res.json({ count });
+    } catch (error) {
+      console.error("[Admin] Error counting pending reports:", error);
+      res.status(500).json({ error: "Failed to count pending reports" });
+    }
+  });
+
+  // Get single report details
+  app.get("/api/admin/reports/:id", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const report = await storage.getReport(id);
+      
+      if (!report) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+      
+      const reporter = report.reporterId ? await storage.getUser(report.reporterId) : null;
+      const reportedUser = await storage.getUser(report.reportedUserId);
+      const resolvedByUser = report.resolvedBy ? await storage.getUser(report.resolvedBy) : null;
+      
+      res.json({
+        ...report,
+        reporter: reporter ? {
+          id: reporter.id,
+          username: reporter.username,
+          avatarUrl: reporter.avatarUrl,
+        } : null,
+        reportedUser: reportedUser ? {
+          id: reportedUser.id,
+          username: reportedUser.username,
+          avatarUrl: reportedUser.avatarUrl,
+        } : null,
+        resolvedByUser: resolvedByUser ? {
+          id: resolvedByUser.id,
+          username: resolvedByUser.username,
+        } : null,
+      });
+    } catch (error) {
+      console.error("[Admin] Error fetching report:", error);
+      res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  // Resolve report
+  app.post("/api/admin/reports/:id/resolve", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { resolution } = req.body;
+      const adminId = req.user!.id;
+      
+      if (!resolution || typeof resolution !== "string") {
+        return res.status(400).json({ error: "Resolution text is required" });
+      }
+      
+      const report = await storage.getReport(id);
+      if (!report) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+      
+      if (report.status !== "pending") {
+        return res.status(400).json({ error: "Report has already been processed" });
+      }
+      
+      const updated = await storage.resolveReport(id, resolution, adminId);
+      res.json(updated);
+    } catch (error) {
+      console.error("[Admin] Error resolving report:", error);
+      res.status(500).json({ error: "Failed to resolve report" });
+    }
+  });
+
+  // Dismiss report
+  app.post("/api/admin/reports/:id/dismiss", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const adminId = req.user!.id;
+      
+      const report = await storage.getReport(id);
+      if (!report) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+      
+      if (report.status !== "pending") {
+        return res.status(400).json({ error: "Report has already been processed" });
+      }
+      
+      const updated = await storage.dismissReport(id, adminId);
+      res.json(updated);
+    } catch (error) {
+      console.error("[Admin] Error dismissing report:", error);
+      res.status(500).json({ error: "Failed to dismiss report" });
+    }
+  });
+
+  // Get reports against a specific user
+  app.get("/api/admin/reports/user/:userId", authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const reports = await storage.getReportsAgainstUser(userId);
+      
+      const enrichedReports = await Promise.all(
+        reports.map(async (report) => {
+          const reporter = report.reporterId ? await storage.getUser(report.reporterId) : null;
+          const resolvedByUser = report.resolvedBy ? await storage.getUser(report.resolvedBy) : null;
+          
+          return {
+            ...report,
+            reporter: reporter ? {
+              id: reporter.id,
+              username: reporter.username,
+              avatarUrl: reporter.avatarUrl,
+            } : null,
+            resolvedByUser: resolvedByUser ? {
+              id: resolvedByUser.id,
+              username: resolvedByUser.username,
+            } : null,
+          };
+        })
+      );
+      
+      res.json({
+        user: {
+          id: targetUser.id,
+          username: targetUser.username,
+          avatarUrl: targetUser.avatarUrl,
+        },
+        reports: enrichedReports,
+      });
+    } catch (error) {
+      console.error("[Admin] Error fetching user reports:", error);
+      res.status(500).json({ error: "Failed to fetch user reports" });
+    }
+  });
+
   return httpServer;
 }

@@ -31,6 +31,9 @@ import {
   galleryComments,
   notifications,
   pushSubscriptions,
+  privateConversations,
+  privateMessages,
+  userEncryptionKeys,
   type User,
   type InsertUser,
   type Session,
@@ -98,6 +101,21 @@ import {
   founderWallets,
   type FounderWallet,
   type InsertFounderWallet,
+  friendships,
+  type Friendship,
+  type InsertFriendship,
+  type PrivateConversation,
+  type InsertPrivateConversation,
+  type PrivateMessage,
+  type InsertPrivateMessage,
+  type UserEncryptionKey,
+  type InsertUserEncryptionKey,
+  userReports,
+  type UserReport,
+  type InsertUserReport,
+  userBlocks,
+  type UserBlock,
+  type InsertUserBlock,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -324,6 +342,54 @@ export interface IStorage {
   deleteFounderWallet(id: string): Promise<void>;
   getAllFounderWalletAddresses(): Promise<string[]>;
   getFounderWalletsToExcludeFromLeaderboard(): Promise<string[]>;
+  
+  // Friendships
+  sendFriendRequest(requesterId: string, addresseeId: string): Promise<Friendship>;
+  getFriendRequest(id: string): Promise<Friendship | undefined>;
+  getFriendshipBetweenUsers(userId1: string, userId2: string): Promise<Friendship | undefined>;
+  getPendingFriendRequests(userId: string): Promise<Friendship[]>;
+  getSentFriendRequests(userId: string): Promise<Friendship[]>;
+  getFriends(userId: string): Promise<User[]>;
+  acceptFriendRequest(friendshipId: string): Promise<Friendship | undefined>;
+  declineFriendRequest(friendshipId: string): Promise<Friendship | undefined>;
+  cancelFriendRequest(friendshipId: string): Promise<void>;
+  unfriend(friendshipId: string): Promise<void>;
+  areFriends(userId1: string, userId2: string): Promise<boolean>;
+  
+  // Private Conversations
+  createConversation(participant1Id: string, participant2Id: string): Promise<PrivateConversation>;
+  getConversation(id: string): Promise<PrivateConversation | undefined>;
+  getConversationBetweenUsers(userId1: string, userId2: string): Promise<PrivateConversation | undefined>;
+  getUserConversations(userId: string): Promise<PrivateConversation[]>;
+  updateConversationLastMessage(conversationId: string): Promise<void>;
+  
+  // Private Messages
+  createPrivateMessage(message: InsertPrivateMessage): Promise<PrivateMessage>;
+  getPrivateMessages(conversationId: string, limit?: number, before?: Date): Promise<PrivateMessage[]>;
+  markMessagesAsRead(conversationId: string, userId: string): Promise<void>;
+  getUnreadMessageCount(userId: string): Promise<number>;
+  deletePrivateMessage(messageId: string): Promise<void>;
+  
+  // Encryption Keys
+  getUserEncryptionKey(userId: string): Promise<UserEncryptionKey | undefined>;
+  setUserEncryptionKey(userId: string, publicKey: string): Promise<UserEncryptionKey>;
+  
+  // User Reports
+  createReport(report: InsertUserReport): Promise<UserReport>;
+  getReport(id: string): Promise<UserReport | undefined>;
+  getReportsByStatus(status: string, limit?: number): Promise<UserReport[]>;
+  getReportsByUser(reporterId: string): Promise<UserReport[]>;
+  getReportsAgainstUser(reportedUserId: string): Promise<UserReport[]>;
+  resolveReport(reportId: string, resolution: string, resolvedBy: string): Promise<UserReport | undefined>;
+  dismissReport(reportId: string, resolvedBy: string): Promise<UserReport | undefined>;
+  countPendingReports(): Promise<number>;
+  
+  // User Blocks
+  blockUser(blockerId: string, blockedId: string, reason?: string): Promise<UserBlock>;
+  unblockUser(blockerId: string, blockedId: string): Promise<void>;
+  getBlockedUsers(blockerId: string): Promise<UserBlock[]>;
+  isBlocked(blockerId: string, blockedId: string): Promise<boolean>;
+  isBlockedEitherWay(userId1: string, userId2: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1775,6 +1841,417 @@ export class DatabaseStorage implements IStorage {
         eq(founderWallets.showOnLeaderboard, false)
       ));
     return wallets.map(w => w.walletAddress);
+  }
+
+  // Friendships
+  async sendFriendRequest(requesterId: string, addresseeId: string): Promise<Friendship> {
+    const [created] = await db
+      .insert(friendships)
+      .values({
+        requesterId,
+        addresseeId,
+        status: "pending",
+      })
+      .returning();
+    return created;
+  }
+
+  async getFriendRequest(id: string): Promise<Friendship | undefined> {
+    const [friendship] = await db
+      .select()
+      .from(friendships)
+      .where(eq(friendships.id, id));
+    return friendship;
+  }
+
+  async getFriendshipBetweenUsers(userId1: string, userId2: string): Promise<Friendship | undefined> {
+    const [friendship] = await db
+      .select()
+      .from(friendships)
+      .where(
+        or(
+          and(eq(friendships.requesterId, userId1), eq(friendships.addresseeId, userId2)),
+          and(eq(friendships.requesterId, userId2), eq(friendships.addresseeId, userId1))
+        )
+      );
+    return friendship;
+  }
+
+  async getPendingFriendRequests(userId: string): Promise<Friendship[]> {
+    return await db
+      .select()
+      .from(friendships)
+      .where(and(eq(friendships.addresseeId, userId), eq(friendships.status, "pending")))
+      .orderBy(desc(friendships.createdAt));
+  }
+
+  async getSentFriendRequests(userId: string): Promise<Friendship[]> {
+    return await db
+      .select()
+      .from(friendships)
+      .where(and(eq(friendships.requesterId, userId), eq(friendships.status, "pending")))
+      .orderBy(desc(friendships.createdAt));
+  }
+
+  async getFriends(userId: string): Promise<User[]> {
+    const acceptedFriendships = await db
+      .select()
+      .from(friendships)
+      .where(
+        and(
+          eq(friendships.status, "accepted"),
+          or(
+            eq(friendships.requesterId, userId),
+            eq(friendships.addresseeId, userId)
+          )
+        )
+      );
+
+    const friendIds = acceptedFriendships.map((f) =>
+      f.requesterId === userId ? f.addresseeId : f.requesterId
+    );
+
+    if (friendIds.length === 0) {
+      return [];
+    }
+
+    const friends = await db
+      .select()
+      .from(users)
+      .where(sql`${users.id} IN (${sql.join(friendIds.map(id => sql`${id}`), sql`, `)})`);
+
+    return friends;
+  }
+
+  async acceptFriendRequest(friendshipId: string): Promise<Friendship | undefined> {
+    const [updated] = await db
+      .update(friendships)
+      .set({
+        status: "accepted",
+        respondedAt: new Date(),
+      })
+      .where(eq(friendships.id, friendshipId))
+      .returning();
+    return updated;
+  }
+
+  async declineFriendRequest(friendshipId: string): Promise<Friendship | undefined> {
+    const [updated] = await db
+      .update(friendships)
+      .set({
+        status: "declined",
+        respondedAt: new Date(),
+      })
+      .where(eq(friendships.id, friendshipId))
+      .returning();
+    return updated;
+  }
+
+  async cancelFriendRequest(friendshipId: string): Promise<void> {
+    await db.delete(friendships).where(eq(friendships.id, friendshipId));
+  }
+
+  async unfriend(friendshipId: string): Promise<void> {
+    await db.delete(friendships).where(eq(friendships.id, friendshipId));
+  }
+
+  async areFriends(userId1: string, userId2: string): Promise<boolean> {
+    const [friendship] = await db
+      .select()
+      .from(friendships)
+      .where(
+        and(
+          eq(friendships.status, "accepted"),
+          or(
+            and(eq(friendships.requesterId, userId1), eq(friendships.addresseeId, userId2)),
+            and(eq(friendships.requesterId, userId2), eq(friendships.addresseeId, userId1))
+          )
+        )
+      );
+    return !!friendship;
+  }
+
+  // Private Conversations
+  async createConversation(participant1Id: string, participant2Id: string): Promise<PrivateConversation> {
+    const existing = await this.getConversationBetweenUsers(participant1Id, participant2Id);
+    if (existing) {
+      return existing;
+    }
+    const [created] = await db.insert(privateConversations).values({
+      participant1Id,
+      participant2Id,
+      isActive: true,
+    }).returning();
+    return created;
+  }
+
+  async getConversation(id: string): Promise<PrivateConversation | undefined> {
+    const [conversation] = await db.select().from(privateConversations).where(eq(privateConversations.id, id));
+    return conversation;
+  }
+
+  async getConversationBetweenUsers(userId1: string, userId2: string): Promise<PrivateConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(privateConversations)
+      .where(
+        or(
+          and(
+            eq(privateConversations.participant1Id, userId1),
+            eq(privateConversations.participant2Id, userId2)
+          ),
+          and(
+            eq(privateConversations.participant1Id, userId2),
+            eq(privateConversations.participant2Id, userId1)
+          )
+        )
+      );
+    return conversation;
+  }
+
+  async getUserConversations(userId: string): Promise<PrivateConversation[]> {
+    return await db
+      .select()
+      .from(privateConversations)
+      .where(
+        and(
+          eq(privateConversations.isActive, true),
+          or(
+            eq(privateConversations.participant1Id, userId),
+            eq(privateConversations.participant2Id, userId)
+          )
+        )
+      )
+      .orderBy(desc(privateConversations.lastMessageAt));
+  }
+
+  async updateConversationLastMessage(conversationId: string): Promise<void> {
+    await db
+      .update(privateConversations)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(privateConversations.id, conversationId));
+  }
+
+  // Private Messages
+  async createPrivateMessage(message: InsertPrivateMessage): Promise<PrivateMessage> {
+    const [created] = await db.insert(privateMessages).values(message).returning();
+    await this.updateConversationLastMessage(message.conversationId);
+    return created;
+  }
+
+  async getPrivateMessages(conversationId: string, limit: number = 50, before?: Date): Promise<PrivateMessage[]> {
+    const conditions = [eq(privateMessages.conversationId, conversationId), eq(privateMessages.isDeleted, false)];
+    if (before) {
+      conditions.push(sql`${privateMessages.createdAt} < ${before}`);
+    }
+    return await db
+      .select()
+      .from(privateMessages)
+      .where(and(...conditions))
+      .orderBy(desc(privateMessages.createdAt))
+      .limit(limit);
+  }
+
+  async markMessagesAsRead(conversationId: string, userId: string): Promise<void> {
+    await db
+      .update(privateMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(privateMessages.conversationId, conversationId),
+          sql`${privateMessages.senderId} != ${userId}`,
+          eq(privateMessages.isRead, false)
+        )
+      );
+  }
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(privateMessages)
+      .innerJoin(
+        privateConversations,
+        eq(privateMessages.conversationId, privateConversations.id)
+      )
+      .where(
+        and(
+          eq(privateMessages.isRead, false),
+          eq(privateMessages.isDeleted, false),
+          sql`${privateMessages.senderId} != ${userId}`,
+          or(
+            eq(privateConversations.participant1Id, userId),
+            eq(privateConversations.participant2Id, userId)
+          )
+        )
+      );
+    return result[0]?.count || 0;
+  }
+
+  async deletePrivateMessage(messageId: string): Promise<void> {
+    await db
+      .update(privateMessages)
+      .set({ isDeleted: true })
+      .where(eq(privateMessages.id, messageId));
+  }
+
+  // Encryption Keys
+  async getUserEncryptionKey(userId: string): Promise<UserEncryptionKey | undefined> {
+    const [key] = await db
+      .select()
+      .from(userEncryptionKeys)
+      .where(eq(userEncryptionKeys.userId, userId));
+    return key;
+  }
+
+  async setUserEncryptionKey(userId: string, publicKey: string): Promise<UserEncryptionKey> {
+    const [result] = await db
+      .insert(userEncryptionKeys)
+      .values({
+        userId,
+        publicKey,
+        keyVersion: 1,
+      })
+      .onConflictDoUpdate({
+        target: userEncryptionKeys.userId,
+        set: {
+          publicKey,
+          keyVersion: sql`${userEncryptionKeys.keyVersion} + 1`,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  // User Reports
+  async createReport(report: InsertUserReport): Promise<UserReport> {
+    const [created] = await db
+      .insert(userReports)
+      .values({ ...report, status: "pending" })
+      .returning();
+    return created;
+  }
+
+  async getReport(id: string): Promise<UserReport | undefined> {
+    const [report] = await db
+      .select()
+      .from(userReports)
+      .where(eq(userReports.id, id));
+    return report;
+  }
+
+  async getReportsByStatus(status: string, limit: number = 50): Promise<UserReport[]> {
+    return await db
+      .select()
+      .from(userReports)
+      .where(eq(userReports.status, status))
+      .orderBy(desc(userReports.createdAt))
+      .limit(limit);
+  }
+
+  async getReportsByUser(reporterId: string): Promise<UserReport[]> {
+    return await db
+      .select()
+      .from(userReports)
+      .where(eq(userReports.reporterId, reporterId))
+      .orderBy(desc(userReports.createdAt));
+  }
+
+  async getReportsAgainstUser(reportedUserId: string): Promise<UserReport[]> {
+    return await db
+      .select()
+      .from(userReports)
+      .where(eq(userReports.reportedUserId, reportedUserId))
+      .orderBy(desc(userReports.createdAt));
+  }
+
+  async resolveReport(reportId: string, resolution: string, resolvedBy: string): Promise<UserReport | undefined> {
+    const [updated] = await db
+      .update(userReports)
+      .set({
+        status: "resolved",
+        resolution,
+        resolvedBy,
+        resolvedAt: new Date(),
+      })
+      .where(eq(userReports.id, reportId))
+      .returning();
+    return updated;
+  }
+
+  async dismissReport(reportId: string, resolvedBy: string): Promise<UserReport | undefined> {
+    const [updated] = await db
+      .update(userReports)
+      .set({
+        status: "dismissed",
+        resolvedBy,
+        resolvedAt: new Date(),
+      })
+      .where(eq(userReports.id, reportId))
+      .returning();
+    return updated;
+  }
+
+  async countPendingReports(): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(userReports)
+      .where(eq(userReports.status, "pending"));
+    return result?.count || 0;
+  }
+
+  // User Blocks
+  async blockUser(blockerId: string, blockedId: string, reason?: string): Promise<UserBlock> {
+    const [created] = await db
+      .insert(userBlocks)
+      .values({ blockerId, blockedId, reason })
+      .returning();
+    return created;
+  }
+
+  async unblockUser(blockerId: string, blockedId: string): Promise<void> {
+    await db
+      .delete(userBlocks)
+      .where(
+        and(
+          eq(userBlocks.blockerId, blockerId),
+          eq(userBlocks.blockedId, blockedId)
+        )
+      );
+  }
+
+  async getBlockedUsers(blockerId: string): Promise<UserBlock[]> {
+    return await db
+      .select()
+      .from(userBlocks)
+      .where(eq(userBlocks.blockerId, blockerId))
+      .orderBy(desc(userBlocks.createdAt));
+  }
+
+  async isBlocked(blockerId: string, blockedId: string): Promise<boolean> {
+    const [block] = await db
+      .select()
+      .from(userBlocks)
+      .where(
+        and(
+          eq(userBlocks.blockerId, blockerId),
+          eq(userBlocks.blockedId, blockedId)
+        )
+      );
+    return !!block;
+  }
+
+  async isBlockedEitherWay(userId1: string, userId2: string): Promise<boolean> {
+    const [block] = await db
+      .select()
+      .from(userBlocks)
+      .where(
+        or(
+          and(eq(userBlocks.blockerId, userId1), eq(userBlocks.blockedId, userId2)),
+          and(eq(userBlocks.blockerId, userId2), eq(userBlocks.blockedId, userId1))
+        )
+      );
+    return !!block;
   }
 }
 
