@@ -132,7 +132,8 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
   const { data: friendshipStatus, isLoading: friendshipLoading } = useQuery<FriendshipStatus>({
     queryKey: ["/api/friends/status", profile?.id],
     queryFn: async () => {
-      const res = await fetch(`/api/friends/status/${profile!.id}`, { credentials: "include" });
+      if (!profile?.id) throw new Error("No profile ID");
+      const res = await fetch(`/api/friends/status/${profile.id}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch friendship status");
       return res.json();
     },
@@ -141,7 +142,8 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
 
   const sendFriendRequestMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/friends/request", { addresseeId: profile!.id });
+      if (!profile?.id) throw new Error("No profile ID");
+      const res = await apiRequest("POST", "/api/friends/request", { addresseeId: profile.id });
       return res.json();
     },
     onSuccess: () => {
@@ -199,7 +201,8 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
   const { data: blockStatus } = useQuery<{ isBlocked: boolean; isBlockedByThem: boolean }>({
     queryKey: ["/api/moderation/blocked-status", profile?.id],
     queryFn: async () => {
-      const res = await fetch(`/api/moderation/blocked-status/${profile!.id}`, { credentials: "include" });
+      if (!profile?.id) throw new Error("No profile ID");
+      const res = await fetch(`/api/moderation/blocked-status/${profile.id}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch block status");
       return res.json();
     },
@@ -208,7 +211,8 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
 
   const blockMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/moderation/block", { blockedId: profile!.id });
+      if (!profile?.id) throw new Error("No profile ID");
+      const res = await apiRequest("POST", "/api/moderation/block", { blockedId: profile.id });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to block user");
@@ -228,7 +232,8 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
 
   const unblockMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("DELETE", `/api/moderation/block/${profile!.id}`);
+      if (!profile?.id) throw new Error("No profile ID");
+      const res = await apiRequest("DELETE", `/api/moderation/block/${profile.id}`);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to unblock user");
@@ -247,8 +252,9 @@ export function UserProfilePopup({ userId, username, isOpen, onClose }: UserProf
 
   const reportMutation = useMutation({
     mutationFn: async () => {
+      if (!profile?.id) throw new Error("No profile ID");
       const res = await apiRequest("POST", "/api/moderation/report", { 
-        reportedUserId: profile!.id,
+        reportedUserId: profile.id,
         reportType,
         description: reportDescription || undefined,
       });
