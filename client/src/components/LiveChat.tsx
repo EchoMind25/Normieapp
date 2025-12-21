@@ -10,7 +10,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { normalizeStorageUrl } from "@/lib/utils";
-import { MessageSquare, Send, Users, Loader2, Hash, Crown, ShieldCheck, LogIn, User } from "lucide-react";
+import { MessageSquare, Send, Users, Loader2, Hash, Crown, ShieldCheck, LogIn, User, Shield, Star } from "lucide-react";
+import { UserProfilePopup } from "./UserProfilePopup";
 import type { ChatRoom, ChatMessageWithAvatar } from "@shared/schema";
 
 const DEFAULT_ROOM_ID = "00000000-0000-0000-0000-000000000001";
@@ -18,44 +19,65 @@ const DEFAULT_ROOM_ID = "00000000-0000-0000-0000-000000000001";
 interface ChatMessageItemProps {
   message: ChatMessageWithAvatar;
   isOwnMessage: boolean;
+  onUserClick: (senderId: string | null, senderName: string | null) => void;
 }
 
-// Check if username is the official Normie admin
-function isNormieAdmin(name: string | null | undefined): boolean {
-  if (!name) return false;
-  return name.toLowerCase() === "normie";
-}
-
-function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
+function ChatMessageItem({ message, isOwnMessage, onUserClick }: ChatMessageItemProps) {
   const timestamp = message.createdAt ? new Date(message.createdAt) : new Date();
   const timeStr = timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const isAdmin = isNormieAdmin(message.senderName);
+  
+  // Check roles from message data - senderRole comes from the API
+  const senderRole = (message as any).senderRole;
+  const isFounder = senderRole === "founder";
+  const isAdmin = senderRole === "admin";
   const avatarUrl = message.senderAvatarUrl ? normalizeStorageUrl(message.senderAvatarUrl) : null;
+
+  const handleClick = () => {
+    onUserClick(message.senderId || null, message.senderName);
+  };
   
   return (
     <div 
       className={`flex gap-2 ${isOwnMessage ? "flex-row-reverse" : "flex-row"} mb-2`}
       data-testid={`chat-message-${message.id}`}
     >
-      <Avatar className="w-7 h-7 flex-shrink-0">
-        {avatarUrl ? (
-          <AvatarImage src={avatarUrl} alt={message.senderName || "User"} />
-        ) : null}
-        <AvatarFallback className="text-[10px]">
-          <User className="w-3 h-3" />
-        </AvatarFallback>
-      </Avatar>
+      <button
+        onClick={handleClick}
+        className="focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-full"
+        data-testid={`button-avatar-${message.id}`}
+      >
+        <Avatar className="w-7 h-7 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">
+          {avatarUrl ? (
+            <AvatarImage src={avatarUrl} alt={message.senderName || "User"} />
+          ) : null}
+          <AvatarFallback className="text-[10px]">
+            <User className="w-3 h-3" />
+          </AvatarFallback>
+        </Avatar>
+      </button>
       <div className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
         <div className="flex items-center gap-2 mb-0.5">
-          <span className={`text-xs font-mono font-semibold ${isAdmin ? "text-yellow-500" : "text-primary"}`}>
-            {isAdmin && <Crown className="w-3 h-3 inline mr-1" />}
+          <button
+            onClick={handleClick}
+            className={`text-xs font-mono font-semibold cursor-pointer hover:underline focus:outline-none ${
+              isFounder ? "text-yellow-500" : isAdmin ? "text-blue-500" : "text-primary"
+            }`}
+            data-testid={`button-username-${message.id}`}
+          >
+            {isFounder && <Crown className="w-3 h-3 inline mr-1" />}
+            {isAdmin && !isFounder && <Shield className="w-3 h-3 inline mr-1" />}
             {message.senderName || "Anonymous"}
-            {isAdmin && (
+            {isFounder && (
               <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px] text-yellow-500 border-yellow-500/50">
                 CEO
               </Badge>
             )}
-          </span>
+            {isAdmin && !isFounder && (
+              <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px] text-blue-500 border-blue-500/50">
+                ADMIN
+              </Badge>
+            )}
+          </button>
           <span className="text-xs text-muted-foreground">{timeStr}</span>
         </div>
         <div 
@@ -74,6 +96,9 @@ function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
 
 export function LiveChat() {
   const [message, setMessage] = useState("");
+  const [profilePopup, setProfilePopup] = useState<{ isOpen: boolean; userId?: string; username?: string }>({
+    isOpen: false,
+  });
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
 
@@ -96,6 +121,16 @@ export function LiveChat() {
       toast({ title: "Error", description: "Failed to send message. Please sign in first.", variant: "destructive" });
     },
   });
+
+  const handleUserClick = (senderId: string | null, senderName: string | null) => {
+    if (senderId || senderName) {
+      setProfilePopup({
+        isOpen: true,
+        userId: senderId || undefined,
+        username: senderName || undefined,
+      });
+    }
+  };
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,10 +179,18 @@ export function LiveChat() {
                   key={msg.id}
                   message={msg}
                   isOwnMessage={isAuthenticated && user?.username === msg.senderName}
+                  onUserClick={handleUserClick}
                 />
               ))}
             </div>
           )}
+          
+          <UserProfilePopup
+            isOpen={profilePopup.isOpen}
+            userId={profilePopup.userId}
+            username={profilePopup.username}
+            onClose={() => setProfilePopup({ isOpen: false })}
+          />
         </ScrollArea>
         
         {isAuthenticated ? (

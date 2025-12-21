@@ -510,9 +510,10 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 
-// Extended type with sender avatar for display
+// Extended type with sender avatar and role for display
 export type ChatMessageWithAvatar = ChatMessage & {
   senderAvatarUrl?: string | null;
+  senderRole?: string | null;
 };
 
 // Chat room members
@@ -931,6 +932,36 @@ export type WhaleEntry = {
   firstBuyAt: string | null;
   solscanUrl: string;
 };
+
+// =====================================================
+// Founder Wallets Table - Multiple wallets for founder
+// =====================================================
+
+export const founderWallets = pgTable("founder_wallets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  walletAddress: varchar("wallet_address", { length: 44 }).notNull().unique(),
+  walletName: varchar("wallet_name", { length: 100 }).notNull(),
+  walletType: varchar("wallet_type", { length: 50 }).notNull(), // 'giveaway', 'dev', 'personal', 'treasury', 'other'
+  showOnLeaderboard: boolean("show_on_leaderboard").default(false),
+  isActive: boolean("is_active").default(true),
+  balance: decimal("balance", { precision: 20, scale: 6 }),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_founder_wallets_user").on(table.userId),
+  index("idx_founder_wallets_address").on(table.walletAddress),
+  index("idx_founder_wallets_type").on(table.walletType),
+]);
+
+export const insertFounderWalletSchema = createInsertSchema(founderWallets).omit({ 
+  id: true, 
+  createdAt: true,
+  lastUpdated: true,
+  balance: true,
+});
+export type InsertFounderWallet = z.infer<typeof insertFounderWalletSchema>;
+export type FounderWallet = typeof founderWallets.$inferSelect;
 
 // =====================================================
 // Normie token constants

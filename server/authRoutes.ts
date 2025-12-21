@@ -882,4 +882,229 @@ router.post("/wallet/link-verify", authMiddleware, async (req: AuthRequest, res:
   }
 });
 
+// =====================================================
+// Public User Profile Lookup
+// =====================================================
+
+router.get("/users/profile/:identifier", async (req: Request, res: Response) => {
+  try {
+    const { identifier } = req.params;
+    
+    if (!identifier) {
+      res.status(400).json({ error: "User identifier required" });
+      return;
+    }
+
+    let user;
+    
+    // Check if identifier looks like a UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(identifier)) {
+      user = await storage.getUser(identifier);
+    } else {
+      // Otherwise, treat it as a username
+      user = await storage.getUserByUsername(identifier);
+    }
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Get holdings data if visible
+    let balance = null;
+    let holdDuration = null;
+
+    if (user.holdingsVisible && user.walletAddress) {
+      const holdings = await storage.getWalletHoldings(user.walletAddress);
+      if (holdings) {
+        balance = parseFloat(holdings.currentBalance) || 0;
+        if (holdings.holdStartAt) {
+          holdDuration = Math.floor((Date.now() - holdings.holdStartAt.getTime()) / 1000);
+        }
+      }
+    }
+
+    // Only expose wallet address if user has explicitly enabled holdings visibility
+    // This is a privacy-conscious approach
+    const publicWalletInfo = user.holdingsVisible && user.walletAddress 
+      ? {
+          walletAddress: user.walletAddress,
+          balance,
+          holdDuration,
+        }
+      : {
+          walletAddress: null,
+          balance: null,
+          holdDuration: null,
+        };
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      role: user.role,
+      holdingsVisible: user.holdingsVisible,
+      createdAt: user.createdAt?.toISOString(),
+      isBanned: !!user.bannedAt,
+      ...publicWalletInfo,
+    });
+  } catch (error) {
+    console.error("[Auth] User profile lookup error:", error);
+    res.status(500).json({ error: "Failed to fetch user profile" });
+  }
+});
+
+// =====================================================
+// Wallet Unlinking (for regular users)
+// =====================================================
+
+router.post("/wallet/unlink", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    if (!req.user.walletAddress) {
+      res.status(400).json({ error: "No wallet linked to this account" });
+      return;
+    }
+
+    // Unlink the wallet from the user
+    const updatedUser = await storage.updateUser(req.user.id, { walletAddress: null });
+    if (!updatedUser) {
+      res.status(500).json({ error: "Failed to unlink wallet" });
+      return;
+    }
+
+    // Also unlink from wallet holdings
+    await storage.unlinkWalletHoldingFromUser(req.user.walletAddress);
+
+    console.log(`[Auth] Wallet unlinked for user ${req.user.id}`);
+    res.json({
+      message: "Wallet unlinked successfully",
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        walletAddress: null,
+        role: updatedUser.role,
+      },
+    });
+  } catch (error) {
+    console.error("[Auth] Wallet unlink error:", error);
+    res.status(500).json({ error: "Failed to unlink wallet" });
+  }
+});
+
+// =====================================================
+// Founder Wallet Management
+// =====================================================
+
+router.get("/founder/wallets", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== "founder") {
+      res.status(403).json({ error: "Founder access required" });
+      return;
+    }
+
+    const wallets = await storage.getFounderWallets(req.user.id);
+    res.json(wallets);
+  } catch (error) {
+    console.error("[Auth] Get founder wallets error:", error);
+    res.status(500).json({ error: "Failed to fetch wallets" });
+  }
+});
+
+router.post("/founder/wallets", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== "founder") {
+      res.status(403).json({ error: "Founder access required" });
+      return;
+    }
+
+    const { walletAddress, walletName, walletType, showOnLeaderboard } = req.body;
+
+    if (!walletAddress || !walletName || !walletType) {
+      res.status(400).json({ error: "Wallet address, name, and type are required" });
+      return;
+    }
+
+    // Check if wallet already exists
+    const existing = await storage.getFounderWalletByAddress(walletAddress);
+    if (existing) {
+      res.status(400).json({ error: "This wallet is already linked" });
+      return;
+    }
+
+    const wallet = await storage.createFounderWallet({
+      userId: req.user.id,
+      walletAddress,
+      walletName,
+      walletType,
+      showOnLeaderboard: showOnLeaderboard ?? false,
+      isActive: true,
+    });
+
+    res.json(wallet);
+  } catch (error) {
+    console.error("[Auth] Create founder wallet error:", error);
+    res.status(500).json({ error: "Failed to create wallet" });
+  }
+});
+
+router.patch("/founder/wallets/:walletId", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== "founder") {
+      res.status(403).json({ error: "Founder access required" });
+      return;
+    }
+
+    const { walletId } = req.params;
+    const { walletName, walletType, showOnLeaderboard, isActive } = req.body;
+
+    const wallet = await storage.getFounderWallet(walletId);
+    if (!wallet || wallet.userId !== req.user.id) {
+      res.status(404).json({ error: "Wallet not found" });
+      return;
+    }
+
+    const updatedWallet = await storage.updateFounderWallet(walletId, {
+      walletName,
+      walletType,
+      showOnLeaderboard,
+      isActive,
+    });
+
+    res.json(updatedWallet);
+  } catch (error) {
+    console.error("[Auth] Update founder wallet error:", error);
+    res.status(500).json({ error: "Failed to update wallet" });
+  }
+});
+
+router.delete("/founder/wallets/:walletId", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== "founder") {
+      res.status(403).json({ error: "Founder access required" });
+      return;
+    }
+
+    const { walletId } = req.params;
+
+    const wallet = await storage.getFounderWallet(walletId);
+    if (!wallet || wallet.userId !== req.user.id) {
+      res.status(404).json({ error: "Wallet not found" });
+      return;
+    }
+
+    await storage.deleteFounderWallet(walletId);
+    res.json({ message: "Wallet deleted successfully" });
+  } catch (error) {
+    console.error("[Auth] Delete founder wallet error:", error);
+    res.status(500).json({ error: "Failed to delete wallet" });
+  }
+});
+
 export default router;

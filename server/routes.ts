@@ -89,11 +89,50 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
     }
     
     const [user] = await db.select().from(users).where(eq(users.id, decoded.userId));
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "founder")) {
       return res.status(403).json({ error: "Admin access required" });
     }
     
     (req as any).userId = decoded.userId;
+    (req as any).user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+async function requireFounder(req: Request, res: Response, next: NextFunction) {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") 
+      ? authHeader.substring(7) 
+      : req.cookies?.authToken;
+    
+    if (!token) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    
+    const decoded = verifyJWT(token);
+    if (!decoded) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    
+    const [session] = await db
+      .select()
+      .from(sessions)
+      .where(and(eq(sessions.token, token), gt(sessions.expiresAt, new Date())));
+    
+    if (!session) {
+      return res.status(401).json({ error: "Session expired or invalid" });
+    }
+    
+    const [user] = await db.select().from(users).where(eq(users.id, decoded.userId));
+    if (!user || user.role !== "founder") {
+      return res.status(403).json({ error: "Founder access required" });
+    }
+    
+    (req as any).userId = decoded.userId;
+    (req as any).user = user;
     next();
   } catch (error) {
     return res.status(401).json({ error: "Invalid token" });

@@ -95,6 +95,9 @@ import {
   type InsertWalletBuy,
   type DiamondHandsEntry,
   type WhaleEntry,
+  founderWallets,
+  type FounderWallet,
+  type InsertFounderWallet,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -308,7 +311,18 @@ export interface IStorage {
   
   // Link wallet to user account
   linkWalletHoldingToUser(walletAddress: string, userId: string): Promise<void>;
+  unlinkWalletHoldingFromUser(walletAddress: string): Promise<void>;
   backfillWalletHoldingsUserIds(): Promise<number>;
+  getWalletHoldings(walletAddress: string): Promise<WalletHolding | undefined>;
+  
+  // Founder Wallet Management
+  getFounderWallets(userId: string): Promise<FounderWallet[]>;
+  getFounderWallet(id: string): Promise<FounderWallet | undefined>;
+  getFounderWalletByAddress(walletAddress: string): Promise<FounderWallet | undefined>;
+  createFounderWallet(wallet: InsertFounderWallet): Promise<FounderWallet>;
+  updateFounderWallet(id: string, data: Partial<InsertFounderWallet>): Promise<FounderWallet | undefined>;
+  deleteFounderWallet(id: string): Promise<void>;
+  getAllFounderWalletAddresses(): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -891,6 +905,7 @@ export class DatabaseStorage implements IStorage {
         isDeleted: chatMessages.isDeleted,
         createdAt: chatMessages.createdAt,
         senderAvatarUrl: users.avatarUrl,
+        senderRole: users.role,
       })
       .from(chatMessages)
       .leftJoin(users, eq(chatMessages.senderId, users.id))
@@ -1665,6 +1680,67 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`[Storage] Backfill complete: ${linkedCount} wallet holdings linked to users`);
     return linkedCount;
+  }
+
+  async unlinkWalletHoldingFromUser(walletAddress: string): Promise<void> {
+    await db
+      .update(walletHoldings)
+      .set({
+        userId: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(walletHoldings.walletAddress, walletAddress));
+    
+    console.log(`[Storage] Unlinked wallet holdings for ${walletAddress.slice(0, 8)}...`);
+  }
+
+  async getWalletHoldings(walletAddress: string): Promise<WalletHolding | undefined> {
+    return this.getWalletHolding(walletAddress);
+  }
+
+  // Founder Wallet Management
+  async getFounderWallets(userId: string): Promise<FounderWallet[]> {
+    return await db
+      .select()
+      .from(founderWallets)
+      .where(eq(founderWallets.userId, userId))
+      .orderBy(desc(founderWallets.createdAt));
+  }
+
+  async getFounderWallet(id: string): Promise<FounderWallet | undefined> {
+    const [wallet] = await db.select().from(founderWallets).where(eq(founderWallets.id, id));
+    return wallet;
+  }
+
+  async getFounderWalletByAddress(walletAddress: string): Promise<FounderWallet | undefined> {
+    const [wallet] = await db.select().from(founderWallets).where(eq(founderWallets.walletAddress, walletAddress));
+    return wallet;
+  }
+
+  async createFounderWallet(wallet: InsertFounderWallet): Promise<FounderWallet> {
+    const [created] = await db.insert(founderWallets).values(wallet).returning();
+    return created;
+  }
+
+  async updateFounderWallet(id: string, data: Partial<InsertFounderWallet>): Promise<FounderWallet | undefined> {
+    const [updated] = await db
+      .update(founderWallets)
+      .set({ ...data, lastUpdated: new Date() })
+      .where(eq(founderWallets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFounderWallet(id: string): Promise<void> {
+    await db.delete(founderWallets).where(eq(founderWallets.id, id));
+  }
+
+  async getAllFounderWalletAddresses(): Promise<string[]> {
+    const wallets = await db
+      .select({ walletAddress: founderWallets.walletAddress })
+      .from(founderWallets)
+      .where(eq(founderWallets.isActive, true));
+    return wallets.map(w => w.walletAddress);
   }
 }
 

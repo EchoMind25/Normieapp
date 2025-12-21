@@ -83,6 +83,29 @@ Preferred communication style: Simple, everyday language.
 - **Transaction Monitoring**: Whale detection (2M+ tokens bought) and jeet detection (5M+ tokens sold)
 - **Push Notifications**: Web Push API with VAPID keys for whale alerts and jeet alarms
 
+### Role Hierarchy System (December 2025)
+- **Roles**: founder > admin > user permission hierarchy
+- **Founder Privileges**: Full admin access plus founder wallet management
+- **Admin Privileges**: User moderation (ban/unban), content management
+- **User Privileges**: Standard community features, wallet linking (1 wallet per user)
+
+### User Profile System (December 2025)
+- **Interactive Profiles**: Click usernames/avatars in chat to view profiles
+- **Public Profile API**: `GET /api/auth/users/profile/:identifier` (by ID or username)
+- **Privacy Controls**: Wallet and holdings only shown if user enables "holdingsVisible"
+- **Role Badges**: Visual indicators for founder (crown) and admin (shield) in chat
+
+### Founder Wallet Management (December 2025)
+- **Table**: `founder_wallets` - multiple named wallets for founder operations
+- **Wallet Types**: giveaway, dev, personal, treasury, other
+- **Leaderboard Filtering**: Founder wallets excluded from leaderboards unless flagged
+- **API Endpoints**: 
+  - `GET /api/auth/founder/wallets` - List founder's wallets
+  - `POST /api/auth/founder/wallets` - Add new wallet
+  - `PATCH /api/auth/founder/wallets/:id` - Update wallet
+  - `DELETE /api/auth/founder/wallets/:id` - Remove wallet
+- **Wallet Unlinking**: `POST /api/auth/wallet/unlink` - Users can unlink their wallet to link a different one
+
 ## External Dependencies
 
 ### Blockchain Services

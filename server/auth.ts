@@ -111,8 +111,16 @@ export function verifyWalletSignature(
   }
 }
 
+export function isFounder(user: User): boolean {
+  return user.role === "founder";
+}
+
 export function isAdmin(user: User): boolean {
-  return user.role === "admin" || user.walletAddress === ADMIN_WALLET_ADDRESS;
+  return user.role === "admin" || user.role === "founder" || user.walletAddress === ADMIN_WALLET_ADDRESS;
+}
+
+export function hasModeratorAccess(user: User): boolean {
+  return user.role === "founder" || user.role === "admin";
 }
 
 export function determineRole(walletAddress: string | null): string {

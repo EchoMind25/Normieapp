@@ -23,6 +23,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isFounder: boolean;
   requiresPasswordChange: boolean;
   loginWithWallet: (provider: WalletProvider) => Promise<boolean>;
   loginWithEmail: (email: string, password: string) => Promise<boolean>;
@@ -181,7 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isAdmin: user?.role === "admin",
+    isAdmin: user?.role === "admin" || user?.role === "founder",
+    isFounder: user?.role === "founder",
     requiresPasswordChange,
     loginWithWallet,
     loginWithEmail,

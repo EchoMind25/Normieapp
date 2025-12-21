@@ -679,13 +679,21 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
             color="text-destructive"
             isLoading={isLoading}
           />
-          <StatCard
-            title="Locked"
-            value={metrics ? formatNumber(metrics.lockedTokens) : "0"}
-            icon={<Lock className="h-5 w-5" />}
-            color="text-chart-3"
-            isLoading={isLoading}
-          />
+          <a
+            href="https://app.streamflow.finance/contract/solana/mainnet/26Nrbi6tXhPWnMHDU1iB9twshqkZpEGLFPdLAaL8SYJJ"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+            data-testid="link-locked-streamflow"
+          >
+            <StatCard
+              title="Locked"
+              value={metrics ? formatNumber(metrics.lockedTokens) : "0"}
+              icon={<Lock className="h-5 w-5" />}
+              color="text-chart-3"
+              isLoading={isLoading}
+            />
+          </a>
           <StatCard
             title="Circulating"
             value={metrics ? formatNumber(metrics.circulatingSupply) : "0"}
