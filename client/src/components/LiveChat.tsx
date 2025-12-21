@@ -114,7 +114,13 @@ export function LiveChat() {
   });
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    // Use container-local scrolling to avoid scrolling the entire document
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTo({
+        top: scrollAreaRef.current.scrollHeight,
+        behavior: behavior === "instant" ? "instant" : "smooth"
+      });
+    }
     setUserScrolled(false);
     setShowScrollButton(false);
   }, []);
