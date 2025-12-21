@@ -228,7 +228,7 @@ export async function registerRoutes(
         holders: metrics.holders,
         lastUpdated: metrics.lastUpdated,
       };
-      if (handleConditionalGet(req, res, embedMetrics, 10)) return;
+      if (handleConditionalGet(req, res, embedMetrics, 10, ["lastUpdated"])) return;
       res.json(embedMetrics);
     } catch (error) {
       console.error("[Embed] Metrics error:", error);
@@ -657,7 +657,7 @@ export async function registerRoutes(
   app.get("/api/metrics", async (req, res) => {
     try {
       const metrics = await fetchTokenMetrics();
-      if (handleConditionalGet(req, res, metrics, 5)) return;
+      if (handleConditionalGet(req, res, metrics, 5, ["lastUpdated"])) return;
       res.json(metrics);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch metrics" });
