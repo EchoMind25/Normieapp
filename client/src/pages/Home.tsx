@@ -34,45 +34,7 @@ export default function Home() {
   const prevPriceRef = useRef<number | null>(null);
   const passedMilestonesRef = useRef<Set<number>>(new Set());
 
-  // Force scroll to top on mount to ensure Dashboard is visible first
-  // Clear any hash fragment that causes browser auto-scroll
-  useEffect(() => {
-    // Disable browser scroll restoration
-    if ('scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
-    
-    // Remove hash fragment from URL without triggering navigation
-    // This prevents browser from auto-scrolling to #meme-generator etc
-    if (window.location.hash) {
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-    
-    // Aggressive scroll to top function
-    const forceScrollTop = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    };
-    
-    // Force scroll to top immediately
-    forceScrollTop();
-    
-    // Multiple attempts to catch async rendering and lazy loading
-    queueMicrotask(forceScrollTop);
-    requestAnimationFrame(forceScrollTop);
-    
-    // Staggered timeouts to catch lazy-loaded content
-    const timeouts = [
-      setTimeout(forceScrollTop, 0),
-      setTimeout(forceScrollTop, 50),
-      setTimeout(forceScrollTop, 150),
-      setTimeout(forceScrollTop, 300),
-      setTimeout(forceScrollTop, 500),
-    ];
-    
-    return () => timeouts.forEach(clearTimeout);
-  }, []);
+  // Scroll to top is now handled globally in App.tsx useScrollReset hook
 
   useEffect(() => {
     if (!metrics?.price) return;

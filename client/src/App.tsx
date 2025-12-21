@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { lazy, Suspense, useEffect, useState, Component, type ReactNode } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -108,7 +108,27 @@ function PageLoader() {
   );
 }
 
+// Global scroll reset on route changes
+function useScrollReset() {
+  const [location] = useLocation();
+  
+  useEffect(() => {
+    // Force scroll to top on every route change
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Clear any hash fragments that might cause auto-scroll
+    // (hash always starts with # so we check if it has content after #)
+    if (window.location.hash && window.location.hash.length > 1) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }, [location]);
+}
+
 function Router() {
+  useScrollReset();
+  
   return (
     <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
