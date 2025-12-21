@@ -721,7 +721,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
         )}
 
         <Card className="p-4 lg:p-6 mb-6">
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
                 Supply Stranglehold
@@ -730,14 +730,14 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
                 {strangleholdProgress.toFixed(1)}% Removed
               </p>
             </div>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="font-mono text-destructive">
-                <Flame className="h-3 w-3 mr-1" />
-                {metrics ? formatNumber(metrics.burnedTokens) : "0"} BURNED
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="font-mono text-destructive text-xs">
+                <Flame className="h-3 w-3 mr-1 flex-shrink-0" />
+                <span className="truncate">{metrics ? formatNumber(metrics.burnedTokens) : "0"} BURNED</span>
               </Badge>
-              <Badge variant="outline" className="font-mono text-chart-3">
-                <Lock className="h-3 w-3 mr-1" />
-                {metrics ? formatNumber(metrics.lockedTokens) : "0"} LOCKED
+              <Badge variant="outline" className="font-mono text-chart-3 text-xs">
+                <Lock className="h-3 w-3 mr-1 flex-shrink-0" />
+                <span className="truncate">{metrics ? formatNumber(metrics.lockedTokens) : "0"} LOCKED</span>
               </Badge>
             </div>
           </div>

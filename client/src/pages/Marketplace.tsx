@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +20,9 @@ import {
   Sparkles,
   Flame,
   Clock,
-  Wallet
+  Wallet,
+  Lock,
+  Unlock
 } from "lucide-react";
 import type { Nft, NftCollection, NftListing } from "@shared/schema";
 
@@ -32,6 +36,7 @@ interface MarketplaceConfig {
   maxListingDurationDays: number;
   offerExpirationDays: number;
   treasuryWallet: string | null;
+  isOpen?: boolean;
 }
 
 function NftCard({ listing }: { listing: ListingWithNft }) {
@@ -181,15 +186,41 @@ function LoadingGrid({ count = 8 }: { count?: number }) {
 
 export default function Marketplace() {
   const { user, isAuthenticated, isAdmin, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  const { data: config } = useQuery<MarketplaceConfig>({
+  const { data: config, isLoading: configLoading } = useQuery<MarketplaceConfig>({
     queryKey: ["/api/marketplace/config"],
   });
 
-  // Admin-only access check
-  if (authLoading) {
+  const isFounder = user?.role === "founder";
+  const marketplaceOpen = config?.isOpen ?? false;
+
+  const toggleAccessMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/marketplace/toggle-access");
+      return response.json();
+    },
+    onSuccess: (data: { isOpen: boolean }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/marketplace/config"] });
+      toast({
+        title: data.isOpen ? "Marketplace Unlocked" : "Marketplace Locked",
+        description: data.isOpen 
+          ? "All users can now access the NFT marketplace" 
+          : "Only admins and founders can access the marketplace",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to toggle access",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Access check - allow if marketplace is open to all OR user is admin/founder
+  if (authLoading || configLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center font-mono">
@@ -199,7 +230,7 @@ export default function Marketplace() {
     );
   }
 
-  if (!isAuthenticated || !isAdmin) {
+  if (!isAuthenticated || (!marketplaceOpen && !isAdmin)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md w-full mx-4 border-destructive/50">
@@ -258,6 +289,28 @@ export default function Marketplace() {
                 <Badge variant="outline" className="font-mono text-xs">
                   {config.feePercentage}% Fee
                 </Badge>
+              )}
+              {isFounder && (
+                <Button
+                  variant={marketplaceOpen ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => toggleAccessMutation.mutate()}
+                  disabled={toggleAccessMutation.isPending}
+                  className="gap-2 font-mono"
+                  data-testid="button-toggle-marketplace"
+                >
+                  {marketplaceOpen ? (
+                    <>
+                      <Unlock className="w-4 h-4" />
+                      Open to All
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      Locked
+                    </>
+                  )}
+                </Button>
               )}
             </div>
             

@@ -2414,6 +2414,7 @@ export async function registerRoutes(
       const minListingPrice = await storage.getMarketplaceConfig("min_listing_price_sol") || "0.01";
       const maxListingDuration = await storage.getMarketplaceConfig("max_listing_duration_days") || "30";
       const offerExpiration = await storage.getMarketplaceConfig("offer_expiration_days") || "7";
+      const marketplaceOpen = await storage.getMarketplaceConfig("marketplace_open") || "false";
       
       res.json({
         feePercentage: parseFloat(feePercentage),
@@ -2421,10 +2422,31 @@ export async function registerRoutes(
         maxListingDurationDays: parseInt(maxListingDuration),
         offerExpirationDays: parseInt(offerExpiration),
         treasuryWallet: process.env.MARKETPLACE_TREASURY_WALLET || null,
+        isOpen: marketplaceOpen === "true",
       });
     } catch (error) {
       console.error("[Marketplace] Error fetching config:", error);
       res.status(500).json({ error: "Failed to fetch marketplace config" });
+    }
+  });
+
+  // Toggle marketplace access (founders only)
+  app.post("/api/marketplace/toggle-access", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user || req.user.role !== "founder") {
+        return res.status(403).json({ error: "Only founders can toggle marketplace access" });
+      }
+
+      const currentValue = await storage.getMarketplaceConfig("marketplace_open") || "false";
+      const newValue = currentValue === "true" ? "false" : "true";
+      
+      await storage.setMarketplaceConfig("marketplace_open", newValue);
+      
+      console.log(`[Marketplace] Access toggled to ${newValue} by founder ${req.user.username}`);
+      res.json({ isOpen: newValue === "true" });
+    } catch (error) {
+      console.error("[Marketplace] Error toggling access:", error);
+      res.status(500).json({ error: "Failed to toggle marketplace access" });
     }
   });
 

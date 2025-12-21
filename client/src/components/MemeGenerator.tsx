@@ -768,6 +768,90 @@ export function MemeGenerator() {
     setDraggedElement(null);
   };
 
+  // Touch event handlers for mobile drag support
+  const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
+
+    // Check stickers first (they're on top)
+    for (const sticker of stickerElements) {
+      const dist = Math.sqrt((x - sticker.x) ** 2 + (y - sticker.y) ** 2);
+      if (dist < 60 * sticker.scale) {
+        setDraggedElement({ type: "sticker", id: sticker.id });
+        setSelectedElement({ type: "sticker", id: sticker.id });
+        return;
+      }
+    }
+
+    // Check text elements
+    for (const text of textElements) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.font = `bold ${text.fontSize}px ${text.font}`;
+        const metrics = ctx.measureText(text.text);
+        const width = metrics.width;
+        const height = text.fontSize;
+        
+        if (
+          x >= text.x - width / 2 &&
+          x <= text.x + width / 2 &&
+          y >= text.y - height / 2 &&
+          y <= text.y + height / 2
+        ) {
+          setDraggedElement({ type: "text", id: text.id });
+          setSelectedElement({ type: "text", id: text.id });
+          return;
+        }
+      }
+    }
+    
+    setSelectedElement(null);
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!draggedElement) return;
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (touch.clientX - rect.left) * scaleX;
+    const y = (touch.clientY - rect.top) * scaleY;
+
+    if (draggedElement.type === "text") {
+      setTextElements(
+        textElements.map((t) =>
+          t.id === draggedElement.id ? { ...t, x, y } : t
+        )
+      );
+    } else {
+      setStickerElements(
+        stickerElements.map((s) =>
+          s.id === draggedElement.id ? { ...s, x, y } : s
+        )
+      );
+    }
+  };
+
+  const handleCanvasTouchEnd = () => {
+    if (draggedElement) {
+      saveToHistory(textElements, stickerElements);
+    }
+    setDraggedElement(null);
+  };
+
   const clearCanvas = () => {
     const emptyText: TextElement[] = [];
     const emptyStickers: StickerElement[] = [];
@@ -939,11 +1023,14 @@ export function MemeGenerator() {
                   ref={canvasRef}
                   width={600}
                   height={600}
-                  className="w-full h-full cursor-crosshair"
+                  className="w-full h-full cursor-crosshair touch-none"
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasMouseMove}
                   onMouseUp={handleCanvasMouseUp}
                   onMouseLeave={handleCanvasMouseUp}
+                  onTouchStart={handleCanvasTouchStart}
+                  onTouchMove={handleCanvasTouchMove}
+                  onTouchEnd={handleCanvasTouchEnd}
                   data-testid="canvas-meme"
                 />
               </div>

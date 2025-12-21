@@ -103,15 +103,7 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
           )}
         </div>
 
-        <nav className="hidden md:flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => scrollToSection("dashboard")}
-            data-testid="nav-dashboard"
-          >
-            Dashboard
-          </Button>
+        <nav className="hidden md:flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"

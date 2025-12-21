@@ -35,9 +35,20 @@ import type { Nft, NftListing, NftOffer } from "@shared/schema";
 interface MarketplaceConfig {
   feePercentage: number;
   minListingPrice: number;
+  isOpen?: boolean;
 }
 
-function AdminOnlyCheck({ isLoading, isAuthenticated, isAdmin }: { isLoading: boolean; isAuthenticated: boolean; isAdmin: boolean }) {
+function AccessCheck({ 
+  isLoading, 
+  isAuthenticated, 
+  isAdmin, 
+  marketplaceOpen 
+}: { 
+  isLoading: boolean; 
+  isAuthenticated: boolean; 
+  isAdmin: boolean;
+  marketplaceOpen: boolean;
+}) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -48,7 +59,8 @@ function AdminOnlyCheck({ isLoading, isAuthenticated, isAdmin }: { isLoading: bo
     );
   }
 
-  if (!isAuthenticated || !isAdmin) {
+  // Allow access if marketplace is open to all, or user is admin/founder
+  if (!isAuthenticated || (!marketplaceOpen && !isAdmin)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md w-full mx-4 border-destructive/50">
@@ -281,13 +293,19 @@ export default function MyNfts() {
   const [selectedListing, setSelectedListing] = useState<NftListing | null>(null);
   const [listPrice, setListPrice] = useState("");
 
-  // Admin-only access check
-  const adminCheck = AdminOnlyCheck({ isLoading: authLoading, isAuthenticated, isAdmin });
-  if (adminCheck) return adminCheck;
-
-  const { data: config } = useQuery<MarketplaceConfig>({
+  // Fetch marketplace config first to check if marketplace is open
+  const { data: config, isLoading: configLoading } = useQuery<MarketplaceConfig>({
     queryKey: ["/api/marketplace/config"],
   });
+
+  // Access check - allow if marketplace is open to all OR user is admin/founder
+  const accessCheck = AccessCheck({ 
+    isLoading: authLoading || configLoading, 
+    isAuthenticated, 
+    isAdmin, 
+    marketplaceOpen: config?.isOpen ?? false 
+  });
+  if (accessCheck) return accessCheck;
 
   const { data: ownedNfts, isLoading: nftsLoading } = useQuery<Nft[]>({
     queryKey: ["/api/user", user?.id, "nfts"],
