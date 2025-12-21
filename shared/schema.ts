@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, real, boolean, timestamp, decimal, uuid, primaryKey, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, real, boolean, timestamp, decimal, uuid, primaryKey, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -964,6 +964,159 @@ export const insertFounderWalletSchema = createInsertSchema(founderWallets).omit
 });
 export type InsertFounderWallet = z.infer<typeof insertFounderWalletSchema>;
 export type FounderWallet = typeof founderWallets.$inferSelect;
+
+// =====================================================
+// Friendships & Social System (Apple Compliant)
+// =====================================================
+
+// Friend requests and friendships
+export const friendships = pgTable("friendships", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requesterId: uuid("requester_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  addresseeId: uuid("addressee_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, accepted, declined, blocked
+  createdAt: timestamp("created_at").defaultNow(),
+  respondedAt: timestamp("responded_at"),
+}, (table) => [
+  index("idx_friendships_requester").on(table.requesterId),
+  index("idx_friendships_addressee").on(table.addresseeId),
+  index("idx_friendships_status").on(table.status),
+  uniqueIndex("idx_friendships_unique_pair").on(table.requesterId, table.addresseeId),
+]);
+
+export const insertFriendshipSchema = createInsertSchema(friendships).omit({ 
+  id: true, 
+  createdAt: true,
+  respondedAt: true,
+});
+export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
+export type Friendship = typeof friendships.$inferSelect;
+
+// =====================================================
+// Encrypted Direct Messages (E2E Encryption Ready)
+// =====================================================
+
+// Private conversations (DMs between friends)
+export const privateConversations = pgTable("private_conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  participant1Id: uuid("participant1_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  participant2Id: uuid("participant2_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  lastMessageAt: timestamp("last_message_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_private_convos_p1").on(table.participant1Id),
+  index("idx_private_convos_p2").on(table.participant2Id),
+  index("idx_private_convos_last_msg").on(table.lastMessageAt),
+]);
+
+export const insertPrivateConversationSchema = createInsertSchema(privateConversations).omit({ 
+  id: true, 
+  createdAt: true,
+  lastMessageAt: true,
+});
+export type InsertPrivateConversation = z.infer<typeof insertPrivateConversationSchema>;
+export type PrivateConversation = typeof privateConversations.$inferSelect;
+
+// Private messages with E2E encryption support
+export const privateMessages = pgTable("private_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").references(() => privateConversations.id, { onDelete: "cascade" }).notNull(),
+  senderId: uuid("sender_id").references(() => users.id).notNull(),
+  encryptedContent: text("encrypted_content").notNull(), // E2E encrypted message content
+  nonce: text("nonce"), // Encryption nonce for decryption
+  isRead: boolean("is_read").default(false),
+  isDeleted: boolean("is_deleted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_private_msgs_convo").on(table.conversationId),
+  index("idx_private_msgs_sender").on(table.senderId),
+  index("idx_private_msgs_created").on(table.createdAt),
+]);
+
+export const insertPrivateMessageSchema = createInsertSchema(privateMessages).omit({ 
+  id: true, 
+  createdAt: true,
+  isRead: true,
+  isDeleted: true,
+});
+export type InsertPrivateMessage = z.infer<typeof insertPrivateMessageSchema>;
+export type PrivateMessage = typeof privateMessages.$inferSelect;
+
+// User encryption keys (public keys for E2E encryption)
+// Note: updatedAt should be set manually when updating keys since Drizzle doesn't support onUpdate triggers
+export const userEncryptionKeys = pgTable("user_encryption_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  publicKey: text("public_key").notNull(), // Public key for receiving encrypted messages
+  keyVersion: integer("key_version").default(1), // For key rotation
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdateFn(() => new Date()),
+}, (table) => [
+  index("idx_user_encryption_keys_user").on(table.userId),
+]);
+
+export const insertUserEncryptionKeySchema = createInsertSchema(userEncryptionKeys).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUserEncryptionKey = z.infer<typeof insertUserEncryptionKeySchema>;
+export type UserEncryptionKey = typeof userEncryptionKeys.$inferSelect;
+
+// =====================================================
+// Report & Block System (Apple Compliance)
+// =====================================================
+
+// User reports for moderation
+export const userReports = pgTable("user_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reporterId: uuid("reporter_id").references(() => users.id, { onDelete: "set null" }),
+  reportedUserId: uuid("reported_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  reportType: varchar("report_type", { length: 50 }).notNull(), // harassment, spam, inappropriate_content, impersonation, other
+  description: text("description"),
+  relatedMessageId: uuid("related_message_id").references(() => chatMessages.id, { onDelete: "set null" }),
+  relatedConversationId: uuid("related_conversation_id").references(() => privateConversations.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, reviewed, resolved, dismissed
+  resolution: text("resolution"),
+  resolvedBy: uuid("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_user_reports_reporter").on(table.reporterId),
+  index("idx_user_reports_reported").on(table.reportedUserId),
+  index("idx_user_reports_status").on(table.status),
+  index("idx_user_reports_type").on(table.reportType),
+]);
+
+export const insertUserReportSchema = createInsertSchema(userReports).omit({ 
+  id: true, 
+  createdAt: true,
+  resolvedAt: true,
+  resolution: true,
+  resolvedBy: true,
+});
+export type InsertUserReport = z.infer<typeof insertUserReportSchema>;
+export type UserReport = typeof userReports.$inferSelect;
+
+// Blocked users list
+export const userBlocks = pgTable("user_blocks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  blockerId: uuid("blocker_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  blockedId: uuid("blocked_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_user_blocks_blocker").on(table.blockerId),
+  index("idx_user_blocks_blocked").on(table.blockedId),
+]);
+
+export const insertUserBlockSchema = createInsertSchema(userBlocks).omit({ 
+  id: true, 
+  createdAt: true,
+});
+export type InsertUserBlock = z.infer<typeof insertUserBlockSchema>;
+export type UserBlock = typeof userBlocks.$inferSelect;
 
 // =====================================================
 // Normie token constants

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +10,20 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { normalizeStorageUrl } from "@/lib/utils";
-import { MessageSquare, Send, Users, Loader2, Hash, Crown, ShieldCheck, LogIn, User, Shield, Star, Maximize2, ArrowDown } from "lucide-react";
-import { UserProfilePopup } from "./UserProfilePopup";
-import type { ChatRoom, ChatMessageWithAvatar } from "@shared/schema";
+import { 
+  ArrowLeft, 
+  MessageSquare, 
+  Send, 
+  Loader2, 
+  Hash, 
+  Crown, 
+  LogIn, 
+  User, 
+  Shield,
+  ArrowDown
+} from "lucide-react";
+import { UserProfilePopup } from "@/components/UserProfilePopup";
+import type { ChatMessageWithAvatar } from "@shared/schema";
 
 const DEFAULT_ROOM_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -27,7 +37,6 @@ function ChatMessageItem({ message, isOwnMessage, onUserClick }: ChatMessageItem
   const timestamp = message.createdAt ? new Date(message.createdAt) : new Date();
   const timeStr = timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   
-  // Check roles from message data - senderRole comes from the API
   const senderRole = (message as any).senderRole;
   const isFounder = senderRole === "founder";
   const isAdmin = senderRole === "admin";
@@ -39,7 +48,7 @@ function ChatMessageItem({ message, isOwnMessage, onUserClick }: ChatMessageItem
   
   return (
     <div 
-      className={`flex gap-2 ${isOwnMessage ? "flex-row-reverse" : "flex-row"} mb-2`}
+      className={`flex gap-3 ${isOwnMessage ? "flex-row-reverse" : "flex-row"} mb-3`}
       data-testid={`chat-message-${message.id}`}
     >
       <button
@@ -47,45 +56,45 @@ function ChatMessageItem({ message, isOwnMessage, onUserClick }: ChatMessageItem
         className="focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-full"
         data-testid={`button-avatar-${message.id}`}
       >
-        <Avatar className="w-7 h-7 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">
+        <Avatar className="w-10 h-10 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">
           {avatarUrl ? (
             <AvatarImage src={avatarUrl} alt={message.senderName || "User"} />
           ) : null}
-          <AvatarFallback className="text-[10px]">
-            <User className="w-3 h-3" />
+          <AvatarFallback className="text-sm">
+            <User className="w-4 h-4" />
           </AvatarFallback>
         </Avatar>
       </button>
-      <div className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
-        <div className="flex items-center gap-2 mb-0.5">
+      <div className={`flex flex-col max-w-[75%] ${isOwnMessage ? "items-end" : "items-start"}`}>
+        <div className="flex items-center gap-2 mb-1">
           <button
             onClick={handleClick}
-            className={`text-xs font-mono font-semibold cursor-pointer hover:underline focus:outline-none ${
-              isFounder ? "text-yellow-500" : isAdmin ? "text-blue-500" : "text-primary"
+            className={`text-sm font-mono font-semibold cursor-pointer hover:underline focus:outline-none ${
+              isFounder ? "text-yellow-500" : isAdmin ? "text-blue-500" : "text-foreground"
             }`}
             data-testid={`button-username-${message.id}`}
           >
             {isFounder && <Crown className="w-3 h-3 inline mr-1" />}
             {isAdmin && !isFounder && <Shield className="w-3 h-3 inline mr-1" />}
             {message.senderName || "Anonymous"}
-            {isFounder && (
-              <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px] text-yellow-500 border-yellow-500/50">
-                CEO
-              </Badge>
-            )}
-            {isAdmin && !isFounder && (
-              <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px] text-blue-500 border-blue-500/50">
-                ADMIN
-              </Badge>
-            )}
           </button>
+          {isFounder && (
+            <Badge variant="outline" className="px-1 py-0 text-[10px] text-yellow-500 border-yellow-500/50">
+              CEO
+            </Badge>
+          )}
+          {isAdmin && !isFounder && (
+            <Badge variant="outline" className="px-1 py-0 text-[10px] text-blue-500 border-blue-500/50">
+              ADMIN
+            </Badge>
+          )}
           <span className="text-xs text-muted-foreground">{timeStr}</span>
         </div>
         <div 
-          className={`max-w-[85%] px-3 py-1.5 rounded-lg text-sm touch-press ${
+          className={`px-4 py-2 rounded-2xl text-sm ${
             isOwnMessage 
-              ? "bg-primary text-primary-foreground" 
-              : "bg-muted"
+              ? "bg-primary text-primary-foreground rounded-tr-sm" 
+              : "bg-muted rounded-tl-sm"
           }`}
         >
           {message.content}
@@ -95,7 +104,7 @@ function ChatMessageItem({ message, isOwnMessage, onUserClick }: ChatMessageItem
   );
 }
 
-export function LiveChat() {
+export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [profilePopup, setProfilePopup] = useState<{ isOpen: boolean; userId?: string; username?: string }>({
     isOpen: false,
@@ -183,101 +192,101 @@ export function LiveChat() {
   };
 
   return (
-    <Card className="h-[500px] flex flex-col relative">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <CardTitle className="flex items-center gap-2 font-mono text-lg">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            Normie Nation Chat
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="font-mono text-xs">
-              <Hash className="w-3 h-3 mr-1" />
-              general
-            </Badge>
-            <Link href="/chat">
-              <Button variant="ghost" size="icon" className="h-7 w-7" data-testid="button-fullscreen-chat">
-                <Maximize2 className="w-4 h-4" />
+    <div className="h-screen flex flex-col bg-background">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-14 items-center justify-between gap-4 px-4 lg:px-8">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="icon" data-testid="button-back-home">
+                <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              <h1 className="font-mono text-lg font-bold">Normie Nation Chat</h1>
+            </div>
           </div>
+          <Badge variant="outline" className="font-mono text-xs">
+            <Hash className="w-3 h-3 mr-1" />
+            general
+          </Badge>
         </div>
         {isAuthenticated && user && (
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 px-4 pb-2 border-b border-border/50">
             <span className="text-xs text-muted-foreground">Chatting as:</span>
             <span className="text-xs font-mono text-primary font-semibold">
               {user.username}
             </span>
           </div>
         )}
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col overflow-hidden p-3">
-        <div 
-          ref={scrollAreaRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto pr-2"
-        >
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <MessageSquare className="w-10 h-10 mb-2 opacity-50" />
-              <p className="font-mono text-sm">No messages yet</p>
-              <p className="text-xs">Be the first to say gm!</p>
-            </div>
-          ) : (
-            <div className="space-y-1 p-1">
-              {messages.map((msg) => (
-                <ChatMessageItem
-                  key={msg.id}
-                  message={msg}
-                  isOwnMessage={isAuthenticated && user?.username === msg.senderName}
-                  onUserClick={handleUserClick}
-                />
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-          
-          <UserProfilePopup
-            isOpen={profilePopup.isOpen}
-            userId={profilePopup.userId}
-            username={profilePopup.username}
-            onClose={() => setProfilePopup({ isOpen: false })}
-          />
-        </div>
+      </header>
 
-        {showScrollButton && (
-          <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="gap-1 shadow-lg text-xs"
-              onClick={() => scrollToBottom("smooth")}
-              data-testid="button-scroll-to-bottom"
-            >
-              <ArrowDown className="w-3 h-3" />
-              New messages
-            </Button>
+      <div 
+        ref={scrollAreaRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-4 py-4"
+      >
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <MessageSquare className="w-16 h-16 mb-4 opacity-50" />
+            <p className="font-mono text-lg">No messages yet</p>
+            <p className="text-sm">Be the first to say gm!</p>
+          </div>
+        ) : (
+          <div className="max-w-4xl mx-auto space-y-1">
+            {messages.map((msg) => (
+              <ChatMessageItem
+                key={msg.id}
+                message={msg}
+                isOwnMessage={isAuthenticated && user?.username === msg.senderName}
+                onUserClick={handleUserClick}
+              />
+            ))}
+            <div ref={messagesEndRef} />
           </div>
         )}
         
+        <UserProfilePopup
+          isOpen={profilePopup.isOpen}
+          userId={profilePopup.userId}
+          username={profilePopup.username}
+          onClose={() => setProfilePopup({ isOpen: false })}
+        />
+      </div>
+
+      {showScrollButton && (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-2 shadow-lg"
+            onClick={() => scrollToBottom("smooth")}
+            data-testid="button-scroll-to-bottom"
+          >
+            <ArrowDown className="w-4 h-4" />
+            New messages
+          </Button>
+        </div>
+      )}
+
+      <div className="border-t border-border bg-background p-4">
         {isAuthenticated ? (
-          <form onSubmit={handleSend} className="flex gap-2 mt-3 pt-3 border-t">
+          <form onSubmit={handleSend} className="flex gap-3 max-w-4xl mx-auto">
             <Input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1 font-mono text-sm"
+              className="flex-1 font-mono"
               maxLength={500}
               disabled={sendMutation.isPending}
               data-testid="input-chat-message"
             />
             <Button 
               type="submit" 
-              size="icon" 
               disabled={sendMutation.isPending || !message.trim()}
               data-testid="button-send-message"
             >
@@ -289,16 +298,14 @@ export function LiveChat() {
             </Button>
           </form>
         ) : (
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t p-3 bg-muted rounded-lg">
-            <LogIn className="w-4 h-4 text-muted-foreground" />
+          <div className="flex items-center justify-center gap-2 p-4 bg-muted rounded-lg max-w-4xl mx-auto">
+            <LogIn className="w-5 h-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground font-mono">
-              Sign in to chat
+              Sign in to chat with the community
             </span>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
-
-export default LiveChat;

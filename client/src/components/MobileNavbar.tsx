@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { BarChart3, Image, Users, Home, ShoppingBag } from "lucide-react";
+import { BarChart3, Image, Users, Home, MessageSquare } from "lucide-react";
 
 interface MobileNavbarProps {
   onNavigate: (sectionId: string) => void;
@@ -25,23 +25,15 @@ export function MobileNavbar({ onNavigate }: MobileNavbarProps) {
           <BarChart3 className="h-5 w-5" />
           <span className="text-[10px] font-medium">Dashboard</span>
         </button>
-        <Link href="/marketplace">
+        <Link href="/meme-generator">
           <div
             className="flex flex-col items-center justify-center flex-1 h-full gap-1 text-muted-foreground hover:text-foreground transition-colors"
-            data-testid="mobile-nav-marketplace"
+            data-testid="mobile-nav-memes"
           >
-            <ShoppingBag className="h-5 w-5" />
-            <span className="text-[10px] font-medium">NFTs</span>
+            <Image className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Memes</span>
           </div>
         </Link>
-        <button
-          onClick={() => onNavigate("meme-generator")}
-          className="flex flex-col items-center justify-center flex-1 h-full gap-1 text-muted-foreground hover:text-foreground transition-colors"
-          data-testid="mobile-nav-memes"
-        >
-          <Image className="h-5 w-5" />
-          <span className="text-[10px] font-medium">Memes</span>
-        </button>
         <button
           onClick={() => onNavigate("community")}
           className="flex flex-col items-center justify-center flex-1 h-full gap-1 text-muted-foreground hover:text-foreground transition-colors"
@@ -50,6 +42,15 @@ export function MobileNavbar({ onNavigate }: MobileNavbarProps) {
           <Users className="h-5 w-5" />
           <span className="text-[10px] font-medium">Community</span>
         </button>
+        <Link href="/chat">
+          <div
+            className="flex flex-col items-center justify-center flex-1 h-full gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="mobile-nav-chat"
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Chat</span>
+          </div>
+        </Link>
       </div>
     </nav>
   );

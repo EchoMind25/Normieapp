@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { Link } from "wouter";
 import { Header } from "@/components/Header";
 import { Dashboard } from "@/components/Dashboard";
 import { CommunityHub } from "@/components/CommunityHub";
@@ -14,26 +15,10 @@ import { EasterEggs } from "@/components/EasterEggs";
 import { useSoundEffects } from "@/components/SoundEffects";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTheme } from "@/hooks/useTheme";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { MobileNavbar } from "@/components/MobileNavbar";
-
-const MemeGenerator = lazy(() => import("@/components/MemeGenerator").then(m => ({ default: m.MemeGenerator })));
-
-function MemeGeneratorLoader() {
-  return (
-    <Card className="p-6 m-4">
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
-        <div className="flex gap-2">
-          <Skeleton className="h-10 w-24" />
-          <Skeleton className="h-10 w-24" />
-        </div>
-      </div>
-    </Card>
-  );
-}
+import { Image, MessageSquare, ArrowRight, Palette } from "lucide-react";
 
 const PRICE_MILESTONES = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1];
 
@@ -184,9 +169,69 @@ export default function Home() {
             isConnected={isConnected}
           />
           
-          <Suspense fallback={<MemeGeneratorLoader />}>
-            <MemeGenerator />
-          </Suspense>
+          <section className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+              <Link href="/meme-generator">
+                <Card className="hover-elevate cursor-pointer h-full">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 font-mono text-lg">
+                      <Image className="w-5 h-5 text-primary" />
+                      Meme Generator
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Create epic memes with stickers, text, and backgrounds. Share with the community!
+                    </p>
+                    <Button variant="outline" className="gap-2 w-full" data-testid="button-open-memes">
+                      Open Generator
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/art-gallery">
+                <Card className="hover-elevate cursor-pointer h-full">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 font-mono text-lg">
+                      <Palette className="w-5 h-5 text-primary" />
+                      Art Gallery
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Browse community artwork and submit your own creations for the gallery.
+                    </p>
+                    <Button variant="outline" className="gap-2 w-full" data-testid="button-open-gallery">
+                      View Gallery
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/chat">
+                <Card className="hover-elevate cursor-pointer h-full">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 font-mono text-lg">
+                      <MessageSquare className="w-5 h-5 text-primary" />
+                      Community Chat
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Join the conversation with fellow Normies in our full-screen chat experience.
+                    </p>
+                    <Button variant="outline" className="gap-2 w-full" data-testid="button-open-chat">
+                      Open Chat
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </section>
           
           <section className="max-w-7xl mx-auto px-4 py-6 sm:py-8 lg:py-12">
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">

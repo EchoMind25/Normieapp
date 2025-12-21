@@ -90,6 +90,9 @@ const EmbedChart = lazy(() => import("@/pages/EmbedChart"));
 const Install = lazy(() => import("@/pages/Install"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const Terms = lazy(() => import("@/pages/Terms"));
+const MemeGeneratorPage = lazy(() => import("@/pages/MemeGeneratorPage"));
+const ArtGalleryPage = lazy(() => import("@/pages/ArtGalleryPage"));
+const ChatPage = lazy(() => import("@/pages/ChatPage"));
 
 function PageLoader() {
   return (
@@ -121,6 +124,9 @@ function Router() {
           <Route path="/install" component={Install} />
           <Route path="/privacy" component={Privacy} />
           <Route path="/terms" component={Terms} />
+          <Route path="/meme-generator" component={MemeGeneratorPage} />
+          <Route path="/art-gallery" component={ArtGalleryPage} />
+          <Route path="/chat" component={ChatPage} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

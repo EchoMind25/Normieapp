@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle, ExternalLink, Bug } from "lucide-react";
+import { Sun, Moon, Users, Flame, LogIn, LogOut, User, Shield, Settings, ShoppingBag, MessageCircle, ExternalLink, Bug, Image, Palette } from "lucide-react";
 import { SoundToggle } from "@/components/SoundEffects";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SiTelegram, SiX } from "react-icons/si";
@@ -115,10 +115,22 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => scrollToSection("meme-generator")}
+            onClick={() => setLocation("/meme-generator")}
+            className="gap-1"
             data-testid="nav-memes"
           >
+            <Image className="h-4 w-4" />
             Memes
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/art-gallery")}
+            className="gap-1"
+            data-testid="nav-art-gallery"
+          >
+            <Palette className="h-4 w-4" />
+            Art Gallery
           </Button>
           <Button
             variant="ghost"
@@ -137,19 +149,6 @@ export function Header({ metrics, isDark, onToggleTheme }: HeaderProps) {
           >
             <ShoppingBag className="h-4 w-4" />
             NFTs
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled
-            className="opacity-60 gap-1"
-            data-testid="nav-private-chats"
-          >
-            <MessageCircle className="h-4 w-4" />
-            DMs
-            <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-1">
-              Soon
-            </Badge>
           </Button>
           <a
             href="https://normienation.com"
