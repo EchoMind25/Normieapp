@@ -88,8 +88,10 @@ export async function signMessage(
     const messageBytes = new TextEncoder().encode(message);
     let signature: Uint8Array;
     
-    if (provider === "phantom" && wallet.request) {
-      const response = await wallet.request({
+    // Use Phantom's request method if available (preferred for mobile)
+    const phantomWallet = provider === "phantom" ? window.solana : null;
+    if (phantomWallet?.request) {
+      const response = await phantomWallet.request({
         method: "signMessage",
         params: {
           message: messageBytes,
@@ -116,17 +118,35 @@ export async function authenticateWithWallet(
   provider: WalletProvider
 ): Promise<{ user: any; token: string } | null> {
   try {
+    console.log(`[Wallet] Connecting ${provider}...`);
     const walletAddress = await connectWallet(provider);
-    if (!walletAddress) return null;
+    if (!walletAddress) {
+      console.error("[Wallet] Failed to get wallet address");
+      return null;
+    }
+    console.log(`[Wallet] Connected: ${walletAddress}`);
 
+    console.log("[Wallet] Requesting challenge...");
     const challengeRes = await apiRequest("POST", "/api/auth/wallet/challenge", {
       walletAddress,
     });
+    if (!challengeRes.ok) {
+      const error = await challengeRes.text();
+      console.error("[Wallet] Challenge request failed:", error);
+      return null;
+    }
     const { challenge } = await challengeRes.json();
+    console.log("[Wallet] Challenge received:", challenge?.substring(0, 20) + "...");
 
+    console.log("[Wallet] Signing message...");
     const signResult = await signMessage(provider, challenge);
-    if (!signResult) return null;
+    if (!signResult) {
+      console.error("[Wallet] Message signing failed or cancelled");
+      return null;
+    }
+    console.log("[Wallet] Message signed successfully");
 
+    console.log("[Wallet] Verifying signature...");
     const verifyRes = await apiRequest("POST", "/api/auth/wallet/verify", {
       walletAddress,
       challenge,
@@ -135,12 +155,69 @@ export async function authenticateWithWallet(
     });
 
     if (!verifyRes.ok) {
-      throw new Error("Verification failed");
+      const error = await verifyRes.text();
+      console.error("[Wallet] Verification failed:", error);
+      throw new Error(`Verification failed: ${error}`);
     }
 
+    console.log("[Wallet] Authentication successful!");
     return verifyRes.json();
   } catch (error) {
-    console.error("Wallet authentication error:", error);
+    console.error("[Wallet] Authentication error:", error);
     return null;
+  }
+}
+
+export async function linkWalletToAccount(
+  provider: WalletProvider
+): Promise<{ success: boolean; walletAddress: string } | null> {
+  try {
+    console.log(`[Wallet] Linking ${provider} to existing account...`);
+    const walletAddress = await connectWallet(provider);
+    if (!walletAddress) {
+      console.error("[Wallet] Failed to get wallet address for linking");
+      return null;
+    }
+    console.log(`[Wallet] Connected for linking: ${walletAddress}`);
+
+    console.log("[Wallet] Requesting link challenge...");
+    const challengeRes = await apiRequest("POST", "/api/auth/wallet/link-challenge", {
+      walletAddress,
+    });
+    if (!challengeRes.ok) {
+      const error = await challengeRes.text();
+      console.error("[Wallet] Link challenge request failed:", error);
+      throw new Error(error);
+    }
+    const { challenge } = await challengeRes.json();
+    console.log("[Wallet] Link challenge received");
+
+    console.log("[Wallet] Signing link message...");
+    const signResult = await signMessage(provider, challenge);
+    if (!signResult) {
+      console.error("[Wallet] Link message signing failed or cancelled");
+      return null;
+    }
+    console.log("[Wallet] Link message signed");
+
+    console.log("[Wallet] Verifying link...");
+    const verifyRes = await apiRequest("POST", "/api/auth/wallet/link-verify", {
+      walletAddress,
+      challenge,
+      signature: signResult.signature,
+      publicKey: signResult.publicKey,
+    });
+
+    if (!verifyRes.ok) {
+      const error = await verifyRes.text();
+      console.error("[Wallet] Link verification failed:", error);
+      throw new Error(error);
+    }
+
+    console.log("[Wallet] Wallet linked successfully!");
+    return { success: true, walletAddress };
+  } catch (error) {
+    console.error("[Wallet] Link error:", error);
+    throw error;
   }
 }

@@ -719,4 +719,117 @@ router.post(
   }
 );
 
+// =====================================================
+// Wallet Linking (for authenticated users)
+// =====================================================
+
+router.post("/wallet/link-challenge", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    // Only allow admins to link wallets for now
+    if (req.user.role !== "admin") {
+      res.status(403).json({ error: "Wallet linking is only available for administrators" });
+      return;
+    }
+
+    const { walletAddress } = req.body;
+    
+    if (!walletAddress || typeof walletAddress !== "string" || walletAddress.length < 32 || walletAddress.length > 44) {
+      res.status(400).json({ error: "Invalid wallet address" });
+      return;
+    }
+
+    // Check if this wallet is already linked to another account
+    const existingUser = await storage.getUserByWallet(walletAddress);
+    if (existingUser && existingUser.id !== req.user.id) {
+      res.status(400).json({ error: "This wallet is already linked to another account" });
+      return;
+    }
+
+    const challenge = generateChallenge();
+    const expiresAt = new Date(Date.now() + CHALLENGE_EXPIRY_MINUTES * 60 * 1000);
+
+    await storage.createAuthChallenge({
+      walletAddress,
+      challenge,
+      expiresAt,
+    });
+
+    console.log(`[Auth] Wallet link challenge generated for user ${req.user.id}, wallet ${walletAddress.slice(0, 8)}...`);
+    res.json({ challenge });
+  } catch (error) {
+    console.error("[Auth] Wallet link challenge error:", error);
+    res.status(500).json({ error: "Failed to generate challenge" });
+  }
+});
+
+router.post("/wallet/link-verify", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    // Only allow admins to link wallets for now
+    if (req.user.role !== "admin") {
+      res.status(403).json({ error: "Wallet linking is only available for administrators" });
+      return;
+    }
+
+    const { walletAddress, challenge, signature, publicKey } = req.body;
+
+    if (!walletAddress || !challenge || !signature || !publicKey) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    const authChallenge = await storage.getAuthChallenge(walletAddress, challenge);
+    if (!authChallenge) {
+      res.status(400).json({ error: "Invalid or expired challenge" });
+      return;
+    }
+
+    const isValid = verifyWalletSignature(challenge, signature, publicKey);
+    if (!isValid) {
+      res.status(401).json({ error: "Invalid signature" });
+      return;
+    }
+
+    await storage.markAuthChallengeUsed(authChallenge.id);
+
+    // Check if wallet is already linked to another user
+    const existingUser = await storage.getUserByWallet(walletAddress);
+    if (existingUser && existingUser.id !== req.user.id) {
+      res.status(400).json({ error: "This wallet is already linked to another account" });
+      return;
+    }
+
+    // Link the wallet to the current user
+    const updatedUser = await storage.updateUser(req.user.id, { walletAddress });
+    if (!updatedUser) {
+      res.status(500).json({ error: "Failed to link wallet" });
+      return;
+    }
+
+    console.log(`[Auth] Wallet linked successfully for user ${req.user.id}: ${walletAddress.slice(0, 8)}...`);
+    res.json({
+      message: "Wallet linked successfully",
+      walletAddress,
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        walletAddress: updatedUser.walletAddress,
+        role: updatedUser.role,
+      },
+    });
+  } catch (error) {
+    console.error("[Auth] Wallet link verification error:", error);
+    res.status(500).json({ error: "Wallet linking failed" });
+  }
+});
+
 export default router;

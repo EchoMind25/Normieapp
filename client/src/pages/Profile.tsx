@@ -27,7 +27,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon, Palette, Check } from "lucide-react";
+import { ArrowLeft, User, Shield, Wallet, Mail, Eye, EyeOff, Save, KeyRound, Upload, X, ImageIcon, Palette, Check, Link as LinkIcon } from "lucide-react";
+import { getAvailableWallets, linkWalletToAccount, type WalletProvider } from "@/lib/wallet";
 import { NotificationSettings } from "@/components/NotificationSettings";
 
 const profileSchema = z.object({
@@ -76,7 +77,9 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isLinkingWallet, setIsLinkingWallet] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const availableWallets = getAvailableWallets();
 
   // Fetch available favicons/icons
   const { data: availableIcons = [] } = useQuery<AvailableIcon[]>({
@@ -256,6 +259,38 @@ export default function Profile() {
 
   const hasEmailAuth = !!user.email;
   const hasWalletAuth = !!user.walletAddress;
+  const isAdmin = user.role === "admin";
+
+  const handleLinkWallet = async (provider: WalletProvider) => {
+    if (hasWalletAuth) {
+      toast({
+        title: "Wallet already linked",
+        description: "Your account already has a wallet connected",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLinkingWallet(true);
+    try {
+      const result = await linkWalletToAccount(provider);
+      if (result) {
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        toast({
+          title: "Wallet linked",
+          description: `Connected ${result.walletAddress.slice(0, 4)}...${result.walletAddress.slice(-4)}`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Link failed",
+        description: error.message || "Failed to link wallet",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLinkingWallet(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -567,6 +602,62 @@ export default function Profile() {
                     </div>
                   </form>
                 </Form>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {isAdmin && !hasWalletAuth && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-mono">
+                <LinkIcon className="h-5 w-5" />
+                Link Wallet
+              </CardTitle>
+              <CardDescription>
+                Connect a Solana wallet to your account
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 font-mono"
+                  onClick={() => handleLinkWallet("phantom")}
+                  disabled={isLinkingWallet || !availableWallets.includes("phantom")}
+                  data-testid="button-link-phantom"
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  <div className="flex flex-col items-start">
+                    <span>Phantom</span>
+                    {!availableWallets.includes("phantom") && (
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Not Detected</span>
+                    )}
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 font-mono"
+                  onClick={() => handleLinkWallet("solflare")}
+                  disabled={isLinkingWallet || !availableWallets.includes("solflare")}
+                  data-testid="button-link-solflare"
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  <div className="flex flex-col items-start">
+                    <span>Solflare</span>
+                    {!availableWallets.includes("solflare") && (
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Not Detected</span>
+                    )}
+                  </div>
+                </Button>
+              </div>
+              {isLinkingWallet && (
+                <p className="text-sm text-muted-foreground text-center font-mono">Connecting...</p>
+              )}
+              {availableWallets.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center font-mono">
+                  Install Phantom or Solflare browser extension
+                </p>
               )}
             </CardContent>
           </Card>

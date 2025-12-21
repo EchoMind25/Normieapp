@@ -256,29 +256,40 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                className="flex-1 font-mono opacity-50 cursor-not-allowed"
-                disabled
+                className="flex-1 font-mono"
+                onClick={() => handleWalletConnect("phantom")}
+                disabled={isLoading || !availableWallets.includes("phantom")}
                 data-testid="button-connect-phantom"
               >
                 <Wallet className="h-4 w-4 mr-2" />
                 <div className="flex flex-col items-start">
                   <span>Phantom</span>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Coming Soon</span>
+                  {!availableWallets.includes("phantom") && (
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Not Detected</span>
+                  )}
                 </div>
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 font-mono opacity-50 cursor-not-allowed"
-                disabled
+                className="flex-1 font-mono"
+                onClick={() => handleWalletConnect("solflare")}
+                disabled={isLoading || !availableWallets.includes("solflare")}
                 data-testid="button-connect-solflare"
               >
                 <Wallet className="h-4 w-4 mr-2" />
                 <div className="flex flex-col items-start">
                   <span>Solflare</span>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Coming Soon</span>
+                  {!availableWallets.includes("solflare") && (
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Not Detected</span>
+                  )}
                 </div>
               </Button>
             </div>
+            {availableWallets.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center font-mono">
+                Install Phantom or Solflare browser extension to connect
+              </p>
+            )}
           </div>
 
           <div className="relative">
