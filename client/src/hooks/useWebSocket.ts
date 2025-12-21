@@ -11,25 +11,42 @@ export function useWebSocket() {
   
   const mountedRef = useRef(true);
   const hasReceivedDataRef = useRef(false);
+  
+  const etagsRef = useRef<Record<string, string>>({});
+
+  const fetchWithETag = useCallback(async (url: string): Promise<{ data: unknown; notModified: boolean }> => {
+    const headers: HeadersInit = {};
+    const cachedEtag = etagsRef.current[url];
+    if (cachedEtag) {
+      headers["If-None-Match"] = cachedEtag;
+    }
+    
+    const response = await fetch(url, { headers });
+    
+    if (response.status === 304) {
+      return { data: null, notModified: true };
+    }
+    
+    const newEtag = response.headers.get("ETag");
+    if (newEtag) {
+      etagsRef.current[url] = newEtag;
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${url}`);
+    }
+    
+    return { data: await response.json(), notModified: false };
+  }, []);
 
   const fetchMetrics = useCallback(async () => {
     try {
-      console.log("[NORMIE] Fetching metrics...");
-      const response = await fetch("/api/metrics", {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" },
-      });
-      if (response.status === 304) {
-        console.log("[NORMIE] 304 response, skipping");
-        return;
-      }
-      if (!response.ok) throw new Error("Failed to fetch metrics");
+      const { data, notModified } = await fetchWithETag("/api/metrics");
+      if (notModified) return;
       
-      const data = await response.json();
-      console.log("[NORMIE] Got metrics:", data.price, data.marketCap, data.lastUpdated);
-      if (mountedRef.current) {
+      if (mountedRef.current && data) {
         hasReceivedDataRef.current = true;
-        setMetrics(data);
+        setMetrics(data as TokenMetrics);
         setIsConnected(true);
         setIsLoading(false);
       }
@@ -39,18 +56,13 @@ export function useWebSocket() {
         setIsConnected(false);
       }
     }
-  }, []);
+  }, [fetchWithETag]);
 
   const fetchPriceHistory = useCallback(async () => {
     try {
-      const response = await fetch("/api/price-history", {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" },
-      });
-      if (response.status === 304) return;
-      if (!response.ok) throw new Error("Failed to fetch price history");
+      const { data, notModified } = await fetchWithETag("/api/price-history");
+      if (notModified) return;
       
-      const data = await response.json();
       if (mountedRef.current && Array.isArray(data) && data.length > 0) {
         hasReceivedDataRef.current = true;
         setPriceHistory(data);
@@ -58,43 +70,33 @@ export function useWebSocket() {
     } catch (error) {
       console.error("[Polling] Price history fetch error:", error);
     }
-  }, []);
+  }, [fetchWithETag]);
 
   const fetchDevBuys = useCallback(async () => {
     try {
-      const response = await fetch("/api/dev-buys", {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" },
-      });
-      if (response.status === 304) return;
-      if (!response.ok) throw new Error("Failed to fetch dev buys");
+      const { data, notModified } = await fetchWithETag("/api/dev-buys");
+      if (notModified) return;
       
-      const data = await response.json();
       if (mountedRef.current && Array.isArray(data)) {
         setDevBuys(data);
       }
     } catch (error) {
       console.error("[Polling] Dev buys fetch error:", error);
     }
-  }, []);
+  }, [fetchWithETag]);
 
   const fetchActivity = useCallback(async () => {
     try {
-      const response = await fetch("/api/activity", {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache" },
-      });
-      if (response.status === 304) return;
-      if (!response.ok) throw new Error("Failed to fetch activity");
+      const { data, notModified } = await fetchWithETag("/api/activity");
+      if (notModified) return;
       
-      const data = await response.json();
       if (mountedRef.current && Array.isArray(data)) {
         setActivity(data);
       }
     } catch (error) {
       console.error("[Polling] Activity fetch error:", error);
     }
-  }, []);
+  }, [fetchWithETag]);
 
   useEffect(() => {
     mountedRef.current = true;

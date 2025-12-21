@@ -18,6 +18,7 @@ import { initializePushNotifications, getVapidPublicKey, isPushEnabled, sendPush
 import { smartDataFetcher } from "./smartDataFetcher";
 import { bugReports, insertBugReportSchema, NORMIE_TOKEN } from "@shared/schema";
 import sgMail from "@sendgrid/mail";
+import { handleConditionalGet } from "./etag";
 
 const SUPPORT_EMAIL = "support@tryechomind.net";
 const BUG_REPORT_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || "noreply@normie.observer";
@@ -193,27 +194,27 @@ export async function registerRoutes(
   
   app.get("/api/embed/price-history", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
     try {
-      res.set("Cache-Control", "public, max-age=10");
       const timeRange = (req.query.range as string) || "24h";
       
+      let history;
       if (timeRange === "live") {
-        const history = getPriceHistory();
-        res.json(history);
+        history = getPriceHistory();
       } else {
-        const history = await fetchHistoricalPrices(timeRange);
-        res.json(history);
+        history = await fetchHistoricalPrices(timeRange);
       }
+      
+      if (handleConditionalGet(req, res, history, 10)) return;
+      res.json(history);
     } catch (error) {
       console.error("[Embed] Price history error:", error);
       res.status(500).json({ error: "Failed to fetch price history" });
     }
   });
   
-  app.get("/api/embed/metrics", embedCors, embedLimiter, validateEmbedToken, async (_req, res) => {
+  app.get("/api/embed/metrics", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
     try {
-      res.set("Cache-Control", "public, max-age=10");
       const metrics = await fetchTokenMetrics();
-      res.json({
+      const embedMetrics = {
         price: metrics.price,
         priceChange24h: metrics.priceChange24h,
         marketCap: metrics.marketCap,
@@ -226,7 +227,9 @@ export async function registerRoutes(
         lockedTokens: metrics.lockedTokens,
         holders: metrics.holders,
         lastUpdated: metrics.lastUpdated,
-      });
+      };
+      if (handleConditionalGet(req, res, embedMetrics, 10)) return;
+      res.json(embedMetrics);
     } catch (error) {
       console.error("[Embed] Metrics error:", error);
       res.status(500).json({ error: "Failed to fetch metrics" });
@@ -243,11 +246,8 @@ export async function registerRoutes(
     });
   });
 
-  // Embed chart markers endpoint with CORS support for whale/dev buys
   app.get("/api/embed/chart-markers", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
     try {
-      res.set("Cache-Control", "public, max-age=30");
-      
       const range = req.query.range as string;
       let startDate: Date | undefined;
       
@@ -294,6 +294,7 @@ export async function registerRoutes(
         })),
       ].sort((a, b) => a.timestamp - b.timestamp);
       
+      if (handleConditionalGet(req, res, markers, 30)) return;
       res.json(markers);
     } catch (error) {
       console.error("[Embed] Chart markers error:", error);
@@ -304,9 +305,9 @@ export async function registerRoutes(
   // Embed leaderboard endpoints with CORS support
   app.get("/api/embed/leaderboard/diamond", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
     try {
-      res.set("Cache-Control", "public, max-age=30");
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
       const leaderboard = await storage.getDiamondHandsLeaderboard(limit);
+      if (handleConditionalGet(req, res, leaderboard, 30)) return;
       res.json(leaderboard);
     } catch (error) {
       console.error("[Embed] Diamond hands leaderboard error:", error);
@@ -316,9 +317,9 @@ export async function registerRoutes(
 
   app.get("/api/embed/leaderboard/whales", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
     try {
-      res.set("Cache-Control", "public, max-age=30");
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
       const leaderboard = await storage.getWhalesLeaderboard(limit);
+      if (handleConditionalGet(req, res, leaderboard, 30)) return;
       res.json(leaderboard);
     } catch (error) {
       console.error("[Embed] Whales leaderboard error:", error);
@@ -328,9 +329,9 @@ export async function registerRoutes(
 
   app.get("/api/embed/leaderboard/jeets", embedCors, embedLimiter, validateEmbedToken, async (req, res) => {
     try {
-      res.set("Cache-Control", "public, max-age=30");
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
       const leaderboard = await storage.getJeetLeaderboard(limit, "all");
+      if (handleConditionalGet(req, res, leaderboard, 30)) return;
       res.json(leaderboard);
     } catch (error) {
       console.error("[Embed] Jeets leaderboard error:", error);
@@ -653,11 +654,10 @@ export async function registerRoutes(
   setInterval(updateDevBuys, 60000);
   updateDevBuys();
   
-  app.get("/api/metrics", async (_req, res) => {
+  app.get("/api/metrics", async (req, res) => {
     try {
-      res.set("Cache-Control", "no-store, no-cache, must-revalidate");
-      res.set("Pragma", "no-cache");
       const metrics = await fetchTokenMetrics();
+      if (handleConditionalGet(req, res, metrics, 5)) return;
       res.json(metrics);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch metrics" });
@@ -666,27 +666,24 @@ export async function registerRoutes(
   
   app.get("/api/price-history", async (req, res) => {
     try {
-      res.set("Cache-Control", "no-store, no-cache, must-revalidate");
-      res.set("Pragma", "no-cache");
       const timeRange = (req.query.range as string) || "live";
       
+      let history;
       if (timeRange === "live") {
-        const history = getPriceHistory();
-        res.json(history);
+        history = getPriceHistory();
       } else {
-        const history = await fetchHistoricalPrices(timeRange);
-        res.json(history);
+        history = await fetchHistoricalPrices(timeRange);
       }
+      
+      if (handleConditionalGet(req, res, history, 10)) return;
+      res.json(history);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch price history" });
     }
   });
   
-  app.get("/api/dev-buys", async (_req, res) => {
+  app.get("/api/dev-buys", async (req, res) => {
     try {
-      res.set("Cache-Control", "no-store, no-cache, must-revalidate");
-      res.set("Pragma", "no-cache");
-      
       let apiDevBuys: ReturnType<typeof getDevBuys> = [];
       try {
         apiDevBuys = getDevBuys();
@@ -726,6 +723,7 @@ export async function registerRoutes(
       }
       
       const allBuys = [...apiDevBuys, ...manualDevBuysFormatted].sort((a, b) => b.timestamp - a.timestamp);
+      if (handleConditionalGet(req, res, allBuys, 30)) return;
       res.json(allBuys);
     } catch (error) {
       console.error("[DevBuys] Unexpected error:", error);
@@ -1465,9 +1463,8 @@ export async function registerRoutes(
   // Activity Feed Routes
   // =====================================================
   
-  app.get("/api/activity", async (_req, res) => {
+  app.get("/api/activity", async (req, res) => {
     try {
-      // Fetch all activity sources in parallel with error resilience
       const [dbActivity, tokenActivity] = await Promise.all([
         storage.getRecentActivity(20).catch(err => {
           console.error("[Activity] DB activity fetch failed:", err);
@@ -1479,7 +1476,6 @@ export async function registerRoutes(
         }),
       ]);
       
-      // Get dev buys and format them (with fallback)
       let devBuys: ReturnType<typeof getDevBuys> = [];
       try {
         devBuys = getDevBuys().slice(0, 10);
@@ -1494,7 +1490,6 @@ export async function registerRoutes(
         timestamp: new Date(buy.timestamp).toISOString(),
       }));
       
-      // Format database activity (burns, locks, milestones)
       const formattedDbActivity = dbActivity.map(item => ({
         id: item.id,
         type: item.type as "burn" | "lock" | "trade" | "milestone",
@@ -1503,14 +1498,12 @@ export async function registerRoutes(
         timestamp: item.createdAt?.toISOString() || new Date().toISOString(),
       }));
       
-      // Merge all activity sources
       const allActivityItems = [
         ...formattedDbActivity,
         ...devBuyActivity,
         ...tokenActivity,
       ];
       
-      // Deduplicate by id
       const seenIds = new Set<string>();
       const uniqueActivity = allActivityItems.filter(item => {
         if (seenIds.has(item.id)) return false;
@@ -1518,11 +1511,11 @@ export async function registerRoutes(
         return true;
       });
       
-      // Sort by timestamp descending and return top 50
       const sortedActivity = uniqueActivity
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 50);
       
+      if (handleConditionalGet(req, res, sortedActivity, 10)) return;
       res.json(sortedActivity);
     } catch (error) {
       console.error("[Activity] Unexpected error fetching activity:", error);
@@ -1557,14 +1550,16 @@ export async function registerRoutes(
   // Leaderboard Routes
   // =====================================================
 
-  app.get("/api/leaderboard", async (_req, res) => {
+  app.get("/api/leaderboard", async (req, res) => {
     try {
       const [topCreators, topChatters] = await Promise.all([
         storage.getTopMemeCreators(10),
         storage.getTopChatters(10),
       ]);
       
-      res.json({ topCreators, topChatters });
+      const data = { topCreators, topChatters };
+      if (handleConditionalGet(req, res, data, 60)) return;
+      res.json(data);
     } catch (error) {
       console.error("[Leaderboard] Error fetching leaderboard:", error);
       res.json({ topCreators: [], topChatters: [] });
@@ -1576,12 +1571,11 @@ export async function registerRoutes(
       const range = (req.query.range as "24h" | "7d" | "30d" | "all") || "all";
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
       
-      // For "all" time, use the fast aggregated wallet totals table
-      // For time-filtered queries, use the transaction-based aggregation
       const leaderboard = range === "all" 
         ? await storage.getJeetWalletTotalsLeaderboard(limit)
         : await storage.getJeetLeaderboard(limit, range);
       
+      if (handleConditionalGet(req, res, leaderboard, 60)) return;
       res.json(leaderboard);
     } catch (error) {
       console.error("[Jeet Leaderboard] Error fetching jeet leaderboard:", error);
@@ -1632,6 +1626,7 @@ export async function registerRoutes(
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
       const leaderboard = await storage.getDiamondHandsLeaderboard(limit);
+      if (handleConditionalGet(req, res, leaderboard, 60)) return;
       res.json(leaderboard);
     } catch (error) {
       console.error("[Diamond Hands] Error fetching leaderboard:", error);
@@ -1643,6 +1638,7 @@ export async function registerRoutes(
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
       const leaderboard = await storage.getWhalesLeaderboard(limit);
+      if (handleConditionalGet(req, res, leaderboard, 60)) return;
       res.json(leaderboard);
     } catch (error) {
       console.error("[Whales] Error fetching leaderboard:", error);

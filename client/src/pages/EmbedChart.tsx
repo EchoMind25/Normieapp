@@ -159,6 +159,9 @@ export default function EmbedChart() {
   const metricsAbortRef = useRef<AbortController | null>(null);
   const markersAbortRef = useRef<AbortController | null>(null);
   
+  // ETag cache for conditional requests
+  const etagsRef = useRef<Record<string, string>>({});
+  
   // Request version tokens to prevent stale state updates
   const viewVersionRef = useRef<number>(0);
   
@@ -195,31 +198,39 @@ export default function EmbedChart() {
     }, 50);
   }, [abortAllFetches]);
 
-  // Fetch token metrics (holders, burned, locked, etc.)
   const fetchMetrics = useCallback(async () => {
-    // Capture version at start of request
     const requestVersion = viewVersionRef.current;
     
-    // Abort previous metrics fetch
     metricsAbortRef.current?.abort();
     metricsAbortRef.current = new AbortController();
     
     try {
+      const url = "/api/embed/metrics";
       const headers: HeadersInit = {};
       if (config.token) {
         headers["X-Embed-Token"] = config.token;
       }
-      const response = await fetch("/api/embed/metrics", { 
+      const cachedEtag = etagsRef.current[url];
+      if (cachedEtag) {
+        headers["If-None-Match"] = cachedEtag;
+      }
+      
+      const response = await fetch(url, { 
         headers,
         signal: metricsAbortRef.current.signal 
       });
       
-      // Check if view changed during fetch - don't update state if stale
       if (viewVersionRef.current !== requestVersion) return;
+      
+      if (response.status === 304) return;
+      
+      const newEtag = response.headers.get("ETag");
+      if (newEtag) {
+        etagsRef.current[url] = newEtag;
+      }
       
       if (response.ok) {
         const data: TokenMetrics = await response.json();
-        // Double-check version before setting state
         if (viewVersionRef.current === requestVersion) {
           setMetrics(data);
         }
@@ -231,14 +242,11 @@ export default function EmbedChart() {
   }, [config.token]);
 
   const fetchChartData = useCallback(async (range: TimeRange, forceRefresh = false) => {
-    // Capture version at start of request
     const requestVersion = viewVersionRef.current;
     
     const now = Date.now();
-    // Only throttle auto-refresh, not manual range changes
     if (!forceRefresh && now - lastFetchRef.current < 5000) return;
     
-    // Abort previous chart fetch
     chartAbortRef.current?.abort();
     chartAbortRef.current = new AbortController();
     
@@ -246,18 +254,32 @@ export default function EmbedChart() {
     setError(null);
     
     try {
+      const url = `/api/embed/price-history?range=${range}`;
       const headers: HeadersInit = {};
       if (config.token) {
         headers["X-Embed-Token"] = config.token;
       }
+      const cachedEtag = etagsRef.current[url];
+      if (cachedEtag && !forceRefresh) {
+        headers["If-None-Match"] = cachedEtag;
+      }
 
-      const response = await fetch(`/api/embed/price-history?range=${range}`, { 
+      const response = await fetch(url, { 
         headers,
         signal: chartAbortRef.current.signal 
       });
       
-      // Check if view changed during fetch
       if (viewVersionRef.current !== requestVersion) return;
+      
+      if (response.status === 304) {
+        setIsLoading(false);
+        return;
+      }
+      
+      const newEtag = response.headers.get("ETag");
+      if (newEtag) {
+        etagsRef.current[url] = newEtag;
+      }
       
       if (!response.ok) {
         if (response.status === 401) {
@@ -268,7 +290,6 @@ export default function EmbedChart() {
       
       const data: PricePoint[] = await response.json();
       
-      // Double-check version before setting state
       if (viewVersionRef.current !== requestVersion) return;
       
       const sorted = [...data].sort((a, b) => a.timestamp - b.timestamp);
@@ -283,12 +304,10 @@ export default function EmbedChart() {
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      // Only set error if version still matches
       if (viewVersionRef.current === requestVersion) {
         setError(err instanceof Error ? err.message : "Failed to load chart");
       }
     } finally {
-      // Only update loading state if version still matches
       if (viewVersionRef.current === requestVersion) {
         setIsLoading(false);
       }
@@ -333,24 +352,38 @@ export default function EmbedChart() {
     const abortController = leaderboardAbortRef.current;
     
     const fetchLeaderboard = async () => {
-      // Check version before starting
       if (viewVersionRef.current !== requestVersion) return;
       
       setLeaderboardLoading(true);
       setLeaderboardError(null);
       try {
+        const endpoint = `/api/embed/leaderboard/${currentView}`;
         const headers: HeadersInit = {};
         if (config.token) {
           headers["X-Embed-Token"] = config.token;
         }
-        const endpoint = `/api/embed/leaderboard/${currentView}`;
+        const cachedEtag = etagsRef.current[endpoint];
+        if (cachedEtag) {
+          headers["If-None-Match"] = cachedEtag;
+        }
+        
         const response = await fetch(endpoint, { 
           headers,
           signal: abortController.signal 
         });
         
-        // Check version before setting state
         if (viewVersionRef.current !== requestVersion) return;
+        
+        if (response.status === 304) {
+          setLeaderboardLoading(false);
+          setIsLoading(false);
+          return;
+        }
+        
+        const newEtag = response.headers.get("ETag");
+        if (newEtag) {
+          etagsRef.current[endpoint] = newEtag;
+        }
         
         if (response.ok) {
           const data = await response.json();
@@ -400,17 +433,30 @@ export default function EmbedChart() {
       if (viewVersionRef.current !== requestVersion) return;
       
       try {
+        const apiRange = timeRange === "live" ? "24h" : timeRange;
+        const url = `/api/embed/chart-markers?range=${apiRange}`;
         const headers: HeadersInit = {};
         if (config.token) {
           headers["X-Embed-Token"] = config.token;
         }
-        const apiRange = timeRange === "live" ? "24h" : timeRange;
-        const response = await fetch(`/api/embed/chart-markers?range=${apiRange}`, { 
+        const cachedEtag = etagsRef.current[url];
+        if (cachedEtag) {
+          headers["If-None-Match"] = cachedEtag;
+        }
+        
+        const response = await fetch(url, { 
           headers,
           signal: abortController.signal 
         });
         
         if (viewVersionRef.current !== requestVersion) return;
+        
+        if (response.status === 304) return;
+        
+        const newEtag = response.headers.get("ETag");
+        if (newEtag) {
+          etagsRef.current[url] = newEtag;
+        }
         
         if (response.ok) {
           const markers: ChartMarker[] = await response.json();
