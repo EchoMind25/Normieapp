@@ -1219,6 +1219,7 @@ export async function registerRoutes(
           avatarUrl: user.avatarUrl,
           bannedAt: user.bannedAt?.toISOString(),
           createdAt: user.createdAt?.toISOString(),
+          walletFeaturesUnlocked: user.walletFeaturesUnlocked ?? false,
         },
         messages: messages.map(m => ({
           id: m.id,
@@ -1281,6 +1282,30 @@ export async function registerRoutes(
     } catch (error) {
       console.error("[Admin] Error unbanning user:", error);
       res.status(500).json({ error: "Failed to unban user" });
+    }
+  });
+
+  // Admin/Founder: Toggle wallet features for a user
+  app.post("/api/admin/users/:userId/toggle-wallet-features", requireAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const newValue = !user.walletFeaturesUnlocked;
+      await storage.updateUser(userId, { walletFeaturesUnlocked: newValue });
+      
+      console.log(`[Admin] Wallet features ${newValue ? 'unlocked' : 'locked'} for user ${user.username}`);
+      res.json({ 
+        success: true, 
+        walletFeaturesUnlocked: newValue,
+        message: `Wallet features ${newValue ? 'unlocked' : 'locked'} for ${user.username}` 
+      });
+    } catch (error) {
+      console.error("[Admin] Error toggling wallet features:", error);
+      res.status(500).json({ error: "Failed to toggle wallet features" });
     }
   });
 

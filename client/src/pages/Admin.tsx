@@ -16,7 +16,7 @@ import { useUpload } from "@/hooks/use-upload";
 import { 
   ArrowLeft, Users, Shield, Activity, Settings, Plus, Trash2, TrendingUp, Calendar,
   Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3, Bell, Send, ExternalLink,
-  Ban, Mail, LogOut, Edit3, Upload, Palette, ToggleLeft, ToggleRight
+  Ban, Mail, LogOut, Edit3, Upload, Palette, ToggleLeft, ToggleRight, Key
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminMobileNavbar } from "@/components/AdminMobileNavbar";
@@ -111,6 +111,7 @@ export default function Admin() {
     createdAt: string | null;
     messageCount: number;
     galleryCount: number;
+    walletFeaturesUnlocked?: boolean;
   }
   
   const { data: allUsers = [], refetch: refetchUsers } = useQuery<AdminUser[]>({
@@ -374,6 +375,25 @@ export default function Admin() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to unban user", variant: "destructive" });
+    },
+  });
+
+  const toggleWalletFeaturesMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/toggle-wallet-features`);
+      if (!res.ok) throw new Error("Failed to toggle wallet features");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      refetchUsers();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users", selectedUserId] });
+      toast({ 
+        title: data.walletFeaturesUnlocked ? "Wallet Features Unlocked" : "Wallet Features Locked",
+        description: data.message 
+      });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to toggle wallet features", variant: "destructive" });
     },
   });
 
@@ -939,6 +959,21 @@ export default function Admin() {
                                 {banUserMutation.isPending ? "Banning..." : "Ban User"}
                               </Button>
                             ) : null}
+                            
+                            <Button
+                              variant={userDetails.user.walletFeaturesUnlocked ? "secondary" : "outline"}
+                              className="justify-start"
+                              onClick={() => toggleWalletFeaturesMutation.mutate(userDetails.user.id)}
+                              disabled={toggleWalletFeaturesMutation.isPending}
+                              data-testid="button-toggle-wallet"
+                            >
+                              <Key className="w-4 h-4 mr-2" />
+                              {toggleWalletFeaturesMutation.isPending 
+                                ? "Toggling..." 
+                                : userDetails.user.walletFeaturesUnlocked 
+                                  ? "Wallet Features: ON" 
+                                  : "Wallet Features: OFF"}
+                            </Button>
                           </div>
                         </div>
 
