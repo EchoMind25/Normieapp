@@ -175,6 +175,13 @@ export function Footer() {
               >
                 Terms of Service
               </Link>
+              <Link
+                href="/about"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="footer-link-about"
+              >
+                About
+              </Link>
               <a
                 href="mailto:support@tryechomind.net"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -215,12 +222,27 @@ export function Footer() {
             <p className="text-xs text-muted-foreground text-center md:text-left">
               This is a community-built companion app. Not financial advice. DYOR. Ape responsibly.
             </p>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
               <FeedbackForm />
-              <span>Built with chaos</span>
-              <span className="text-primary">by Normies, for Normies</span>
+              <span className="hidden sm:inline">by Normies, for Normies</span>
               <span className="opacity-50" data-testid="text-app-version">v1.0.0</span>
             </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
+            <span>&copy; {new Date().getFullYear()} Normie Observer</span>
+            <span className="hidden sm:inline opacity-50">•</span>
+            <span>
+              Built by{' '}
+              <a 
+                href="https://tryechomind.net" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:opacity-80 transition-opacity"
+                data-testid="footer-link-echomind"
+              >
+                Echo Mind Systems
+              </a>
+            </span>
           </div>
         </div>
       </div>

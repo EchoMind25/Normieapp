@@ -95,6 +95,7 @@ const MemeGeneratorPage = lazy(() => import("@/pages/MemeGeneratorPage"));
 const ArtGalleryPage = lazy(() => import("@/pages/ArtGalleryPage"));
 const ChatPage = lazy(() => import("@/pages/ChatPage"));
 const MessagesPage = lazy(() => import("@/pages/MessagesPage"));
+const About = lazy(() => import("@/pages/About"));
 
 function PageLoader() {
   return (
@@ -150,6 +151,7 @@ function Router() {
           <Route path="/art-gallery" component={ArtGalleryPage} />
           <Route path="/chat" component={ChatPage} />
           <Route path="/messages" component={MessagesPage} />
+          <Route path="/about" component={About} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

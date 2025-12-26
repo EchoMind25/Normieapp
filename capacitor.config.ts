@@ -1,3 +1,12 @@
+/**
+ * Capacitor Configuration
+ * Normie Observer - Mobile App
+ * 
+ * Built by Echo Mind Systems
+ * Developer: Braxton (braxton@tryechomind.net)
+ * https://tryechomind.net
+ */
+
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {

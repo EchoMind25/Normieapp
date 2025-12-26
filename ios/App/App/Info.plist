@@ -49,5 +49,11 @@
         <string>This app uses the camera to capture photos for your profile and memes.</string>
         <key>NSPhotoLibraryUsageDescription</key>
         <string>This app accesses your photo library to select images for your profile and memes.</string>
+        <key>NSHumanReadableCopyright</key>
+        <string>© 2024 Normie Observer. Built by Echo Mind Systems.</string>
+        <key>DeveloperContact</key>
+        <string>braxton@tryechomind.net</string>
+        <key>TechnicalSupport</key>
+        <string>support@tryechomind.net</string>
 </dict>
 </plist>
