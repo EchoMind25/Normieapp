@@ -9,6 +9,11 @@ export function ConsentBanner() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
+    // Skip consent banner on embed routes
+    if (window.location.pathname.startsWith("/embed/")) {
+      return;
+    }
+    
     const consent = localStorage.getItem(CONSENT_KEY);
     if (!consent) {
       setTimeout(() => setShowBanner(true), 3000);

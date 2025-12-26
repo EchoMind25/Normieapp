@@ -26,7 +26,7 @@ export function SplashScreen({ onComplete, minDuration = 1500 }: SplashScreenPro
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[49] flex flex-col items-center justify-center transition-opacity duration-300 ${
         isExiting ? "opacity-0" : "opacity-100"
       }`}
       style={{ backgroundColor: "#AA3D1D" }}

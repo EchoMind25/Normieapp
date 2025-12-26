@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/contexts/AuthContext";
 import { FounderWalletCards } from "@/components/FounderWalletCards";
 import {
@@ -706,12 +707,45 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
               subtitle="View contract on Streamflow"
             />
           </a>
-          <StatCard
-            title="Circulating"
-            value={metrics ? formatNumber(metrics.circulatingSupply) : "0"}
-            icon={<Activity className="h-5 w-5" />}
-            isLoading={isLoading}
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <div className="cursor-pointer">
+                <StatCard
+                  title="Circulating"
+                  value={metrics ? formatNumber(metrics.circulatingSupply) : "0"}
+                  icon={<Activity className="h-5 w-5" />}
+                  isLoading={isLoading}
+                  subtitle="Tap for breakdown"
+                />
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" side="top" align="center">
+              <div className="space-y-3">
+                <h4 className="font-mono font-bold text-sm">Supply Calculation</h4>
+                <div className="space-y-2 text-xs font-mono">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Supply:</span>
+                    <span>{metrics ? formatNumber(metrics.totalSupply) : "1B"}</span>
+                  </div>
+                  <div className="flex justify-between text-destructive">
+                    <span>- Burned:</span>
+                    <span>{metrics ? formatNumber(metrics.burnedTokens) : "0"}</span>
+                  </div>
+                  <div className="flex justify-between text-chart-3">
+                    <span>- Locked:</span>
+                    <span>{metrics ? formatNumber(metrics.lockedTokens) : "0"}</span>
+                  </div>
+                  <div className="border-t border-border pt-2 flex justify-between font-bold">
+                    <span>= Circulating:</span>
+                    <span className="text-chart-1">{metrics ? formatNumber(metrics.circulatingSupply) : "0"}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Real-time data from Solana blockchain and Streamflow vesting contracts.
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {isAuthenticated && isFounder && (
