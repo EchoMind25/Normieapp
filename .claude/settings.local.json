@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm audit:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx cap:*)"
     ]
   }
 }
