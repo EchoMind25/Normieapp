@@ -104,6 +104,8 @@ import {
   friendships,
   type Friendship,
   type InsertFriendship,
+  type FriendWithDetails,
+  type PendingFriendRequest,
   type PrivateConversation,
   type InsertPrivateConversation,
   type PrivateMessage,
@@ -347,9 +349,9 @@ export interface IStorage {
   sendFriendRequest(requesterId: string, addresseeId: string): Promise<Friendship>;
   getFriendRequest(id: string): Promise<Friendship | undefined>;
   getFriendshipBetweenUsers(userId1: string, userId2: string): Promise<Friendship | undefined>;
-  getPendingFriendRequests(userId: string): Promise<Friendship[]>;
+  getPendingFriendRequests(userId: string): Promise<PendingFriendRequest[]>;
   getSentFriendRequests(userId: string): Promise<Friendship[]>;
-  getFriends(userId: string): Promise<User[]>;
+  getFriends(userId: string): Promise<FriendWithDetails[]>;
   acceptFriendRequest(friendshipId: string): Promise<Friendship | undefined>;
   declineFriendRequest(friendshipId: string): Promise<Friendship | undefined>;
   cancelFriendRequest(friendshipId: string): Promise<void>;
@@ -1878,12 +1880,40 @@ export class DatabaseStorage implements IStorage {
     return friendship;
   }
 
-  async getPendingFriendRequests(userId: string): Promise<Friendship[]> {
-    return await db
+  async getPendingFriendRequests(userId: string): Promise<PendingFriendRequest[]> {
+    const pendingRequests = await db
       .select()
       .from(friendships)
       .where(and(eq(friendships.addresseeId, userId), eq(friendships.status, "pending")))
       .orderBy(desc(friendships.createdAt));
+
+    if (pendingRequests.length === 0) {
+      return [];
+    }
+
+    const requesterIds = pendingRequests.map(r => r.requesterId);
+    const requesters = await db
+      .select()
+      .from(users)
+      .where(sql`${users.id} IN (${sql.join(requesterIds.map(id => sql`${id}`), sql`, `)})`);
+
+    const requesterMap = new Map(requesters.map(u => [u.id, u]));
+
+    return pendingRequests.map(request => {
+      const requester = requesterMap.get(request.requesterId);
+      return {
+        id: request.id,
+        requesterId: request.requesterId,
+        addresseeId: request.addresseeId,
+        status: request.status,
+        createdAt: request.createdAt?.toISOString() || new Date().toISOString(),
+        requester: {
+          id: requester?.id || request.requesterId,
+          username: requester?.username || "Unknown",
+          avatarUrl: requester?.avatarUrl || null,
+        },
+      };
+    });
   }
 
   async getSentFriendRequests(userId: string): Promise<Friendship[]> {
@@ -1894,7 +1924,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(friendships.createdAt));
   }
 
-  async getFriends(userId: string): Promise<User[]> {
+  async getFriends(userId: string): Promise<FriendWithDetails[]> {
     const acceptedFriendships = await db
       .select()
       .from(friendships)
@@ -1908,20 +1938,30 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    const friendIds = acceptedFriendships.map((f) =>
-      f.requesterId === userId ? f.addresseeId : f.requesterId
-    );
-
-    if (friendIds.length === 0) {
+    if (acceptedFriendships.length === 0) {
       return [];
     }
+
+    const friendshipMap = new Map(
+      acceptedFriendships.map((f) => [
+        f.requesterId === userId ? f.addresseeId : f.requesterId,
+        f.id,
+      ])
+    );
+
+    const friendIds = Array.from(friendshipMap.keys());
 
     const friends = await db
       .select()
       .from(users)
       .where(sql`${users.id} IN (${sql.join(friendIds.map(id => sql`${id}`), sql`, `)})`);
 
-    return friends;
+    return friends.map((friend) => ({
+      id: friend.id,
+      friendshipId: friendshipMap.get(friend.id) || "",
+      username: friend.username,
+      avatarUrl: friend.avatarUrl,
+    }));
   }
 
   async acceptFriendRequest(friendshipId: string): Promise<Friendship | undefined> {

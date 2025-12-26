@@ -1512,13 +1512,15 @@ export async function registerRoutes(
   // Admin: Get marketplace config
   app.get("/api/admin/marketplace-config", requireAdmin, async (_req, res) => {
     try {
-      const [enabled, feePercentage] = await Promise.all([
+      const [enabled, feePercentage, treasuryWallet] = await Promise.all([
         storage.getMarketplaceConfig("marketplace_enabled"),
         storage.getMarketplaceConfig("marketplace_fee_percentage"),
+        storage.getMarketplaceConfig("marketplace_treasury_wallet"),
       ]);
       res.json({
         marketplaceEnabled: enabled === "true",
         feePercentage: feePercentage ? parseFloat(feePercentage) : 2.5,
+        treasuryWallet: treasuryWallet || process.env.MARKETPLACE_TREASURY_WALLET || "",
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch marketplace config" });
@@ -1528,7 +1530,7 @@ export async function registerRoutes(
   // Admin: Update marketplace config
   app.patch("/api/admin/marketplace-config", requireAdmin, async (req, res) => {
     try {
-      const { marketplaceEnabled, feePercentage } = req.body;
+      const { marketplaceEnabled, feePercentage, treasuryWallet } = req.body;
       
       if (marketplaceEnabled !== undefined) {
         await storage.setMarketplaceConfig("marketplace_enabled", String(marketplaceEnabled));
@@ -1536,15 +1538,20 @@ export async function registerRoutes(
       if (feePercentage !== undefined) {
         await storage.setMarketplaceConfig("marketplace_fee_percentage", String(feePercentage));
       }
+      if (treasuryWallet !== undefined) {
+        await storage.setMarketplaceConfig("marketplace_treasury_wallet", String(treasuryWallet));
+      }
       
-      const [enabled, fee] = await Promise.all([
+      const [enabled, fee, wallet] = await Promise.all([
         storage.getMarketplaceConfig("marketplace_enabled"),
         storage.getMarketplaceConfig("marketplace_fee_percentage"),
+        storage.getMarketplaceConfig("marketplace_treasury_wallet"),
       ]);
       
       res.json({
         marketplaceEnabled: enabled === "true",
         feePercentage: fee ? parseFloat(fee) : 2.5,
+        treasuryWallet: wallet || process.env.MARKETPLACE_TREASURY_WALLET || "",
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to update marketplace config" });
@@ -2522,7 +2529,7 @@ export async function registerRoutes(
         minListingPrice: parseFloat(minListingPrice),
         maxListingDurationDays: parseInt(maxListingDuration),
         offerExpirationDays: parseInt(offerExpiration),
-        treasuryWallet: process.env.MARKETPLACE_TREASURY_WALLET || null,
+        treasuryWallet: await storage.getMarketplaceConfig("marketplace_treasury_wallet") || process.env.MARKETPLACE_TREASURY_WALLET || null,
         isOpen: marketplaceOpen === "true",
       });
     } catch (error) {

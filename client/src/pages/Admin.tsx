@@ -149,6 +149,7 @@ export default function Admin() {
   interface MarketplaceConfig {
     marketplaceEnabled: boolean;
     feePercentage: number;
+    treasuryWallet: string;
   }
   
   const { data: marketplaceConfig, refetch: refetchMarketplace } = useQuery<MarketplaceConfig>({
@@ -1816,6 +1817,31 @@ export default function Admin() {
                         />
                         <span className="text-muted-foreground">%</span>
                       </div>
+                    </div>
+                    
+                    <div className="p-4 border rounded-md space-y-3">
+                      <div>
+                        <h3 className="font-medium">Fee Destination Wallet</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Solana wallet address where marketplace fees will be sent
+                        </p>
+                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Enter Solana wallet address..."
+                        value={marketplaceConfig?.treasuryWallet ?? ""}
+                        onChange={(e) => {
+                          updateMarketplaceMutation.mutate({ treasuryWallet: e.target.value });
+                        }}
+                        className="font-mono text-sm"
+                        disabled={updateMarketplaceMutation.isPending}
+                        data-testid="input-treasury-wallet"
+                      />
+                      {marketplaceConfig?.treasuryWallet && (
+                        <p className="text-xs text-muted-foreground font-mono truncate">
+                          Current: {marketplaceConfig.treasuryWallet}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>

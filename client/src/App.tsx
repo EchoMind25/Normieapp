@@ -96,6 +96,7 @@ const ArtGalleryPage = lazy(() => import("@/pages/ArtGalleryPage"));
 const ChatPage = lazy(() => import("@/pages/ChatPage"));
 const MessagesPage = lazy(() => import("@/pages/MessagesPage"));
 const About = lazy(() => import("@/pages/About"));
+const LeaderboardsPage = lazy(() => import("@/pages/LeaderboardsPage"));
 
 function PageLoader() {
   return (
@@ -152,6 +153,7 @@ function Router() {
           <Route path="/chat" component={ChatPage} />
           <Route path="/messages" component={MessagesPage} />
           <Route path="/about" component={About} />
+          <Route path="/leaderboards" component={LeaderboardsPage} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

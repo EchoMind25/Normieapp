@@ -202,7 +202,7 @@ export default function Home() {
             </div>
           </section>
           
-          <section id="leaderboards" className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+          <section id="leaderboards" className="hidden md:block max-w-7xl mx-auto px-4 py-6 sm:py-8">
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
               <BiggestJeetLeaderboard />
               <HolderLeaderboards />

@@ -993,6 +993,28 @@ export const insertFriendshipSchema = createInsertSchema(friendships).omit({
 export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
 export type Friendship = typeof friendships.$inferSelect;
 
+// Friend with friendship ID for API responses
+export interface FriendWithDetails {
+  id: string;
+  friendshipId: string;
+  username: string;
+  avatarUrl: string | null;
+}
+
+// Pending friend request with requester details
+export interface PendingFriendRequest {
+  id: string;
+  requesterId: string;
+  addresseeId: string;
+  status: string;
+  createdAt: string;
+  requester: {
+    id: string;
+    username: string;
+    avatarUrl: string | null;
+  };
+}
+
 // =====================================================
 // Encrypted Direct Messages (E2E Encryption Ready)
 // =====================================================
