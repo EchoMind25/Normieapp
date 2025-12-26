@@ -1,0 +1,31 @@
+About Normie Observer
+Normie Observer is a real-time blockchain data platform dedicated to the Normie community, providing insights into $NORMIE token activity on Solana. It empowers users with live updates, transaction tracking, and community tools to stay connected to the Normie Nation ecosystem.
+The Normie Movement
+The Normie movement, embodied by Normie Nation, is a community-driven Solana-based crypto project and lifestyle brand that champions everyday people—or "normies"—over insiders, whales, or hype-driven schemes. Founded on blue-collar "show up and ship" energy, it emphasizes proof of work (POW) through transparent execution, real-world business ethics, and long-term brand building, rather than short-term flips or rugs. Led by a dedicated CEO with a background in men's grooming and multi-million-dollar branding, Normie aims to create a sustainable legacy similar to Dogecoin or Pepe, focusing on inclusivity for all holders regardless of investment size.
+Key ethos includes:
+
+Transparency and Legitimacy: Building in public with verifiable actions, such as locking over 52% of the supply until next year, burning 31 million tokens, and the CEO controlling 62% with personal investments (around $50,000 out-of-pocket) to demonstrate commitment.
+Community Focus: A flywheel of growth through merch (e.g., coffee, beanies, fitness lines), real-world events (like Tough Mudder or Vegas lounges), partnerships, apps, staking, and giveaways (e.g., Amazon gift cards).
+Differentiation: Rapid achievements like CoinGecko listing in under 24 hours, Jupiter Verified status as the "First Normie on Sol," and OKX integration showcase execution over empty promises. The movement rejects "trust me bro" culture in favor of "watch me work," fostering organic growth via Telegram, X spaces, and community interactions.
+
+Join the movement at normienation.com or follow @NormieCEO for updates.
+Version
+1.0.0
+Development
+Normie Observer was built by Echo Mind Systems, a privacy-first AI automation agency specializing in real-time blockchain data platforms.
+Need custom automation solutions? Get in touch
+Technology
+
+▸React + TypeScript
+▸Capacitor for iOS/Android
+▸Real-time Solana integration
+▸PostgreSQL database
+▸WebSocket real-time updates
+
+Powered by Echo Mind's automation framework
+Support
+Technical Support: support@tryechomind.net
+Business Inquiries: braxton@tryechomind.net
+Legal
+Privacy Policy
+Terms of Service
