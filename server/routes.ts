@@ -1505,6 +1505,82 @@ export async function registerRoutes(
     }
   });
 
+  // =====================================================
+  // Admin: Marketplace & Wallet Feature Settings
+  // =====================================================
+
+  // Admin: Get marketplace config
+  app.get("/api/admin/marketplace-config", requireAdmin, async (_req, res) => {
+    try {
+      const [enabled, feePercentage] = await Promise.all([
+        storage.getMarketplaceConfig("marketplace_enabled"),
+        storage.getMarketplaceConfig("marketplace_fee_percentage"),
+      ]);
+      res.json({
+        marketplaceEnabled: enabled === "true",
+        feePercentage: feePercentage ? parseFloat(feePercentage) : 2.5,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch marketplace config" });
+    }
+  });
+
+  // Admin: Update marketplace config
+  app.patch("/api/admin/marketplace-config", requireAdmin, async (req, res) => {
+    try {
+      const { marketplaceEnabled, feePercentage } = req.body;
+      
+      if (marketplaceEnabled !== undefined) {
+        await storage.setMarketplaceConfig("marketplace_enabled", String(marketplaceEnabled));
+      }
+      if (feePercentage !== undefined) {
+        await storage.setMarketplaceConfig("marketplace_fee_percentage", String(feePercentage));
+      }
+      
+      const [enabled, fee] = await Promise.all([
+        storage.getMarketplaceConfig("marketplace_enabled"),
+        storage.getMarketplaceConfig("marketplace_fee_percentage"),
+      ]);
+      
+      res.json({
+        marketplaceEnabled: enabled === "true",
+        feePercentage: fee ? parseFloat(fee) : 2.5,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update marketplace config" });
+    }
+  });
+
+  // Admin: Get wallet features config
+  app.get("/api/admin/wallet-config", requireAdmin, async (_req, res) => {
+    try {
+      const enabled = await storage.getMarketplaceConfig("wallet_features_global_enabled");
+      res.json({
+        walletFeaturesEnabled: enabled === "true",
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch wallet config" });
+    }
+  });
+
+  // Admin: Update wallet features config
+  app.patch("/api/admin/wallet-config", requireAdmin, async (req, res) => {
+    try {
+      const { walletFeaturesEnabled } = req.body;
+      
+      if (walletFeaturesEnabled !== undefined) {
+        await storage.setMarketplaceConfig("wallet_features_global_enabled", String(walletFeaturesEnabled));
+      }
+      
+      const enabled = await storage.getMarketplaceConfig("wallet_features_global_enabled");
+      res.json({
+        walletFeaturesEnabled: enabled === "true",
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update wallet config" });
+    }
+  });
+
   // Public: Get active favicons (for user selection)
   app.get("/api/favicons", async (_req, res) => {
     try {
@@ -2688,11 +2764,9 @@ export async function registerRoutes(
         toAddress: req.user!.walletAddress || "",
         transactionType: "sale",
         priceSol: salePrice.toString(),
-        marketplaceFee: marketplaceFeeAmount.toFixed(6),
-        royaltyFee: royaltyAmount.toFixed(6),
-        sellerProceeds: sellerProceeds.toFixed(6),
-        transactionSignature: `pending_${Date.now()}`, // Will be updated with actual Solana signature
-        status: "pending",
+        marketplaceFeeAmount: marketplaceFeeAmount.toFixed(6),
+        royaltyFeeAmount: royaltyAmount.toFixed(6),
+        txSignature: `pending_${Date.now()}`, // Will be updated with actual Solana signature
       });
 
       // Update NFT ownership
@@ -2819,11 +2893,9 @@ export async function registerRoutes(
         toAddress: offer.buyerAddress,
         transactionType: "sale",
         priceSol: salePrice.toString(),
-        marketplaceFee: marketplaceFeeAmount.toFixed(6),
-        royaltyFee: royaltyAmount.toFixed(6),
-        sellerProceeds: sellerProceeds.toFixed(6),
-        transactionSignature: `pending_${Date.now()}`, // Will be updated with actual signature
-        status: "pending",
+        marketplaceFeeAmount: marketplaceFeeAmount.toFixed(6),
+        royaltyFeeAmount: royaltyAmount.toFixed(6),
+        txSignature: `pending_${Date.now()}`, // Will be updated with actual signature
       });
 
       // Update NFT ownership

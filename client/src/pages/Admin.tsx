@@ -16,8 +16,9 @@ import { useUpload } from "@/hooks/use-upload";
 import { 
   ArrowLeft, Users, Shield, Activity, Settings, Plus, Trash2, TrendingUp, Calendar,
   Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3, Bell, Send, ExternalLink,
-  Ban, Mail, LogOut, Edit3, Upload, Palette, ToggleLeft, ToggleRight, Key
+  Ban, Mail, LogOut, Edit3, Upload, Palette, ToggleLeft, ToggleRight, Key, Wallet, Store
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminMobileNavbar } from "@/components/AdminMobileNavbar";
 import type { GalleryItem, Poll } from "@shared/schema";
@@ -142,6 +143,57 @@ export default function Admin() {
   const { data: favicons = [], refetch: refetchFavicons } = useQuery<AdminFavicon[]>({
     queryKey: ["/api/admin/favicons"],
     enabled: isAuthenticated && hasAdminAccess,
+  });
+
+  // Marketplace Config
+  interface MarketplaceConfig {
+    marketplaceEnabled: boolean;
+    feePercentage: number;
+  }
+  
+  const { data: marketplaceConfig, refetch: refetchMarketplace } = useQuery<MarketplaceConfig>({
+    queryKey: ["/api/admin/marketplace-config"],
+    enabled: isAuthenticated && hasAdminAccess,
+  });
+
+  const updateMarketplaceMutation = useMutation({
+    mutationFn: async (data: Partial<MarketplaceConfig>) => {
+      const res = await apiRequest("PATCH", "/api/admin/marketplace-config", data);
+      if (!res.ok) throw new Error("Failed to update marketplace config");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/marketplace-config"] });
+      toast({ title: "Marketplace settings updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update marketplace settings", variant: "destructive" });
+    },
+  });
+
+  // Wallet Config
+  interface WalletConfig {
+    walletFeaturesEnabled: boolean;
+  }
+  
+  const { data: walletConfig, refetch: refetchWallet } = useQuery<WalletConfig>({
+    queryKey: ["/api/admin/wallet-config"],
+    enabled: isAuthenticated && hasAdminAccess,
+  });
+
+  const updateWalletMutation = useMutation({
+    mutationFn: async (data: Partial<WalletConfig>) => {
+      const res = await apiRequest("PATCH", "/api/admin/wallet-config", data);
+      if (!res.ok) throw new Error("Failed to update wallet config");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/wallet-config"] });
+      toast({ title: "Wallet settings updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update wallet settings", variant: "destructive" });
+    },
   });
 
   const addDevBuyMutation = useMutation({
@@ -1707,6 +1759,119 @@ export default function Admin() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
+                    <Store className="h-5 w-5" />
+                    NFT Marketplace
+                  </CardTitle>
+                  <CardDescription>
+                    Enable and configure the NFT marketplace for community trading
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between gap-4 p-4 border rounded-md">
+                      <div className="flex-1">
+                        <h3 className="font-medium flex items-center gap-2">
+                          Marketplace Status
+                          {marketplaceConfig?.marketplaceEnabled ? (
+                            <Badge variant="default">Active</Badge>
+                          ) : (
+                            <Badge variant="secondary">Disabled</Badge>
+                          )}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          When enabled, users can list, buy, and sell NFTs in the marketplace
+                        </p>
+                      </div>
+                      <Switch
+                        checked={marketplaceConfig?.marketplaceEnabled ?? false}
+                        onCheckedChange={(checked) => updateMarketplaceMutation.mutate({ marketplaceEnabled: checked })}
+                        disabled={updateMarketplaceMutation.isPending}
+                        data-testid="switch-marketplace-enabled"
+                      />
+                    </div>
+                    
+                    <div className="p-4 border rounded-md space-y-3">
+                      <div>
+                        <h3 className="font-medium">Marketplace Fee</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Percentage fee charged on each sale (goes to treasury)
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="10"
+                          step="0.1"
+                          value={marketplaceConfig?.feePercentage ?? 2.5}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val) && val >= 0 && val <= 10) {
+                              updateMarketplaceMutation.mutate({ feePercentage: val });
+                            }
+                          }}
+                          className="w-24"
+                          disabled={updateMarketplaceMutation.isPending}
+                          data-testid="input-marketplace-fee"
+                        />
+                        <span className="text-muted-foreground">%</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5" />
+                    Wallet Integration
+                  </CardTitle>
+                  <CardDescription>
+                    Control wallet connection features for all users
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-4 p-4 border rounded-md">
+                      <div className="flex-1">
+                        <h3 className="font-medium flex items-center gap-2">
+                          Wallet Features
+                          {walletConfig?.walletFeaturesEnabled ? (
+                            <Badge variant="default">Active</Badge>
+                          ) : (
+                            <Badge variant="secondary">Disabled</Badge>
+                          )}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          When enabled, users can connect their Solana wallets to verify holdings and access premium features
+                        </p>
+                      </div>
+                      <Switch
+                        checked={walletConfig?.walletFeaturesEnabled ?? false}
+                        onCheckedChange={(checked) => updateWalletMutation.mutate({ walletFeaturesEnabled: checked })}
+                        disabled={updateWalletMutation.isPending}
+                        data-testid="switch-wallet-enabled"
+                      />
+                    </div>
+                    
+                    <div className="p-4 border rounded-md">
+                      <h4 className="font-medium mb-2">Per-User Wallet Access</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        You can also unlock wallet features for individual users from the Users tab
+                      </p>
+                      <Button variant="outline" onClick={() => setActiveTab("users")} data-testid="button-go-to-users">
+                        <Users className="w-4 h-4 mr-2" />
+                        Go to Users
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
                     <Settings className="h-5 w-5" />
                     Other Settings
                   </CardTitle>
@@ -1726,13 +1891,6 @@ export default function Admin() {
                       <div>
                         <h3 className="font-medium">Chat Moderation</h3>
                         <p className="text-sm text-muted-foreground">Monitor and moderate community chat</p>
-                      </div>
-                      <Badge variant="secondary">Coming Soon</Badge>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 p-4 border rounded-md">
-                      <div>
-                        <h3 className="font-medium">NFT Marketplace</h3>
-                        <p className="text-sm text-muted-foreground">Manage NFT listings and transactions</p>
                       </div>
                       <Badge variant="secondary">Coming Soon</Badge>
                     </div>
