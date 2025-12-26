@@ -42,12 +42,14 @@ function AccessCheck({
   isLoading, 
   isAuthenticated, 
   isAdmin, 
-  marketplaceOpen 
+  marketplaceOpen,
+  walletFeaturesUnlocked
 }: { 
   isLoading: boolean; 
   isAuthenticated: boolean; 
   isAdmin: boolean;
   marketplaceOpen: boolean;
+  walletFeaturesUnlocked: boolean;
 }) {
   if (isLoading) {
     return (
@@ -59,8 +61,10 @@ function AccessCheck({
     );
   }
 
-  // Allow access if marketplace is open to all, or user is admin/founder
-  if (!isAuthenticated || (!marketplaceOpen && !isAdmin)) {
+  // Allow access if: marketplace is open AND user has wallet features unlocked, OR user is admin/founder
+  const hasAccess = isAuthenticated && (isAdmin || (marketplaceOpen && walletFeaturesUnlocked));
+  
+  if (!hasAccess) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md w-full mx-4 border-destructive/50">
@@ -70,7 +74,11 @@ function AccessCheck({
             </div>
             <h2 className="text-xl font-mono font-bold mb-2">Access Restricted</h2>
             <p className="text-muted-foreground font-mono text-sm mb-4">
-              The NFT Marketplace is currently in beta and only available to administrators.
+              {!isAuthenticated 
+                ? "Please log in to access the NFT Marketplace."
+                : !walletFeaturesUnlocked 
+                  ? "Wallet features are not yet enabled for your account. Contact an admin for access."
+                  : "The NFT Marketplace is currently in beta and only available to administrators."}
             </p>
             <Link href="/">
               <Button variant="outline" className="font-mono" data-testid="button-back-home">
@@ -379,12 +387,13 @@ export default function MyNfts() {
     },
   });
 
-  // Access check - allow if marketplace is open to all OR user is admin/founder
+  // Access check - allow if marketplace is open to all AND user has wallet features OR user is admin/founder
   const accessCheck = AccessCheck({ 
     isLoading: authLoading || configLoading, 
     isAuthenticated, 
     isAdmin, 
-    marketplaceOpen: config?.isOpen ?? false 
+    marketplaceOpen: config?.isOpen ?? false,
+    walletFeaturesUnlocked: user?.walletFeaturesUnlocked ?? false
   });
   if (accessCheck) return accessCheck;
 

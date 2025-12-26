@@ -530,6 +530,7 @@ router.get("/me", authSessionLimiter, authMiddleware, async (req: AuthRequest, r
         selectedIconId: req.user.selectedIconId,
         createdAt: req.user.createdAt,
         passwordChanged: req.user.passwordChanged ?? true,
+        walletFeaturesUnlocked: req.user.walletFeaturesUnlocked ?? false,
       },
     });
   } catch (error) {

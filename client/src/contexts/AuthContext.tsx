@@ -16,6 +16,7 @@ export interface User {
   createdAt: string;
   passwordChanged?: boolean;
   selectedIconId?: string | null;
+  walletFeaturesUnlocked?: boolean;
 }
 
 interface AuthContextType {

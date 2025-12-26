@@ -249,7 +249,10 @@ export default function Marketplace() {
     );
   }
 
-  if (!isAuthenticated || (!marketplaceOpen && !isAdmin)) {
+  const walletFeaturesUnlocked = user?.walletFeaturesUnlocked ?? false;
+  const hasAccess = isAuthenticated && (isAdmin || (marketplaceOpen && walletFeaturesUnlocked));
+
+  if (!hasAccess) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md w-full mx-4 border-destructive/50">
@@ -259,7 +262,11 @@ export default function Marketplace() {
             </div>
             <h2 className="text-xl font-mono font-bold mb-2">Access Restricted</h2>
             <p className="text-muted-foreground font-mono text-sm mb-4">
-              The NFT Marketplace is currently in beta and only available to administrators.
+              {!isAuthenticated 
+                ? "Please log in to access the NFT Marketplace."
+                : !walletFeaturesUnlocked 
+                  ? "Wallet features are not yet enabled for your account. Contact an admin for access."
+                  : "The NFT Marketplace is currently in beta and only available to administrators."}
             </p>
             <Link href="/">
               <Button variant="outline" className="font-mono" data-testid="button-back-home">
