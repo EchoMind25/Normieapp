@@ -26,6 +26,45 @@ if (process.env.SENDGRID_API_KEY) {
 const CHALLENGE_EXPIRY_MINUTES = 5;
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
 
+// Cloudflare Turnstile verification
+async function verifyTurnstileToken(token: string, ip?: string): Promise<{ success: boolean; error?: string }> {
+  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  
+  // If no secret key configured, allow through (for development)
+  if (!secretKey) {
+    console.log("[Turnstile] No secret key configured, skipping verification");
+    return { success: true };
+  }
+
+  try {
+    // Cloudflare siteverify expects URL-encoded form data, not JSON
+    const formData = new URLSearchParams();
+    formData.append("secret", secretKey);
+    formData.append("response", token);
+    if (ip) {
+      formData.append("remoteip", ip);
+    }
+
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: formData.toString(),
+    });
+
+    const outcome = await response.json() as { success: boolean; "error-codes"?: string[] };
+    
+    if (outcome.success) {
+      return { success: true };
+    } else {
+      console.error("[Turnstile] Verification failed:", outcome["error-codes"]);
+      return { success: false, error: "Human verification failed" };
+    }
+  } catch (error) {
+    console.error("[Turnstile] Verification error:", error);
+    return { success: false, error: "Verification service unavailable" };
+  }
+}
+
 // =====================================================
 // Wallet Authentication
 // =====================================================
@@ -164,7 +203,23 @@ router.post(
         return;
       }
 
-      const { email, password, username } = req.body;
+      const { email, password, username, turnstileToken } = req.body;
+
+      // Verify Turnstile token if provided (required when Turnstile is configured)
+      if (process.env.TURNSTILE_SECRET_KEY) {
+        if (!turnstileToken) {
+          res.status(400).json({ error: "Human verification required" });
+          return;
+        }
+        const ip = req.headers["cf-connecting-ip"] as string || 
+                   req.headers["x-forwarded-for"] as string || 
+                   req.socket.remoteAddress;
+        const verification = await verifyTurnstileToken(turnstileToken, ip);
+        if (!verification.success) {
+          res.status(400).json({ error: verification.error || "Human verification failed" });
+          return;
+        }
+      }
 
       const existingEmail = await storage.getUserByEmail(email);
       if (existingEmail) {

@@ -28,7 +28,7 @@ interface AuthContextType {
   requiresPasswordChange: boolean;
   loginWithWallet: (provider: WalletProvider) => Promise<boolean>;
   loginWithEmail: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, username: string) => Promise<boolean>;
+  register: (email: string, password: string, username: string, turnstileToken?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<boolean>;
   resetPassword: (token: string, password: string) => Promise<boolean>;
@@ -92,9 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [refetch, toast]);
 
-  const register = useCallback(async (email: string, password: string, username: string): Promise<boolean> => {
+  const register = useCallback(async (email: string, password: string, username: string, turnstileToken?: string): Promise<boolean> => {
     try {
-      const res = await apiRequest("POST", "/api/auth/register", { email, password, username });
+      const res = await apiRequest("POST", "/api/auth/register", { email, password, username, turnstileToken });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
