@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       toast({ title: "Logged out", description: "See you soon, normie!" });
     } catch (error) {
-      console.error("Logout error:", error);
+      // Logout error handled silently
     }
   }, [user, queryClient, toast]);
 

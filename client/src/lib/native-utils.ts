@@ -16,7 +16,7 @@ export const haptics = {
       try {
         await Haptics.impact({ style: ImpactStyle.Light });
       } catch (e) {
-        console.debug('Haptics not available');
+        // Haptics not available
       }
     }
   },
@@ -25,7 +25,7 @@ export const haptics = {
       try {
         await Haptics.impact({ style: ImpactStyle.Medium });
       } catch (e) {
-        console.debug('Haptics not available');
+        // Haptics not available
       }
     }
   },
@@ -34,7 +34,7 @@ export const haptics = {
       try {
         await Haptics.impact({ style: ImpactStyle.Heavy });
       } catch (e) {
-        console.debug('Haptics not available');
+        // Haptics not available
       }
     }
   },
@@ -43,7 +43,7 @@ export const haptics = {
       try {
         await Haptics.notification({ type: NotificationType.Success });
       } catch (e) {
-        console.debug('Haptics not available');
+        // Haptics not available
       }
     }
   },
@@ -52,7 +52,7 @@ export const haptics = {
       try {
         await Haptics.notification({ type: NotificationType.Warning });
       } catch (e) {
-        console.debug('Haptics not available');
+        // Haptics not available
       }
     }
   },
@@ -61,7 +61,7 @@ export const haptics = {
       try {
         await Haptics.notification({ type: NotificationType.Error });
       } catch (e) {
-        console.debug('Haptics not available');
+        // Haptics not available
       }
     }
   },
@@ -78,7 +78,6 @@ export async function shareContent(options: {
       await Share.share(options);
       return true;
     } catch (e) {
-      console.debug('Share cancelled or unavailable');
       return false;
     }
   } else {
@@ -87,7 +86,6 @@ export async function shareContent(options: {
         await navigator.share(options);
         return true;
       } catch (e) {
-        console.debug('Web share cancelled');
         return false;
       }
     }
@@ -152,7 +150,6 @@ export async function initNetworkListener(onStatusChange: (isOffline: boolean) =
         notifyCallbacks(!status.connected);
       });
     } catch (e) {
-      console.debug('Network listener not available');
       if (typeof window !== 'undefined') {
         window.addEventListener('online', () => notifyCallbacks(false));
         window.addEventListener('offline', () => notifyCallbacks(true));
@@ -190,7 +187,7 @@ export async function initStatusBar(): Promise<void> {
       await StatusBar.setBackgroundColor({ color: '#0a0a0a' });
     }
   } catch (e) {
-    console.debug('StatusBar not available');
+    // StatusBar not available
   }
 }
 
@@ -200,7 +197,7 @@ export async function hideSplashScreen(): Promise<void> {
   try {
     await SplashScreen.hide();
   } catch (e) {
-    console.debug('SplashScreen not available');
+    // SplashScreen not available
   }
 }
 
@@ -244,7 +241,7 @@ export function acceptDisclaimer(): void {
   try {
     localStorage.setItem(DISCLAIMER_KEY, POLICY_VERSION);
   } catch {
-    console.debug('localStorage not available');
+    // localStorage not available
   }
 }
 
@@ -263,7 +260,6 @@ export async function requestCameraPermissions(): Promise<boolean> {
     });
     return permissions.camera === 'granted' || permissions.photos === 'granted';
   } catch (e) {
-    console.debug('Camera permissions request failed:', e);
     return false;
   }
 }
@@ -278,7 +274,6 @@ export async function checkCameraPermissions(): Promise<{ camera: boolean; photo
       photos: permissions.photos === 'granted',
     };
   } catch (e) {
-    console.debug('Camera permissions check failed:', e);
     return { camera: false, photos: false };
   }
 }
@@ -310,7 +305,6 @@ export async function pickImageFromGallery(): Promise<CameraPhoto | null> {
     if (e?.message?.includes('cancelled') || e?.message?.includes('User cancelled')) {
       return null;
     }
-    console.error('Pick image failed:', e);
     throw e;
   }
 }
@@ -340,7 +334,6 @@ export async function takePhoto(): Promise<CameraPhoto | null> {
     if (e?.message?.includes('cancelled') || e?.message?.includes('User cancelled')) {
       return null;
     }
-    console.error('Take photo failed:', e);
     throw e;
   }
 }
@@ -373,7 +366,6 @@ export async function pickOrTakePhoto(): Promise<CameraPhoto | null> {
     if (e?.message?.includes('cancelled') || e?.message?.includes('User cancelled')) {
       return null;
     }
-    console.error('Pick or take photo failed:', e);
     throw e;
   }
 }

@@ -51,7 +51,6 @@ export function useWebSocket() {
         setIsLoading(false);
       }
     } catch (error) {
-      console.error("[NORMIE] Metrics fetch error:", error);
       if (mountedRef.current) {
         setIsConnected(false);
       }
@@ -68,7 +67,7 @@ export function useWebSocket() {
         setPriceHistory(data);
       }
     } catch (error) {
-      console.error("[Polling] Price history fetch error:", error);
+      // Price history fetch failed silently
     }
   }, [fetchWithETag]);
 
@@ -81,7 +80,7 @@ export function useWebSocket() {
         setDevBuys(data);
       }
     } catch (error) {
-      console.error("[Polling] Dev buys fetch error:", error);
+      // Dev buys fetch failed silently
     }
   }, [fetchWithETag]);
 
@@ -94,7 +93,7 @@ export function useWebSocket() {
         setActivity(data);
       }
     } catch (error) {
-      console.error("[Polling] Activity fetch error:", error);
+      // Activity fetch failed silently
     }
   }, [fetchWithETag]);
 

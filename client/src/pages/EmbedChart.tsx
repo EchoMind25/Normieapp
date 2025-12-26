@@ -237,7 +237,7 @@ export default function EmbedChart() {
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      console.error("Failed to fetch metrics:", err);
+      // Metrics fetch failed silently
     }
   }, [config.token]);
 
@@ -466,7 +466,7 @@ export default function EmbedChart() {
         }
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
-        console.error("[EmbedChart] Error fetching markers:", error);
+        // Markers fetch failed silently
       }
     };
     fetchMarkers();

@@ -65,7 +65,7 @@ export function SoundProvider({ children }: SoundProviderProps) {
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + duration);
     } catch (e) {
-      console.warn("Audio playback failed:", e);
+      // Audio playback failed silently
     }
   }, [getAudioContext]);
 

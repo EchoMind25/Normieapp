@@ -144,14 +144,12 @@ export async function connectWallet(provider: WalletProvider): Promise<string | 
       const response = await wallet.connect();
       return response.publicKey.toBase58();
     } catch (error) {
-      console.error("Wallet connect error:", error);
       return null;
     }
   }
   
   // For mobile devices without wallet detected, provide options
   if (isMobileDevice() || isNative) {
-    console.log(`[Wallet] Mobile device detected without ${provider} wallet`);
     // Return null but don't open anything - let the UI handle the options
     return null;
   }
@@ -178,7 +176,6 @@ export async function connectWalletWithMobileSupport(provider: WalletProvider): 
         needsWalletApp: false,
       };
     } catch (error) {
-      console.error("Wallet connect error:", error);
       return { address: null, needsWalletApp: false };
     }
   }
@@ -200,7 +197,7 @@ export async function disconnectWallet(provider: WalletProvider): Promise<void> 
     try {
       await wallet.disconnect();
     } catch (error) {
-      console.error("Wallet disconnect error:", error);
+      // Disconnect error handled silently
     }
   }
 }
@@ -211,7 +208,6 @@ export async function signMessage(
 ): Promise<{ signature: string; publicKey: string } | null> {
   const wallet = getWallet(provider);
   if (!wallet || !wallet.publicKey) {
-    console.error("Sign message error: wallet not connected or no publicKey");
     return null;
   }
 
@@ -240,7 +236,6 @@ export async function signMessage(
       publicKey: uint8ArrayToBase64(wallet.publicKey.toBytes()),
     };
   } catch (error: any) {
-    console.error("Sign message error:", error?.message || error);
     return null;
   }
 }
@@ -249,35 +244,24 @@ export async function authenticateWithWallet(
   provider: WalletProvider
 ): Promise<{ user: any; token: string } | null> {
   try {
-    console.log(`[Wallet] Connecting ${provider}...`);
     const walletAddress = await connectWallet(provider);
     if (!walletAddress) {
-      console.error("[Wallet] Failed to get wallet address");
       return null;
     }
-    console.log(`[Wallet] Connected: ${walletAddress}`);
 
-    console.log("[Wallet] Requesting challenge...");
     const challengeRes = await apiRequest("POST", "/api/auth/wallet/challenge", {
       walletAddress,
     });
     if (!challengeRes.ok) {
-      const error = await challengeRes.text();
-      console.error("[Wallet] Challenge request failed:", error);
       return null;
     }
     const { challenge } = await challengeRes.json();
-    console.log("[Wallet] Challenge received:", challenge?.substring(0, 20) + "...");
 
-    console.log("[Wallet] Signing message...");
     const signResult = await signMessage(provider, challenge);
     if (!signResult) {
-      console.error("[Wallet] Message signing failed or cancelled");
       return null;
     }
-    console.log("[Wallet] Message signed successfully");
 
-    console.log("[Wallet] Verifying signature...");
     const verifyRes = await apiRequest("POST", "/api/auth/wallet/verify", {
       walletAddress,
       challenge,
@@ -287,14 +271,11 @@ export async function authenticateWithWallet(
 
     if (!verifyRes.ok) {
       const error = await verifyRes.text();
-      console.error("[Wallet] Verification failed:", error);
       throw new Error(`Verification failed: ${error}`);
     }
 
-    console.log("[Wallet] Authentication successful!");
     return verifyRes.json();
   } catch (error) {
-    console.error("[Wallet] Authentication error:", error);
     return null;
   }
 }
@@ -303,35 +284,25 @@ export async function linkWalletToAccount(
   provider: WalletProvider
 ): Promise<{ success: boolean; walletAddress: string } | null> {
   try {
-    console.log(`[Wallet] Linking ${provider} to existing account...`);
     const walletAddress = await connectWallet(provider);
     if (!walletAddress) {
-      console.error("[Wallet] Failed to get wallet address for linking");
       return null;
     }
-    console.log(`[Wallet] Connected for linking: ${walletAddress}`);
 
-    console.log("[Wallet] Requesting link challenge...");
     const challengeRes = await apiRequest("POST", "/api/auth/wallet/link-challenge", {
       walletAddress,
     });
     if (!challengeRes.ok) {
       const error = await challengeRes.text();
-      console.error("[Wallet] Link challenge request failed:", error);
       throw new Error(error);
     }
     const { challenge } = await challengeRes.json();
-    console.log("[Wallet] Link challenge received");
 
-    console.log("[Wallet] Signing link message...");
     const signResult = await signMessage(provider, challenge);
     if (!signResult) {
-      console.error("[Wallet] Link message signing failed or cancelled");
       return null;
     }
-    console.log("[Wallet] Link message signed");
 
-    console.log("[Wallet] Verifying link...");
     const verifyRes = await apiRequest("POST", "/api/auth/wallet/link-verify", {
       walletAddress,
       challenge,
@@ -341,14 +312,11 @@ export async function linkWalletToAccount(
 
     if (!verifyRes.ok) {
       const error = await verifyRes.text();
-      console.error("[Wallet] Link verification failed:", error);
       throw new Error(error);
     }
 
-    console.log("[Wallet] Wallet linked successfully!");
     return { success: true, walletAddress };
   } catch (error) {
-    console.error("[Wallet] Link error:", error);
     throw error;
   }
 }

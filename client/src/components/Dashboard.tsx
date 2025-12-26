@@ -208,7 +208,6 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
         lastFetchRef.current = { range, timestamp: now };
       }
     } catch (error) {
-      console.error("[Chart] Error fetching historical data:", error);
       const sorted = [...priceHistory].sort((a, b) => a.timestamp - b.timestamp);
       setChartData(sorted);
       chartDataRef.current = sorted;
@@ -248,7 +247,7 @@ export function Dashboard({ metrics, priceHistory, devBuys, isLoading, isConnect
           setChartMarkers(markers);
         }
       } catch (error) {
-        console.error("[Chart] Error fetching markers:", error);
+        // Markers fetch failed silently
       }
     };
     fetchMarkers();

@@ -447,7 +447,7 @@ export function MemeGenerator() {
           });
         };
         img.onerror = () => {
-          console.warn(`Failed to load sticker: ${sticker.name}`);
+          // Failed to load sticker silently
         };
         img.src = url;
       }
@@ -557,7 +557,6 @@ export function MemeGenerator() {
       };
       newImg.src = upscaledSrc as string;
     } catch (error) {
-      console.error("Upscaling failed:", error);
       toast({
         title: "Enhancement Failed",
         description: "Could not enhance the image. Please try again.",
@@ -616,7 +615,6 @@ export function MemeGenerator() {
       };
       newImg.src = url;
     } catch (error) {
-      console.error("Background removal failed:", error);
       toast({
         title: "Background Removal Failed",
         description: "Could not remove the background. Please try again.",

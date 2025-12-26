@@ -74,7 +74,6 @@ export function CommunityHub() {
         });
       }
     } catch (error) {
-      console.error("[Polls] Error fetching polls:", error);
       toast({
         title: "Connection issue",
         description: "Could not load polls. Try refreshing.",
@@ -100,7 +99,6 @@ export function CommunityHub() {
         });
       }
     } catch (error) {
-      console.error("[Activity] Error fetching activity:", error);
       toast({
         title: "Connection issue",
         description: "Could not load activity. Try refreshing.",

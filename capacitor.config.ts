@@ -3,7 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.normie.observer',
   appName: 'Normie Observer',
-  webDir: 'dist',
+  webDir: 'dist/public',
   ios: {
     contentInset: 'automatic',
     scrollEnabled: true,

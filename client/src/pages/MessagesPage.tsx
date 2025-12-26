@@ -130,7 +130,7 @@ export default function MessagesPage() {
           });
         }
       } catch (error) {
-        console.error("Failed to setup encryption:", error);
+        // Encryption setup failed silently
       } finally {
         setIsSettingUpEncryption(false);
       }

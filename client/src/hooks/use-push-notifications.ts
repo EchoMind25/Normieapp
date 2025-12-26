@@ -44,7 +44,7 @@ export function usePushNotifications() {
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (error) {
-      console.error("[Push] Error checking subscription:", error);
+      // Subscription check failed silently
     }
   }, []);
 
@@ -72,7 +72,6 @@ export function usePushNotifications() {
 
   const subscribe = useCallback(async (): Promise<boolean> => {
     if (!isSupported || !vapidData?.publicKey || !vapidData?.enabled) {
-      console.log("[Push] Not supported or not enabled");
       return false;
     }
 
@@ -81,7 +80,6 @@ export function usePushNotifications() {
       setPermission(permissionResult);
 
       if (permissionResult !== "granted") {
-        console.log("[Push] Permission denied");
         return false;
       }
 
@@ -99,7 +97,6 @@ export function usePushNotifications() {
       await subscribeMutation.mutateAsync(subscription);
       return true;
     } catch (error) {
-      console.error("[Push] Subscribe error:", error);
       return false;
     }
   }, [isSupported, vapidData, subscribeMutation]);
@@ -118,7 +115,6 @@ export function usePushNotifications() {
       
       return true;
     } catch (error) {
-      console.error("[Push] Unsubscribe error:", error);
       return false;
     }
   }, [unsubscribeMutation]);

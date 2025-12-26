@@ -91,7 +91,7 @@ export function AgeGate() {
               </li>
             </ul>
             <p className="text-xs text-muted-foreground pt-2">
-              This app is not intended for minors. Please exit if you do not meet these requirements.
+              This app is intended for adults 18 years or older only. If you are under 18, you must have parental permission to use this application. Please exit if you do not meet these requirements.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
