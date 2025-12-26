@@ -1,0 +1,68 @@
+  Immediate (Before Any Progress):
+
+  1. Fix CLI version mismatch: npm install @capacitor/cli@8
+  2. Add iOS platform: npx cap add ios
+  3. Sync web assets: npx cap sync ios
+
+  Before Submission:
+
+  4. Create 1024x1024 app icon (no transparency)
+  5. Update age gate text to include "parental permission"
+  6. Add .env to .gitignore
+  7. Remove console.log statements from client code
+  8. Configure app icons in Xcode
+  9. Set up splash screen images
+
+  In Xcode:
+
+  10. Configure bundle identifier to match com.normie.observer
+  11. Set minimum iOS version to 15.0+
+  12. Add privacy usage descriptions if needed
+  13. Configure app capabilities
+  14. Test on iOS Simulator
+
+  ---
+  SUBMISSION READINESS
+
+  Can submit to App Store now? NO
+
+  Must fix before submission:
+  1. ❌ Create iOS native project (npx cap add ios)
+  2. ❌ Fix Capacitor CLI version mismatch
+  3. ❌ Create and add 1024x1024 app icon
+  4. ❌ Configure Xcode project with proper settings
+  5. ❌ Update age gate text for parental permission
+
+  Estimated time to submission-ready: 2-4 hours (assuming developer has Xcode and Apple Developer account)
+
+  ---
+  AGE REQUIREMENT COMPLIANCE CHECKLIST
+
+  | Requirement                            | Status                                      |
+  |----------------------------------------|---------------------------------------------|
+  | App Store listing shows 18+ rating     | ⏳ Pending (configure in App Store Connect) |
+  | Age gate appears on first launch       | ✓ Yes                                       |
+  | Age gate text includes 18+ requirement | ⚠ Needs "parental permission" added         |
+  | Cannot bypass age gate                 | ✓ Server-side verification                  |
+  | Terms mentions 18+ requirement         | ✓ Yes (line 105-108)                        |
+  | Privacy mentions age requirement       | ✓ Yes (line 192)                            |
+  | No content targeting under 18          | ✓ App is financial/crypto focused           |
+
+  ---
+
+● ---
+  SUMMARY
+
+  The normie.observer web application is well-built with proper legal compliance, security measures, and a comprehensive database schema. However, iOS submission is blocked because the Capacitor iOS platform has not been initialized.
+
+  The single most important action needed:
+  npm install @capacitor/cli@8 && npx cap add ios && npx cap sync ios
+
+  Once the iOS project is created, the developer must:
+  1. Open ios/App/App.xcworkspace in Xcode
+  2. Add app icons (1024x1024 required)
+  3. Configure signing with Apple Developer account
+  4. Test on iOS Simulator
+  5. Submit via App Store Connect
+
+  The web application itself is ready for wrapping - it just needs the native container to be created.
