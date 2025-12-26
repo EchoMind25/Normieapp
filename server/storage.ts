@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, gt, desc, sql, or, asc, ilike, gte, lte, notInArray } from "drizzle-orm";
+import { eq, and, gt, desc, sql, or, asc, ilike, gte, lte, notInArray, inArray } from "drizzle-orm";
 import {
   users,
   sessions,
@@ -1895,7 +1895,7 @@ export class DatabaseStorage implements IStorage {
     const requesters = await db
       .select()
       .from(users)
-      .where(sql`${users.id} IN (${sql.join(requesterIds.map(id => sql`${id}`), sql`, `)})`);
+      .where(inArray(users.id, requesterIds));
 
     const requesterMap = new Map(requesters.map(u => [u.id, u]));
 
@@ -1954,7 +1954,7 @@ export class DatabaseStorage implements IStorage {
     const friends = await db
       .select()
       .from(users)
-      .where(sql`${users.id} IN (${sql.join(friendIds.map(id => sql`${id}`), sql`, `)})`);
+      .where(inArray(users.id, friendIds));
 
     return friends.map((friend) => ({
       id: friend.id,
