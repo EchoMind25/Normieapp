@@ -977,6 +977,7 @@ export const friendships = pgTable("friendships", {
   addresseeId: uuid("addressee_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, accepted, declined, blocked
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
   respondedAt: timestamp("responded_at"),
 }, (table) => [
   index("idx_friendships_requester").on(table.requesterId),
@@ -988,6 +989,7 @@ export const friendships = pgTable("friendships", {
 export const insertFriendshipSchema = createInsertSchema(friendships).omit({ 
   id: true, 
   createdAt: true,
+  updatedAt: true,
   respondedAt: true,
 });
 export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;

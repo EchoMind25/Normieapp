@@ -3220,8 +3220,15 @@ export async function registerRoutes(
 
       const friendship = await storage.sendFriendRequest(requesterId, addresseeId);
       res.status(201).json(friendship);
-    } catch (error) {
+    } catch (error: any) {
       console.error("[Friends] Error sending friend request:", error);
+      console.error("[Friends] Error details:", {
+        message: error?.message,
+        code: error?.code,
+        detail: error?.detail,
+        constraint: error?.constraint,
+        stack: error?.stack?.split('\n').slice(0, 5).join('\n'),
+      });
       res.status(500).json({ error: "Failed to send friend request" });
     }
   });
