@@ -1,12 +1,13 @@
-import { Activity, Image, TrendingUp, BarChart3, Bell, Settings, Users } from "lucide-react";
+import { Activity, Image, TrendingUp, BarChart3, Bell, Settings, Users, Bug } from "lucide-react";
 
 interface AdminMobileNavbarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   pendingCount: number;
+  reportsCount?: number;
 }
 
-export function AdminMobileNavbar({ activeTab, onTabChange, pendingCount }: AdminMobileNavbarProps) {
+export function AdminMobileNavbar({ activeTab, onTabChange, pendingCount, reportsCount = 0 }: AdminMobileNavbarProps) {
   const tabs = [
     { id: "overview", icon: Activity, label: "Overview" },
     { id: "users", icon: Users, label: "Users" },
@@ -14,6 +15,7 @@ export function AdminMobileNavbar({ activeTab, onTabChange, pendingCount }: Admi
     { id: "chart", icon: TrendingUp, label: "Chart" },
     { id: "polls", icon: BarChart3, label: "Polls" },
     { id: "notifications", icon: Bell, label: "Alerts" },
+    { id: "reports", icon: Bug, label: "Reports", badge: reportsCount > 0 ? reportsCount : undefined },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 

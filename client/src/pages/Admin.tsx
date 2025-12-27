@@ -16,7 +16,7 @@ import { useUpload } from "@/hooks/use-upload";
 import { 
   ArrowLeft, Users, Shield, Activity, Settings, Plus, Trash2, TrendingUp, Calendar,
   Image, Check, X, Star, Eye, MessageSquare, Loader2, BarChart3, Bell, Send, ExternalLink,
-  Ban, Mail, LogOut, Edit3, Upload, Palette, ToggleLeft, ToggleRight, Key, Wallet, Store
+  Ban, Mail, LogOut, Edit3, Upload, Palette, ToggleLeft, ToggleRight, Key, Wallet, Store, Bug, Monitor, Clock, CheckCircle2
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -145,6 +145,47 @@ export default function Admin() {
     enabled: isAuthenticated && hasAdminAccess,
   });
 
+  // Bug Reports
+  interface BugReport {
+    id: string;
+    userId: string | null;
+    description: string;
+    pageUrl: string;
+    userAgent: string | null;
+    screenshotData: string | null;
+    imageAudit: string | null;
+    brokenImagesCount: number | null;
+    viewport: string | null;
+    performanceMetrics: string | null;
+    status: string | null;
+    resolvedAt: string | null;
+    createdAt: string | null;
+  }
+
+  const { data: bugReports = [], refetch: refetchBugReports } = useQuery<BugReport[]>({
+    queryKey: ["/api/bug-reports"],
+    enabled: isAuthenticated && hasAdminAccess,
+  });
+
+  // User Feedback
+  interface UserFeedback {
+    id: string;
+    userId: string | null;
+    visitorName: string | null;
+    email: string | null;
+    category: string;
+    title: string;
+    description: string;
+    status: string | null;
+    adminNotes: string | null;
+    createdAt: string | null;
+  }
+
+  const { data: userFeedback = [], refetch: refetchFeedback } = useQuery<UserFeedback[]>({
+    queryKey: ["/api/admin/feedback"],
+    enabled: isAuthenticated && hasAdminAccess,
+  });
+
   // Marketplace Config
   interface MarketplaceConfig {
     marketplaceEnabled: boolean;
@@ -194,6 +235,38 @@ export default function Admin() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update wallet settings", variant: "destructive" });
+    },
+  });
+
+  // Bug Report Mutations
+  const resolveBugReportMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("PATCH", `/api/admin/bug-reports/${id}`, { status: "resolved" });
+      if (!res.ok) throw new Error("Failed to resolve bug report");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bug-reports"] });
+      toast({ title: "Bug report resolved" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to resolve bug report", variant: "destructive" });
+    },
+  });
+
+  // Feedback Mutations
+  const updateFeedbackMutation = useMutation({
+    mutationFn: async ({ id, status, adminNotes }: { id: string; status?: string; adminNotes?: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/feedback/${id}`, { status, adminNotes });
+      if (!res.ok) throw new Error("Failed to update feedback");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/feedback"] });
+      toast({ title: "Feedback updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update feedback", variant: "destructive" });
     },
   });
 
@@ -731,6 +804,10 @@ export default function Admin() {
               <Bell className="w-4 h-4 mr-2" />
               Notifications
             </TabsTrigger>
+            <TabsTrigger value="reports" data-testid="tab-admin-reports">
+              <Bug className="w-4 h-4 mr-2" />
+              Reports ({bugReports.filter(r => r.status !== "resolved").length + userFeedback.filter(f => f.status !== "resolved").length})
+            </TabsTrigger>
             <TabsTrigger value="settings" data-testid="tab-admin-settings">
               <Settings className="w-4 h-4 mr-2" />
               Settings
@@ -810,6 +887,15 @@ export default function Admin() {
                 >
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Add Chart Marker
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="justify-start"
+                  onClick={() => setActiveTab("reports")}
+                  data-testid="button-review-reports"
+                >
+                  <Bug className="w-4 h-4 mr-2" />
+                  Review Reports ({bugReports.filter(r => r.status !== "resolved").length + userFeedback.filter(f => f.status !== "resolved").length})
                 </Button>
               </CardContent>
             </Card>
@@ -1648,6 +1734,167 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="reports">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bug className="h-5 w-5" />
+                    Bug Reports
+                  </CardTitle>
+                  <CardDescription>
+                    Review and resolve user-submitted bug reports with screenshots
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {bugReports.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No bug reports submitted yet
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {bugReports.map((report) => (
+                        <div
+                          key={report.id}
+                          className={`p-4 border rounded-md space-y-3 ${report.status === "resolved" ? "opacity-60" : ""}`}
+                          data-testid={`bug-report-${report.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <Badge variant={report.status === "resolved" ? "secondary" : "default"}>
+                                  {report.status === "resolved" ? "Resolved" : "Open"}
+                                </Badge>
+                                {report.brokenImagesCount && report.brokenImagesCount > 0 && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    {report.brokenImagesCount} broken images
+                                  </Badge>
+                                )}
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {report.createdAt ? new Date(report.createdAt).toLocaleString() : "Unknown"}
+                                </span>
+                              </div>
+                              <p className="text-sm mb-2">{report.description}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                <span className="flex items-center gap-1">
+                                  <Monitor className="w-3 h-3" />
+                                  {report.viewport || "Unknown viewport"}
+                                </span>
+                                <span className="truncate max-w-[200px]" title={report.pageUrl}>
+                                  {report.pageUrl}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {report.status !== "resolved" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => resolveBugReportMutation.mutate(report.id)}
+                                  disabled={resolveBugReportMutation.isPending}
+                                  data-testid={`button-resolve-${report.id}`}
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  Resolve
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                          {report.screenshotData && (
+                            <div className="mt-3">
+                              <p className="text-xs text-muted-foreground mb-1">Screenshot:</p>
+                              <div className="border rounded-md overflow-hidden max-w-lg">
+                                <img
+                                  src={report.screenshotData}
+                                  alt="Bug report screenshot"
+                                  className="w-full h-auto cursor-pointer"
+                                  onClick={() => window.open(report.screenshotData!, "_blank")}
+                                  data-testid={`screenshot-${report.id}`}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {report.userAgent && (
+                            <details className="text-xs">
+                              <summary className="text-muted-foreground cursor-pointer">User Agent</summary>
+                              <p className="mt-1 p-2 bg-muted rounded text-xs break-all">{report.userAgent}</p>
+                            </details>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    User Feedback
+                  </CardTitle>
+                  <CardDescription>
+                    Feature requests and general feedback from users
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {userFeedback.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No feedback submitted yet
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {userFeedback.map((feedback) => (
+                        <div
+                          key={feedback.id}
+                          className={`p-4 border rounded-md space-y-2 ${feedback.status === "resolved" ? "opacity-60" : ""}`}
+                          data-testid={`feedback-${feedback.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <Badge variant="outline">{feedback.category}</Badge>
+                                <Badge variant={feedback.status === "resolved" ? "secondary" : feedback.status === "in-progress" ? "default" : "outline"}>
+                                  {feedback.status || "new"}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {feedback.createdAt ? new Date(feedback.createdAt).toLocaleString() : "Unknown"}
+                                </span>
+                              </div>
+                              <h4 className="font-medium">{feedback.title}</h4>
+                              <p className="text-sm text-muted-foreground mt-1">{feedback.description}</p>
+                              {(feedback.visitorName || feedback.email) && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  From: {feedback.visitorName || "Anonymous"} {feedback.email && `(${feedback.email})`}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {feedback.status !== "resolved" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => updateFeedbackMutation.mutate({ id: feedback.id, status: "resolved" })}
+                                  disabled={updateFeedbackMutation.isPending}
+                                  data-testid={`button-resolve-feedback-${feedback.id}`}
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                                  Resolve
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
           <TabsContent value="settings">
             <div className="space-y-6">
               <Card>
@@ -1935,6 +2182,7 @@ export default function Admin() {
         activeTab={activeTab} 
         onTabChange={setActiveTab}
         pendingCount={pendingGallery.length}
+        reportsCount={bugReports.filter(r => r.status !== "resolved").length + userFeedback.filter(f => f.status !== "resolved").length}
       />
 
       <Dialog open={!!rejectingItemId} onOpenChange={(open) => !open && setRejectingItemId(null)}>

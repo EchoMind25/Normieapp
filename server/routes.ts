@@ -542,6 +542,32 @@ export async function registerRoutes(
     }
   });
 
+  // Update bug report status (admin only)
+  app.patch("/api/admin/bug-reports/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      const [updated] = await db
+        .update(bugReports)
+        .set({ 
+          status, 
+          resolvedAt: status === "resolved" ? new Date() : null 
+        })
+        .where(eq(bugReports.id, id))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: "Bug report not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("[BugReport] Error updating:", error);
+      res.status(500).json({ error: "Failed to update bug report" });
+    }
+  });
+
   // Auth routes use per-endpoint rate limiting (see authRoutes.ts)
   app.use("/api/auth", authRoutes);
   

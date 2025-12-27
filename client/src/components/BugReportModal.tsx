@@ -63,14 +63,35 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
 
       try {
         const html2canvas = (await import("html2canvas")).default;
+        
+        // Hide dialog temporarily for screenshot
+        const dialogs = document.querySelectorAll('[role="dialog"]');
+        dialogs.forEach((el) => {
+          (el as HTMLElement).style.visibility = 'hidden';
+        });
+        
+        // Small delay to allow DOM to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const canvas = await html2canvas(document.body, {
           useCORS: true,
           allowTaint: true,
           logging: false,
           scale: 0.5,
+          backgroundColor: '#000000',
+          removeContainer: true,
+          foreignObjectRendering: false,
           ignoreElements: (element) => {
-            return element.closest('[role="dialog"]') !== null;
+            // Ignore dialogs and any hidden elements
+            if (element.closest('[role="dialog"]')) return true;
+            if (element.tagName === 'NOSCRIPT') return true;
+            return false;
           },
+        });
+
+        // Restore dialog visibility
+        dialogs.forEach((el) => {
+          (el as HTMLElement).style.visibility = 'visible';
         });
 
         const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
@@ -81,6 +102,13 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
           description: `Captured ${audit.totalImages} images, ${audit.brokenImages.length} broken`,
         });
       } catch (canvasError) {
+        // Restore dialog visibility on error
+        const dialogs = document.querySelectorAll('[role="dialog"]');
+        dialogs.forEach((el) => {
+          (el as HTMLElement).style.visibility = 'visible';
+        });
+        
+        console.error("Screenshot capture error:", canvasError);
         toast({
           title: "Screenshot unavailable",
           description: "Image audit completed without screenshot",
@@ -88,6 +116,7 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
         });
       }
     } catch (error) {
+      console.error("Capture failed:", error);
       toast({
         title: "Capture failed",
         description: "Could not capture page state",
